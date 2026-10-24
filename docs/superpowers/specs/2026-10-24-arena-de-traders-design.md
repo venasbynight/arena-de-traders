@@ -149,9 +149,10 @@ Primeira versão (usa os mesmos dados do placar e do diário):
   vivo. Evoluir libera mesas e ativos, nunca limites de risco maiores.
 - **Liga com rivais de controle:** firmas fictícias que operam o mesmo
   mercado com as mesmas regras de risco: "Cara ou Coroa" (entradas
-  aleatórias) e "Só Tendência" (segue a tendência do 60 sem gatilho). A pior
-  delas para cada trader é marcada como NÊMESIS. Trader que não bate o "Cara
-  ou Coroa" não tem vantagem demonstrada.
+  aleatórias) e "Só Tendência" (segue a tendência do 60 sem gatilho). A rival
+  logo acima da sua firma na liga é marcada como NÊMESIS. Cada trader também
+  aparece comparado ao "Cara ou Coroa": abaixo de +R$ 500 de diferença no
+  período, não conta como vantagem demonstrada.
 - **Painel de pensamento:** cada trader explica cada decisão, inclusive as
   que não tomou ("pulei: risco:retorno 0,8 abaixo do mínimo").
 - **Letreiro no rodapé:** eventos de todos os traders passando, mais a agenda
