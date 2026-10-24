@@ -1,6 +1,7 @@
 """Servidor local da arena: entrega as telas e o backtest em JSON.
 
-    python servidor.py        # abre http://localhost:8765
+    python servidor.py                  # abre http://localhost:8765 no navegador
+    python servidor.py --sem-navegador  # só o servidor
 """
 import json
 import mimetypes
@@ -81,7 +82,9 @@ def criar_servidor(porta=8765, historico_fn=None, cfg=None):
 
 
 if __name__ == "__main__":
+    import sys
     srv = criar_servidor()
-    print("Arena de Traders em http://localhost:8765  (Ctrl+C para parar)")
-    webbrowser.open("http://localhost:8765")
+    print("Arena de Traders em http://localhost:8765  (Ctrl+C para parar)", flush=True)
+    if "--sem-navegador" not in sys.argv:
+        webbrowser.open("http://localhost:8765")
     srv.serve_forever()

@@ -1,2 +1,46 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>Arena de Traders</title></head><body>Arena de Traders</body></html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena de Traders</title>
+<link rel="stylesheet" href="/web/estilo.css">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<header>
+  <div class="logo">Arena <span>de Traders</span></div>
+  <div class="seg"><button class="sel">Backtest</button><button disabled title="Em breve (Plano 3)">Ao vivo</button></div>
+  <div class="seg" id="ativos"><button class="sel" data-ativo="WDO">WDO · mini-dólar</button><button data-ativo="WIN">WIN · mini-índice</button></div>
+  <span class="pill">Contas simuladas · R$ 5.000 cada · dados do MT5</span>
+</header>
+
+<div class="ctrl">
+  <label>De <input type="date" id="de"></label>
+  <label>até <input type="date" id="ate"></label>
+  <button class="btn prim" id="rodar">Rodar</button>
+  <button class="btn" id="inicio" title="Voltar ao início" disabled>⏮</button>
+  <button class="btn" id="play" title="Play / pausa" disabled>▶</button>
+  <button class="btn" id="fim" title="Pular para o resultado" disabled>⏭</button>
+  <label>Velocidade <select id="vel"><option value="1">1x</option><option value="5">5x</option><option value="20" selected>20x</option><option value="100">100x</option></select></label>
+  <input type="range" id="barra" min="0" max="0" value="0" disabled>
+  <div id="relogio" class="mut">escolha o período e clique em Rodar</div>
+</div>
+
+<main id="grid"></main>
+
+<aside>
+  <section class="card" style="flex:none">
+    <h3><span>Placar do backtest</span><span id="placar-ate"></span></h3>
+    <table id="placar"><tr><th>Trader</th><th>Resultado</th><th>Trades</th><th>Acerto</th><th>Agora</th></tr></table>
+  </section>
+  <section class="card" style="flex:1;min-height:0">
+    <h3><span>O que cada um está fazendo</span><span id="diario-dia"></span></h3>
+    <div id="diario"></div>
+  </section>
+</aside>
+
+<section id="resultado"></section>
+<script src="/web/sala.js"></script>
+</body>
+</html>
