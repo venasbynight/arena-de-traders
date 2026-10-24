@@ -1,8 +1,8 @@
 {
   "capital": 5000,
   "ativos": {
-    "WDO": {"margem_por_contrato": 150, "custo_por_contrato": 0.5},
-    "WIN": {"margem_por_contrato": 100, "custo_por_contrato": 0.25}
+    "WDO": {"margem_por_contrato": 150, "custo_por_contrato": 0.5, "simbolo_mt5": "WDO$"},
+    "WIN": {"margem_por_contrato": 100, "custo_por_contrato": 0.25, "simbolo_mt5": "WIN$"}
   },
   "max_contratos": 5,
   "max_perda_por_trade": 100,

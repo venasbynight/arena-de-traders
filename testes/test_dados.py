@@ -49,5 +49,73 @@ class TestCsvEAgrupamento(unittest.TestCase):
         self.assertEqual(d[date(2026, 9, 2)], cs[3:])
 
 
+class Mt5Falso:
+    """Imita o pacote MetaTrader5: devolve candles de 5 min das 9:00 às 9:55 de cada dia útil pedido."""
+    TIMEFRAME_M5 = 5
+
+    def __init__(self, liga=True, simbolos=("WDO$", "WIN$")):
+        self.liga, self.simbolos, self.baixadas = liga, simbolos, 0
+
+    def initialize(self):
+        return self.liga
+
+    def symbol_select(self, simbolo, ligar):
+        return simbolo in self.simbolos
+
+    def last_error(self):
+        return (1, "erro falso")
+
+    def copy_rates_range(self, simbolo, tf, de, ate):
+        self.baixadas += 1
+        out, dia = [], de
+        while dia < ate:
+            if dia.weekday() < 5:
+                for k in range(12):
+                    t = dia.replace(hour=9, minute=0) + timedelta(minutes=5 * k)
+                    epoch = (t - datetime(1970, 1, 1)).total_seconds()
+                    out.append({"time": epoch, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.5,
+                                "real_volume": 7})
+            dia += timedelta(days=1)
+        return out
+
+
+CFG = {"ativos": {"WDO": {"simbolo_mt5": "WDO$"}, "WIN": {"simbolo_mt5": "WIN$"}}}
+
+
+class TestHistoricoMt5(unittest.TestCase):
+    def test_mt5_fechado(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=Mt5Falso(liga=False))
+        self.assertIn("abra o MT5 e faça login", str(e.exception))
+
+    def test_simbolo_inexistente(self):
+        cfg = {"ativos": {"WDO": {"simbolo_mt5": "WDO$"}}}
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), cfg, pasta=d, mt5=Mt5Falso(simbolos=()))
+        self.assertIn("WDO$", str(e.exception))
+        self.assertIn("trader/config.json", str(e.exception))
+
+    def test_cache_evita_baixar_de_novo(self):
+        mt5 = Mt5Falso()
+        with tempfile.TemporaryDirectory() as d:
+            a = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 4), CFG, pasta=d, mt5=mt5)
+            b = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 4), CFG, pasta=d, mt5=mt5)
+        self.assertEqual(mt5.baixadas, 1)
+        self.assertEqual(len(a), 4 * 12)
+        self.assertEqual(a, b)
+
+    def test_historico_recorta_intervalo(self):
+        mt5 = Mt5Falso()
+        with tempfile.TemporaryDirectory() as d:
+            dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG, pasta=d, mt5=mt5)
+            meio = dados.historico("WDO", date(2026, 9, 2), date(2026, 9, 2), CFG, pasta=d, mt5=mt5)
+        self.assertEqual(mt5.baixadas, 1)
+        self.assertEqual({k.t.date() for k in meio}, {date(2026, 9, 2)})
+        self.assertEqual(meio[0].t, datetime(2026, 9, 2, 9, 0))
+        self.assertEqual(meio[0].v, 7.0)
+
+
 if __name__ == "__main__":
     unittest.main()
