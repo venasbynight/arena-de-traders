@@ -139,6 +139,50 @@ class TestBacktest(unittest.TestCase):
         self.assertTrue(so_dia2(curto))
         self.assertEqual(so_dia2(curto), so_dia2(longo))
 
+    def test_nao_ve_o_futuro_dentro_do_dia(self):
+        """Cortar os dados no meio do dia 2 não muda nada do que aconteceu antes do corte."""
+        from traders import sofia_smc
+        cs = dias_sinteticos(3, semente=2)  # semente com 3 entradas no dia 2
+        longo = motor.rodar_backtest("WDO", cs, [sofia_smc], CFG)["traders"]["Sofia SMC"]["eventos"]
+        dia2 = cs[114].t.date().isoformat()
+        self.assertTrue(any(e["tipo"] == "entrada" and e["t"].startswith(dia2) for e in longo))
+        for k in range(5, 113, 7):
+            # o candle k vira o último do dia: tudo até a abertura dele (inclusive a decisão tomada no
+            # fechamento do k-1 e as execuções dentro do k) tem de bater; só a zeragem forçada difere
+            corte = cs[114 + k].t.isoformat()
+            curto = motor.rodar_backtest("WDO", cs[:114 + k + 1], [sofia_smc], CFG)["traders"]["Sofia SMC"]["eventos"]
+            antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"]
+            self.assertEqual(antes(curto), antes(longo), f"corte no candle {k} do dia 2")
+
+    def test_blocos_de_60_entregues_ja_fecharam(self):
+        """Todo candle de 5 min de um bloco de 60 entregue ao trader já fechou na hora da decisão."""
+        import types
+        from tipos import Decisao
+        cs, vistos = dias_sinteticos(3), []
+
+        class Espiao:
+            def __init__(self, ativo, tick, params=None):
+                pass
+
+            def decidir(self, hoje5, ontem5, fechados60):
+                vistos.append((hoje5[-1].t, [b.t for b in fechados60]))
+                return Decisao()
+
+        motor.rodar_backtest("WDO", cs, [types.SimpleNamespace(NOME="Espião", ESTILO="", Trader=Espiao)], CFG)
+        self.assertTrue(any(blocos for _, blocos in vistos))
+        for agora, blocos in vistos:
+            for b in blocos:
+                membros = [k.t for k in cs if k.t.date() == b.date() and b <= k.t < b + timedelta(minutes=60)]
+                self.assertLessEqual(max(membros), agora, f"bloco {b} entregue em {agora}")
+
+    def test_simbolo_da_corretora_nao_afeta_o_risco(self):
+        from traders import sofia_smc
+        cfg = json.loads(json.dumps(CFG))
+        cfg["ativos"]["WDO"]["simbolo_mt5"] = "#WDOFUT"
+        evs = motor.rodar_backtest("WDO", dias_sinteticos(3), [sofia_smc], cfg)["traders"]["Sofia SMC"]["eventos"]
+        self.assertFalse(any("ativos" in m for e in evs if e["tipo"] == "block" for m in e["motivos"]))
+        self.assertTrue(any(e["tipo"] == "ordem" for e in evs))
+
     def test_eventos_ordenados_por_horario(self):
         from traders import sofia_smc
         r = motor.rodar_backtest("WDO", dias_sinteticos(2), [sofia_smc], CFG)

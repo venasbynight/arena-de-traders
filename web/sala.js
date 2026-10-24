@@ -28,14 +28,22 @@ $("#rodar").onclick = async () => {
   pausar();
   $("#relogio").textContent = "calculando o backtest…";
   $("#grid").innerHTML = "";
-  const r = await fetch(`/api/backtest?ativo=${ativo}&de=${$("#de").value}&ate=${$("#ate").value}`);
-  const dados = await r.json();
-  if (!r.ok) return aviso(dados.erro || "erro no backtest");
-  montar(dados);
+  $("#rodar").disabled = true;
+  try {
+    const r = await fetch(`/api/backtest?ativo=${ativo}&de=${$("#de").value}&ate=${$("#ate").value}`);
+    const dados = await r.json();
+    if (!r.ok) return aviso(dados.erro || "erro no backtest");
+    montar(dados);
+  } catch (e) {
+    aviso("não consegui falar com o servidor da arena: ele está rodando? (" + e.message + ")");
+  } finally {
+    $("#rodar").disabled = false;
+  }
 };
 
 function aviso(msg) {
-  $("#grid").innerHTML = `<div class="aviso">${msg}</div>`;
+  $("#grid").innerHTML = `<div class="aviso"></div>`;
+  $("#grid .aviso").textContent = msg;
   $("#relogio").textContent = "";
   ["#inicio", "#play", "#fim", "#barra"].forEach(s => $(s).disabled = true);
 }
@@ -73,9 +81,14 @@ function criarCard(nome, t, k) {
   return tr;
 }
 
-// instante do cursor: fechamento do último candle revelado
-const limite = () => arena.cursor ? seg(arena.candles[arena.cursor - 1].iso) + 300 : 0;
-const ate = (eventos) => { const L = limite(); return eventos.filter(e => seg(e.t) <= L); };
+// Execuções (entrada/saída) levam a hora de abertura do candle em que aconteceram: aparecem com esse candle.
+// Decisões (ordem, bloqueio, estudo) levam a hora do fechamento do candle que as gerou: aparecem com ele.
+const EXECUCOES = new Set(["entrada", "saida"]);
+const ate = (eventos) => {
+  if (!arena.cursor) return [];
+  const abertura = seg(arena.candles[arena.cursor - 1].iso);
+  return eventos.filter(e => seg(e.t) <= (EXECUCOES.has(e.tipo) ? abertura : abertura + 300));
+};
 
 function irPara(i) {
   arena.cursor = Math.max(0, Math.min(i, arena.candles.length));

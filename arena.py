@@ -21,11 +21,14 @@ def main(argv=None):
     bt.add_argument("--ate", type=date.fromisoformat, required=True)
     a = ap.parse_args(argv)
 
-    cfg = motor.carregar_config()
     try:
+        cfg = motor.carregar_config()
         candles = historico(a.ativo, a.de, a.ate, cfg)
     except ErroDados as e:
         print(f"Erro: {e}")
+        return 1
+    except (OSError, ValueError, KeyError) as e:
+        print(f"Erro ao ler a configuração ou o cache de dados: {e!r}")
         return 1
     if not candles:
         print(f"Sem candles de {a.ativo} entre {a.de} e {a.ate} (fim de semana, feriado ou fora do histórico).")

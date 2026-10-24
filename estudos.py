@@ -25,10 +25,11 @@ def tendencia(candles, n=2):
             else:
                 fundo = ps[k].preco
             k += 1
+        # cada topo/fundo só rompe uma vez: assim manda o rompimento mais recente
         if topo is not None and c.c > topo:
-            estado = "alta"
-        elif fundo is not None and c.c < fundo:
-            estado = "baixa"
+            estado, topo = "alta", None
+        if fundo is not None and c.c < fundo:
+            estado, fundo = "baixa", None
     return estado
 
 

@@ -60,6 +60,21 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("<html", corpo)
 
+    def test_erro_inesperado_vira_json(self):
+        def quebra(ativo, de, ate, cfg):
+            raise ValueError("CSV corrompido")
+        srv = servidor.criar_servidor(0, historico_fn=quebra, cfg=CFG)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            url = f"http://127.0.0.1:{srv.server_address[1]}/api/backtest?ativo=WDO&de=2026-09-01&ate=2026-09-01"
+            with self.assertRaises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(url)
+            self.assertEqual(e.exception.code, 500)
+            self.assertIn("CSV corrompido", json.loads(e.exception.read().decode("utf-8"))["erro"])
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
     def test_nao_sai_da_pasta_web(self):
         status, _ = self.get("/web/..%2Fmotor.py")
         self.assertEqual(status, 404)

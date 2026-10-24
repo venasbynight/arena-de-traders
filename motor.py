@@ -168,7 +168,7 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
     from dados import agrupar, por_dia
 
     tick = size.ATIVOS[ativo]["tick"]
-    simbolo = cfg["ativos"][ativo].get("simbolo_mt5", ativo)
+    simbolo = ativo  # as skills leem o ativo nas 3 primeiras letras; o símbolo da corretora não importa aqui
     c60 = agrupar(candles5, 60)
     mesa = [(m, m.Trader(ativo, tick), Conta(m.NOME, ativo, cfg)) for m in modulos_traders]
     eventos = {m.NOME: [] for m in modulos_traders}

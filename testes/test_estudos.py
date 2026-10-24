@@ -38,6 +38,13 @@ class TestTendencia(unittest.TestCase):
         cs = [h - 0.5 for h in hs[:-1]] + [-1]
         self.assertEqual(estudos.tendencia(mk(hs, ls, cs)), "baixa")
 
+    def test_tendencia_segue_o_ultimo_rompimento(self):
+        # topo 100 rompido; depois fundo 104 (máximas iguais, sem topo novo) rompido para baixo a 102
+        cs = ohlc((95, 96, 94, 95.5), (95.5, 97, 95, 96.5), (96.5, 100, 96, 99), (99, 98, 96, 97), (97, 97, 95, 96),
+                  (99, 101.5, 99, 101), (105, 106, 104.5, 105.5), (105.5, 106, 104.5, 105), (105, 106, 104, 105),
+                  (105, 106, 104.5, 105.5), (105.5, 106, 104.5, 105), (105, 105, 101, 102))
+        self.assertEqual(estudos.tendencia(cs), "baixa")
+
     def test_tendencia_none_sem_rompimento(self):
         self.assertIsNone(estudos.tendencia(mk([1, 2, 3, 2, 1])))
 

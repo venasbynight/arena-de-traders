@@ -106,6 +106,23 @@ class TestHistoricoMt5(unittest.TestCase):
         self.assertEqual(len(a), 4 * 12)
         self.assertEqual(a, b)
 
+    def test_download_parcial_nao_marca_dias_que_nao_vieram(self):
+        class Parcial(Mt5Falso):  # o MT5 ainda sincronizando: só devolve até 02/09
+            def copy_rates_range(self, simbolo, tf, de, ate):
+                return [r for r in super().copy_rates_range(simbolo, tf, de, ate)
+                        if r["time"] < (datetime(2026, 9, 3) - datetime(1970, 1, 1)).total_seconds()]
+        mt5 = Parcial()
+        with tempfile.TemporaryDirectory() as d:
+            dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 4), CFG, pasta=d, mt5=mt5)
+            dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 4), CFG, pasta=d, mt5=mt5)
+        self.assertEqual(mt5.baixadas, 2)
+
+    def test_simbolo_padrao_sem_config(self):
+        mt5 = Mt5Falso()
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("WIN", date(2026, 9, 1), date(2026, 9, 1), {"ativos": {"WIN": {}}}, pasta=d, mt5=mt5)
+        self.assertEqual(len(cs), 12)
+
     def test_historico_recorta_intervalo(self):
         mt5 = Mt5Falso()
         with tempfile.TemporaryDirectory() as d:

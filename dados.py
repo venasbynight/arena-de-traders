@@ -88,13 +88,16 @@ def historico(ativo, de, ate, cfg, pasta="dados", mt5=None, hoje=None):
 
     faltam = _dias_uteis(de, ate) - cobertos
     if faltam:
-        novos = baixar_mt5(cfg["ativos"][ativo]["simbolo_mt5"], min(faltam), max(faltam), mt5)
+        simbolo = cfg["ativos"].get(ativo, {}).get("simbolo_mt5", f"{ativo}$")
+        novos = baixar_mt5(simbolo, min(faltam), max(faltam), mt5)
         unicos = {k.t: k for k in candles}
         unicos.update({k.t: k for k in novos})
         candles = sorted(unicos.values(), key=lambda k: k.t)
         salvar_csv(candles, arq)
-        # o dia de hoje ainda está acontecendo: não conta como coberto
-        fim = min(max(faltam), (hoje or date.today()) - timedelta(days=1))
+        # cobre só até o último dia que veio de fato (o MT5 pode ainda estar sincronizando);
+        # o dia de hoje ainda está acontecendo e nunca conta como coberto
+        fim = min(max(k.t.date() for k in novos) if novos else min(faltam) - timedelta(days=1),
+                  (hoje or date.today()) - timedelta(days=1))
         if fim >= min(faltam):
             with open(arq_cob, "a", encoding="utf-8") as f:
                 f.write(f"{min(faltam).isoformat()},{fim.isoformat()}\n")

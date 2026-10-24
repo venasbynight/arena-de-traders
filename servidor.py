@@ -63,15 +63,21 @@ class Arena(BaseHTTPRequestHandler):
             return self._enviar(400, {"erro": "datas inválidas; use AAAA-MM-DD"})
         if de > ate:
             return self._enviar(400, {"erro": "a data inicial é depois da final"})
-        cfg = self.server.cfg or motor.carregar_config()
+        try:
+            cfg = self.server.cfg or motor.carregar_config()
+        except (OSError, ValueError) as e:
+            return self._enviar(500, {"erro": f"não consegui ler trader/config.json: {e}"})
         try:
             candles = self.server.historico_fn(ativo, de, ate, cfg)
+            if not candles:
+                return self._enviar(400, {"erro": f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y} "
+                                                  "(fim de semana, feriado ou fora do histórico)"})
+            resultado = motor.rodar_backtest(ativo, candles, traders.TODOS, cfg)
         except dados.ErroDados as e:
             return self._enviar(400, {"erro": str(e)})
-        if not candles:
-            return self._enviar(400, {"erro": f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y} "
-                                              "(fim de semana, feriado ou fora do histórico)"})
-        self._enviar(200, motor.rodar_backtest(ativo, candles, traders.TODOS, cfg))
+        except Exception as e:  # nunca deixar a tela esperando sem resposta
+            return self._enviar(500, {"erro": f"erro inesperado no backtest: {e!r}"})
+        self._enviar(200, resultado)
 
 
 def criar_servidor(porta=8765, historico_fn=None, cfg=None):
