@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta
 
 import estudos
-from tipos import Candle, Pivo
+from tipos import Candle, Pivo, Zona
 
 T0 = datetime(2026, 9, 1, 9, 0)
 
@@ -40,6 +40,40 @@ class TestTendencia(unittest.TestCase):
 
     def test_tendencia_none_sem_rompimento(self):
         self.assertIsNone(estudos.tendencia(mk([1, 2, 3, 2, 1])))
+
+
+def ohlc(*linhas):
+    return [Candle(T0 + timedelta(minutes=5 * k), o, h, l, c) for k, (o, h, l, c) in enumerate(linhas)]
+
+
+class TestZonas(unittest.TestCase):
+    def test_fvg_alta(self):
+        cs = mk([10, 11, 15], ls=[9, 10, 12])
+        self.assertEqual(estudos.fvgs(cs, 1.0), [Zona(criada=2, lado="alta", topo=12, fundo=10, tipo="fvg")])
+
+    def test_fvg_baixa(self):
+        cs = mk([15, 14, 10], ls=[13, 11, 8])
+        self.assertEqual(estudos.fvgs(cs, 1.0), [Zona(criada=2, lado="baixa", topo=13, fundo=10, tipo="fvg")])
+
+    def test_fvg_abaixo_do_minimo_ignorado(self):
+        cs = mk([10, 11, 15], ls=[9, 10, 10.5])
+        self.assertEqual(estudos.fvgs(cs, 1.0), [])
+
+    PERNA = ohlc((5, 6, 4, 5.5), (5.5, 7, 5, 6.5), (6.5, 10, 6, 9),   # topo em 10
+                 (9, 9.5, 7, 7.5), (7.5, 8, 5, 5.5),                   # dois candles de baixa
+                 (5.5, 8, 5.5, 7.8), (7.8, 11, 7.5, 10.5),             # perna de alta fecha acima de 10
+                 (10.5, 11.5, 10, 11))                                 # outro fechamento acima
+
+    def test_ob_alta_ultimo_candle_de_baixa_antes_da_perna(self):
+        obs = estudos.order_blocks(self.PERNA)
+        self.assertEqual(obs, [Zona(criada=6, lado="alta", topo=8, fundo=5, tipo="ob")])
+
+    def test_ob_um_por_topo_rompido(self):
+        self.assertEqual(len([z for z in estudos.order_blocks(self.PERNA) if z.lado == "alta"]), 1)
+
+    def test_ob_baixa_espelho(self):
+        espelho = [Candle(k.t, -k.o, -k.l, -k.h, -k.c) for k in self.PERNA]
+        self.assertEqual(estudos.order_blocks(espelho), [Zona(criada=6, lado="baixa", topo=-5, fundo=-8, tipo="ob")])
 
 
 if __name__ == "__main__":
