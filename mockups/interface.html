@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Arena de Traders — mockup</title>
+<style>
+  :root{--bg:#0b0f14;--panel:#121821;--line:#1f2a36;--txt:#e6edf3;--mut:#8b98a5;--up:#26a69a;--dn:#ef5350;--acc:#4c8dff;--warn:#f0b429}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif;width:1600px;height:960px;display:grid;grid-template-columns:200px 1fr 340px;grid-template-rows:56px 1fr}
+  header{grid-column:1/4;display:flex;align-items:center;gap:24px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .logo{font-weight:700;font-size:17px;letter-spacing:.3px}.logo span{color:var(--acc)}
+  .tick{display:flex;gap:10px;align-items:baseline}.tick b{font-size:18px}.up{color:var(--up)}.dn{color:var(--dn)}
+  .pill{padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mut);font-size:12px}
+  .pill.on{border-color:var(--up);color:var(--up)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
+  .seg div{padding:6px 14px;color:var(--mut)}.seg .sel{background:var(--acc);color:#fff}
+  nav{border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:4px;background:var(--panel)}
+  nav div{padding:9px 12px;border-radius:8px;color:var(--mut)}nav .sel{background:#1a2431;color:var(--txt)}
+  nav .foot{margin-top:auto;font-size:11px;color:var(--mut);padding:8px 12px}
+  main{padding:16px;display:grid;grid-template-rows:auto 1fr;gap:16px;overflow:hidden}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin-bottom:10px;display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse}th{color:var(--mut);font-weight:500;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-size:12px}
+  td{padding:8px;text-align:right;border-bottom:1px solid #18212c}th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+  .av{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:12px;margin-right:8px;vertical-align:middle}
+  .tag{font-size:11px;padding:2px 8px;border-radius:6px;background:#1a2431;color:var(--mut)}
+  .st-pos{color:var(--acc)}.st-stop{color:var(--warn)}
+  .rank{color:var(--mut);width:22px}
+  aside{border-left:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+  .bar{height:8px;background:#1a2431;border-radius:4px;overflow:hidden;margin:6px 0 12px}.bar i{display:block;height:100%}
+  .row{display:flex;justify-content:space-between}.mut{color:var(--mut)}
+  .feed div{padding:8px 0;border-bottom:1px solid #18212c;font-size:12px}.feed time{color:var(--mut);margin-right:6px}
+  .chips{display:flex;gap:8px}.chip{font-size:11px;display:flex;align-items:center;gap:5px;color:var(--mut)}.chip i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .ill{position:absolute;bottom:8px;right:360px;font-size:11px;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Arena <span>de Traders</span></div>
+  <div class="tick"><span class="mut">WDOX26</span><b>5.428,5</b><span class="dn">−0,31%</span></div>
+  <span class="pill on">● MT5 conectado</span>
+  <span class="pill">Contas simuladas</span>
+  <div class="seg"><div class="sel">Arena ao vivo</div><div>Laboratório (backtest)</div></div>
+</header>
+
+<nav>
+  <div class="sel">🏆 Arena</div><div>🧪 Laboratório</div><div>👥 Traders</div><div>📓 Diário</div><div>🛡️ Risco</div><div>⚙️ Configurações</div>
+  <div class="foot">Pregão B3 · 10:42<br>Fecha 18:30</div>
+</nav>
+
+<main>
+  <section class="card">
+    <h3><span>Ranking desde 01/10</span><span>18 pregões</span></h3>
+    <table>
+      <tr><th class="rank">#</th><th>Trader</th><th>Estilo</th><th>Resultado</th><th>Hoje</th><th>Acerto</th><th>Trades</th><th>Fator lucro</th><th>Drawdown</th><th>Status</th></tr>
+      <tr><td class="rank">1</td><td><span class="av" style="background:#1e3a5f">S</span>Sofia SMC</td><td><span class="tag">OB/FVG 60→5</span></td><td class="up">+R$ 2.140</td><td class="up">+R$ 184</td><td>48%</td><td>61</td><td>1,62</td><td class="dn">−R$ 610</td><td class="st-pos">● vendida 2</td></tr>
+      <tr><td class="rank">2</td><td><span class="av" style="background:#3d2e5c">D</span>Didi Agulhada</td><td><span class="tag">Médias 3/8/20</span></td><td class="up">+R$ 1.320</td><td class="dn">−R$ 92</td><td>41%</td><td>74</td><td>1,31</td><td class="dn">−R$ 880</td><td class="mut">aguardando</td></tr>
+      <tr><td class="rank">3</td><td><span class="av" style="background:#21452f">R</span>Rafa Rompimento</td><td><span class="tag">Abertura 15 min</span></td><td class="up">+R$ 410</td><td>R$ 0</td><td>37%</td><td>39</td><td>1,12</td><td class="dn">−R$ 720</td><td class="mut">aguardando</td></tr>
+      <tr><td class="rank">4</td><td><span class="av" style="background:#4d3a1a">V</span>Vera VWAP</td><td><span class="tag">Retorno à VWAP</span></td><td class="dn">−R$ 260</td><td class="dn">−R$ 138</td><td>52%</td><td>88</td><td>0,94</td><td class="dn">−R$ 950</td><td class="st-stop">■ parou: 3 stops</td></tr>
+      <tr><td class="rank">5</td><td><span class="av" style="background:#4a1f24">L</span>Leo Liquidez</td><td><span class="tag">Varredura + CHoCH</span></td><td class="dn">−R$ 740</td><td class="up">+R$ 46</td><td>33%</td><td>45</td><td>0,78</td><td class="dn">−R$ 1.310</td><td class="mut">aguardando</td></tr>
+    </table>
+  </section>
+
+  <section class="card" style="display:flex;flex-direction:column">
+    <h3><span>Sofia SMC · WDOX26 · 5 min · tendência no 60: <b class="dn">baixa</b></span>
+      <span class="chips"><span class="chip"><i style="background:rgba(239,83,80,.35)"></i>Order block</span><span class="chip"><i style="background:rgba(76,141,255,.35)"></i>FVG</span><span class="chip"><i style="background:var(--warn)"></i>Liquidez</span></span></h3>
+    <svg id="chart" viewBox="0 0 1000 380" style="flex:1;width:100%"></svg>
+  </section>
+</main>
+
+<aside>
+  <section class="card">
+    <h3><span>Risco do dia · Sofia</span><span>trader-risk</span></h3>
+    <div class="row"><span>Perda do dia</span><span>R$ 92 / R$ 300</span></div><div class="bar"><i style="width:31%;background:var(--warn)"></i></div>
+    <div class="row"><span>Stops</span><span>1 / 3</span></div><div class="bar"><i style="width:33%;background:var(--warn)"></i></div>
+    <div class="row"><span>Trades</span><span>3 / 10</span></div><div class="bar"><i style="width:30%;background:var(--acc)"></i></div>
+    <div class="row mut"><span>Posição atual</span><span>venda 2 · stop 5.437 · alvo 5.420</span></div>
+  </section>
+
+  <section class="card">
+    <h3><span>Último PASS</span><span>trader-budget</span></h3>
+    <div class="row"><span>Venda 2 WDO @ 5.432,5</span><span class="up">PASS</span></div>
+    <div class="mut" style="font-size:12px;margin-top:6px">Perda máx. R$ 92 (limite R$ 100) · RR 2,78 · decidido pela perda máxima por trade</div>
+  </section>
+
+  <section class="card feed" style="flex:1">
+    <h3><span>Diário ao vivo</span><span>hoje</span></h3>
+    <div><time>10:40</time><b>Sofia</b> vendeu 2 no meio do FVG (5.432,5). Alvo: fundo de 5.420.</div>
+    <div><time>10:35</time><b>Vera</b> tomou o 3º stop. Dia encerrado pelo trader-risk.</div>
+    <div><time>10:20</time><b>Leo</b> pegou o alvo: +R$ 46 na varredura do fundo de 5.425.</div>
+    <div><time>09:55</time><b>Didi</b> stop na agulhada de compra: −R$ 92.</div>
+    <div><time>09:31</time><b>Sofia</b> ordem bloqueada: risco:retorno 0,8 abaixo do mínimo.</div>
+  </section>
+</aside>
+<div class="ill">Mockup · dados ilustrativos</div>
+
+<script>
+// candles ilustrativos determinísticos
+let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+const N=70,W=1000,H=380,P=40,c=[];
+const wp=[[0,5444],[18,5422],[22,5421],[40,5439],[44,5440.5],[50,5426],[58,5432],[69,5428.5]];
+const alvo=(i)=>{for(let k=1;k<wp.length;k++){const[a,va]=wp[k-1],[b,vb]=wp[k];if(i<=b)return va+(vb-va)*(i-a)/(b-a)}};
+let p=5444;
+for(let i=0;i<N;i++){const o=p,cl=Math.round((alvo(i)+(r()-.5)*2)*2)/2;
+ const hi=Math.max(o,cl)+Math.round(r()*3)/2,lo=Math.min(o,cl)-Math.round(r()*3)/2;c.push({o,cl,hi,lo});p=cl}
+{const k=c[N-1];k.cl=5428.5;k.hi=Math.max(k.hi,k.o,k.cl);k.lo=Math.min(k.lo,k.o,k.cl)}
+const mx=Math.max(...c.map(k=>k.hi))+3,mn=Math.min(...c.map(k=>k.lo))-3,y=v=>P/2+(mx-v)/(mx-mn)*(H-P),bw=(W-60)/N;
+const svg=document.getElementById('chart');let g='';
+for(let v=Math.ceil(mn/5)*5;v<mx;v+=5){g+=`<line x1="0" x2="${W-60}" y1="${y(v)}" y2="${y(v)}" stroke="#18212c"/><text x="${W-52}" y="${y(v)+4}" fill="#8b98a5" font-size="11">${v.toFixed(1).replace('.',',')}</text>`}
+const zone=(i0,i1,top,bot,col)=>`<rect x="${i0*bw}" y="${y(top)}" width="${(i1-i0)*bw}" height="${y(bot)-y(top)}" fill="${col}" stroke="${col.replace(/,[^,]*\)$/,',.9)')}" stroke-dasharray="3 3"/>`;
+g+=zone(43,N-1,5442,5439,'rgba(239,83,80,.22)');
+g+=zone(47,N-1,5434,5431,'rgba(76,141,255,.25)');
+const liq=5420;g+=`<line x1="${10*bw}" x2="${W-60}" y1="${y(liq)}" y2="${y(liq)}" stroke="#f0b429" stroke-dasharray="6 4"/><text x="${10*bw+4}" y="${y(liq)-5}" fill="#f0b429" font-size="11">liquidez · alvo</text>`;
+c.forEach((k,i)=>{const x=i*bw+bw/2,col=k.cl>=k.o?'#26a69a':'#ef5350';g+=`<line x1="${x}" x2="${x}" y1="${y(k.hi)}" y2="${y(k.lo)}" stroke="${col}"/><rect x="${x-bw*.35}" y="${y(Math.max(k.o,k.cl))}" width="${bw*.7}" height="${Math.max(1,Math.abs(y(k.o)-y(k.cl)))}" fill="${col}"/>`});
+const ei=58,ep=Math.max(c[ei].hi,5432.5);g+=`<path d="M${ei*bw+bw/2} ${y(ep)-14} l-7 -10 h14z" fill="#ef5350"/><text x="${ei*bw+bw/2+10}" y="${y(ep)-18}" fill="#e6edf3" font-size="12">venda 2 · 5.432,5</text>`;
+svg.innerHTML=g;
+</script>
+</body>
+</html>

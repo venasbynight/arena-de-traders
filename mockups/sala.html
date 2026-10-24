@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Arena de Traders — sala de operações</title>
+<style>
+  :root{--bg:#0b0f14;--panel:#121821;--line:#1f2a36;--txt:#e6edf3;--mut:#8b98a5;--up:#26a69a;--dn:#ef5350;--acc:#4c8dff;--warn:#f0b429}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif;width:1600px;height:960px;display:grid;grid-template-columns:1fr 360px;grid-template-rows:56px 52px 1fr}
+  header{grid-column:1/3;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .logo{font-weight:700;font-size:17px}.logo span{color:var(--acc)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg div{padding:6px 14px;color:var(--mut)}.seg .sel{background:var(--acc);color:#fff}
+  .pill{padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mut);font-size:12px}
+  .right{margin-left:auto;display:flex;gap:12px;align-items:center}
+  .ctrl{grid-column:1/3;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--line)}
+  .field{display:flex;gap:6px;align-items:center;color:var(--mut)}.field b{color:var(--txt);background:#1a2431;padding:4px 10px;border-radius:6px;font-weight:500}
+  .btn{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#1a2431;color:var(--txt)}.btn.play{background:var(--acc);color:#fff}
+  .track{flex:1;height:6px;background:#1a2431;border-radius:3px;position:relative}.track i{position:absolute;inset:0 62% 0 0;background:var(--acc);border-radius:3px}
+  .track em{position:absolute;left:38%;top:-5px;width:16px;height:16px;border-radius:50%;background:#fff;transform:translateX(-50%)}
+  .clock{font-variant-numeric:tabular-nums;font-size:15px}
+  .grid{padding:12px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:12px;overflow:hidden}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;min-height:0}
+  .ch{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .av{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font-weight:700;font-size:11px}
+  .ch .n{font-weight:600}.ch .tag{font-size:11px;color:var(--mut)}
+  .ch .pl{margin-left:auto;font-weight:600}
+  .sub{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:4px}
+  svg{flex:1;width:100%;min-height:0}
+  .up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.acc{color:var(--acc)}.warn{color:var(--warn)}
+  aside{border-left:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+  h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin-bottom:8px;display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse;font-size:12px}th{color:var(--mut);font-weight:500;text-align:right;padding:4px;border-bottom:1px solid var(--line)}
+  td{padding:6px 4px;text-align:right;border-bottom:1px solid #18212c}th:first-child,td:first-child{text-align:left}
+  .feed div{padding:7px 0;border-bottom:1px solid #18212c;font-size:12px}.feed time{color:var(--mut);margin-right:6px}
+  .ill{position:absolute;bottom:6px;left:20px;font-size:11px;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Arena <span>de Traders</span></div>
+  <div class="seg"><div class="sel">Backtest</div><div>Ao vivo</div></div>
+  <div class="seg"><div class="sel">WDO · mini-dólar</div><div>WIN · mini-índice</div></div>
+  <div class="right"><span class="pill">Contas simuladas · R$ 5.000 cada</span><span class="pill">Dados: MT5</span></div>
+</header>
+
+<div class="ctrl">
+  <div class="field">De <b>01/09/2026</b></div><div class="field">até <b>30/09/2026</b></div>
+  <div class="btn">⏮</div><div class="btn play">⏸</div><div class="btn">⏭</div>
+  <div class="field">Velocidade <b>20x</b></div>
+  <div class="track"><i></i><em></em></div>
+  <div class="clock">dia 9 de 21 · <b>12/09 10:35</b></div>
+</div>
+
+<main class="grid" id="grid"></main>
+
+<aside>
+  <section class="card" style="flex:none">
+    <h3><span>Placar do backtest</span><span>até 12/09 10:35</span></h3>
+    <table>
+      <tr><th>Trader</th><th>Resultado</th><th>Trades</th><th>Acerto</th><th>Agora</th></tr>
+      <tr><td>Sofia SMC</td><td class="up">+R$ 1.184</td><td>27</td><td>48%</td><td class="acc">vendida 2</td></tr>
+      <tr><td>Didi Agulhada</td><td class="up">+R$ 642</td><td>31</td><td>42%</td><td class="mut">aguarda</td></tr>
+      <tr><td>Rafa Rompimento</td><td class="up">+R$ 210</td><td>18</td><td>39%</td><td class="acc">comprado 1</td></tr>
+      <tr><td>Vera VWAP</td><td class="dn">−R$ 138</td><td>36</td><td>50%</td><td class="warn">parou hoje</td></tr>
+      <tr><td>Leo Liquidez</td><td class="dn">−R$ 412</td><td>22</td><td>32%</td><td class="mut">aguarda</td></tr>
+    </table>
+  </section>
+  <section class="card feed" style="flex:1">
+    <h3><span>O que cada um está fazendo</span><span>12/09</span></h3>
+    <div><time>10:35</time><b>Sofia</b> vendeu 2 no meio do FVG (5.432,5). Alvo no fundo de 5.420.</div>
+    <div><time>10:30</time><b>Rafa</b> comprou 1 no rompimento da máxima dos 15 min.</div>
+    <div><time>10:25</time><b>Vera</b> 3º stop na volta à VWAP. Dia encerrado pelo trader-risk.</div>
+    <div><time>10:10</time><b>Didi</b> agulhada de venda formando; espera o fechamento do candle.</div>
+    <div><time>09:50</time><b>Leo</b> varredura do fundo de 5.421; esperando CHoCH para comprar.</div>
+    <div><time>09:40</time><b>Sofia</b> ordem bloqueada: risco:retorno 0,8 abaixo do mínimo.</div>
+  </section>
+</aside>
+<div class="ill">Mockup · dados ilustrativos</div>
+
+<script>
+// mesmo mercado para todos; cada trader desenha o próprio estudo
+let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+const N=60,c=[],wp=[[0,5444],[15,5422],[19,5421],[34,5439],[38,5440.5],[44,5427],[52,5432.5],[59,5431]];
+const alvo=i=>{for(let k=1;k<wp.length;k++){const[a,va]=wp[k-1],[b,vb]=wp[k];if(i<=b)return va+(vb-va)*(i-a)/(b-a)}};
+let p=5444;for(let i=0;i<N;i++){const o=p,cl=Math.round((alvo(i)+(r()-.5)*2)*2)/2;c.push({o,cl,hi:Math.max(o,cl)+Math.round(r()*3)/2,lo:Math.min(o,cl)-Math.round(r()*3)/2});p=cl}
+const W=500,H=250,mx=5447,mn=5417,bw=(W-40)/N,y=v=>8+(mx-v)/(mx-mn)*(H-16),x=i=>i*bw+bw/2;
+const ma=n=>c.map((k,i)=>{if(i<n-1)return null;let t=0;for(let j=i-n+1;j<=i;j++)t+=c[j].cl;return t/n});
+const line=(arr,col,w=1.5,dash='')=>{let d='';arr.forEach((v,i)=>{if(v!=null)d+=(d?'L':'M')+x(i)+' '+y(v)});return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-dasharray="${dash}"/>`};
+const box=(i0,i1,top,bot,col)=>`<rect x="${i0*bw}" y="${y(top)}" width="${(i1-i0)*bw}" height="${y(bot)-y(top)}" fill="${col}" stroke="${col.replace(/,[^,]*\)$/,',.9)')}" stroke-dasharray="3 3"/>`;
+const hl=(v,col,label,i0=0)=>`<line x1="${i0*bw}" x2="${W-40}" y1="${y(v)}" y2="${y(v)}" stroke="${col}" stroke-dasharray="5 4"/><text x="${i0*bw+3}" y="${y(v)-3}" fill="${col}" font-size="10">${label}</text>`;
+const seta=(i,v,venda,txt)=>venda?`<path d="M${x(i)} ${y(v)-6} l-5 -8 h10z" fill="#ef5350"/><text x="${x(i)+7}" y="${y(v)-10}" fill="#e6edf3" font-size="10">${txt}</text>`
+  :`<path d="M${x(i)} ${y(v)+6} l-5 8 h10z" fill="#26a69a"/><text x="${x(i)+7}" y="${y(v)+16}" fill="#e6edf3" font-size="10">${txt}</text>`;
+const xis=(i,v)=>`<text x="${x(i)-4}" y="${y(v)+4}" fill="#f0b429" font-size="12" font-weight="700">×</text>`;
+function candles(){let g='';for(let v=5420;v<=5445;v+=5)g+=`<line x1="0" x2="${W-40}" y1="${y(v)}" y2="${y(v)}" stroke="#18212c"/><text x="${W-36}" y="${y(v)+3}" fill="#8b98a5" font-size="9">${v}</text>`;
+ c.forEach((k,i)=>{const col=k.cl>=k.o?'#26a69a':'#ef5350';g+=`<line x1="${x(i)}" x2="${x(i)}" y1="${y(k.hi)}" y2="${y(k.lo)}" stroke="${col}"/><rect x="${x(i)-bw*.35}" y="${y(Math.max(k.o,k.cl))}" width="${bw*.7}" height="${Math.max(1,Math.abs(y(k.o)-y(k.cl)))}" fill="${col}"/>`});return g}
+const vw=c.map((k,i)=>{let a=0;for(let j=0;j<=i;j++)a+=(c[j].hi+c[j].lo+c[j].cl)/3;return a/(i+1)});
+const T=[
+ {n:'Sofia SMC',ini:'S',cor:'#1e3a5f',tag:'OB/FVG · tendência 60→5',pl:'+R$ 1.184',cls:'up',sub:['Tendência 60: baixa','vendida 2 · stop 5.437'],
+  est:()=>box(37,N,5442,5439,'rgba(239,83,80,.22)')+box(41,N,5434.5,5431.5,'rgba(76,141,255,.25)')+hl(5420,'#f0b429','liquidez · alvo',8)+seta(52,5434.5,true,'venda 2 · 5.432,5')},
+ {n:'Didi Agulhada',ini:'D',cor:'#3d2e5c',tag:'Médias 3 · 8 · 20',pl:'+R$ 642',cls:'up',sub:['Médias abrindo para baixo','aguarda fechamento'],
+  est:()=>line(ma(3),'#f0b429',1.2)+line(ma(8),'#4c8dff',1.2)+line(ma(20),'#e6edf3',1.2)+seta(36,5441,true,'agulhada venda')+xis(46,5428)},
+ {n:'Rafa Rompimento',ini:'R',cor:'#21452f',tag:'Faixa dos 15 min iniciais',pl:'+R$ 210',cls:'up',sub:['Faixa 5.438–5.444','comprado 1 · stop 5.426'],
+  est:()=>box(0,3,5445,5438,'rgba(38,166,154,.18)')+hl(5445,'#26a69a','máx. 15 min')+hl(5438,'#ef5350','mín. 15 min')+seta(56,5429,false,'compra 1')},
+ {n:'Vera VWAP',ini:'V',cor:'#4d3a1a',tag:'Retorno à VWAP',pl:'−R$ 138',cls:'dn',sub:['3 stops hoje','parou pelo trader-risk'],
+  est:()=>line(vw,'#c084fc',2)+line(vw.map(v=>v+6),'#c084fc',1,'4 4')+line(vw.map(v=>v-6),'#c084fc',1,'4 4')+xis(25,5426)+xis(40,5436)+xis(47,5430)},
+ {n:'Leo Liquidez',ini:'L',cor:'#4a1f24',tag:'Varredura + CHoCH',pl:'−R$ 412',cls:'dn',sub:['Varreu fundo de 5.421','espera CHoCH no 5 min'],
+  est:()=>hl(5421,'#f0b429','fundo varrido',5)+hl(5440.5,'#f0b429','topo · liquidez',30)+`<circle cx="${x(18)}" cy="${y(5419)}" r="8" fill="none" stroke="#f0b429" stroke-width="2"/>`},
+];
+const grid=document.getElementById('grid');
+T.forEach(t=>{grid.insertAdjacentHTML('beforeend',`<section class="card"><div class="ch"><span class="av" style="background:${t.cor}">${t.ini}</span><span class="n">${t.n}</span><span class="tag">${t.tag}</span><span class="pl ${t.cls}">${t.pl}</span></div>
+<div class="sub"><span>${t.sub[0]}</span><span>${t.sub[1]}</span></div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${candles()}${t.est()}</svg></section>`)});
+grid.insertAdjacentHTML('beforeend',`<section class="card" style="align-items:center;justify-content:center;border-style:dashed;color:var(--mut)"><div style="font-size:30px">+</div><div>Adicionar trader</div><div style="font-size:11px;margin-top:4px">escolha um estilo ou crie um robô novo</div></section>`);
+</script>
+</body>
+</html>

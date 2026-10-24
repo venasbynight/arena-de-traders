@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Arena de Traders — resultado do backtest</title>
+<style>
+  :root{--bg:#0b0f14;--panel:#121821;--line:#1f2a36;--txt:#e6edf3;--mut:#8b98a5;--up:#26a69a;--dn:#ef5350;--acc:#4c8dff;--warn:#f0b429}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif;width:1600px;height:960px;padding:24px 28px;display:grid;grid-template-rows:auto auto 1fr;gap:18px}
+  .top{display:flex;align-items:baseline;gap:16px}.top h1{font-size:22px}.mut{color:var(--mut)}
+  .top .acts{margin-left:auto;display:flex;gap:10px}.b{padding:8px 14px;border-radius:8px;border:1px solid var(--line);color:var(--txt)}.b.p{background:var(--acc);border-color:var(--acc)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .k small{color:var(--mut);font-size:12px}.k b{display:block;font-size:22px;margin-top:4px}
+  .main{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;min-height:0}
+  h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin-bottom:12px}
+  table{width:100%;border-collapse:collapse}th{color:var(--mut);font-weight:500;text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);font-size:12px}
+  td{padding:12px 6px;text-align:right;border-bottom:1px solid #18212c}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}
+  .up{color:var(--up)}.dn{color:var(--dn)}.warn{color:var(--warn)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+  .note{font-size:12px;color:var(--mut);margin-top:12px;line-height:1.6}
+  .ill{position:absolute;bottom:8px;right:28px;font-size:11px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Resultado do backtest</h1>
+  <span class="mut">WDO · 01/09/2026 a 30/09/2026 · 21 pregões · 5 traders · R$ 5.000 cada</span>
+  <div class="acts"><span class="b">Ver replay de um dia</span><span class="b">Exportar</span><span class="b p">Rodar outro período</span></div>
+</div>
+
+<div class="kpis">
+  <div class="card k"><small>Melhor trader</small><b class="up">Sofia SMC · +R$ 2.140</b></div>
+  <div class="card k"><small>Pior trader</small><b class="dn">Leo Liquidez · −R$ 740</b></div>
+  <div class="card k"><small>Total de operações</small><b>307</b></div>
+  <div class="card k"><small>Dias em que todos ganharam</small><b>3 de 21</b></div>
+</div>
+
+<div class="main">
+  <section class="card">
+    <h3>Ranking final</h3>
+    <table>
+      <tr><th>#</th><th>Trader</th><th>Resultado</th><th>Trades</th><th>Acerto</th><th>Fator lucro</th><th>Drawdown</th><th>Pior dia</th><th>Confiança</th></tr>
+      <tr><td>1</td><td><span class="dot" style="background:#4c8dff"></span>Sofia SMC</td><td class="up">+R$ 2.140</td><td>61</td><td>48%</td><td>1,62</td><td class="dn">−R$ 610</td><td class="dn">−R$ 276</td><td>média</td></tr>
+      <tr><td>2</td><td><span class="dot" style="background:#c084fc"></span>Didi Agulhada</td><td class="up">+R$ 1.320</td><td>74</td><td>41%</td><td>1,31</td><td class="dn">−R$ 880</td><td class="dn">−R$ 300</td><td>média</td></tr>
+      <tr><td>3</td><td><span class="dot" style="background:#26a69a"></span>Rafa Rompimento</td><td class="up">+R$ 410</td><td>39</td><td>37%</td><td>1,12</td><td class="dn">−R$ 720</td><td class="dn">−R$ 230</td><td class="warn">baixa</td></tr>
+      <tr><td>4</td><td><span class="dot" style="background:#f0b429"></span>Vera VWAP</td><td class="dn">−R$ 260</td><td>88</td><td>52%</td><td>0,94</td><td class="dn">−R$ 950</td><td class="dn">−R$ 300</td><td>média</td></tr>
+      <tr><td>5</td><td><span class="dot" style="background:#ef5350"></span>Leo Liquidez</td><td class="dn">−R$ 740</td><td>45</td><td>33%</td><td>0,78</td><td class="dn">−R$ 1.310</td><td class="dn">−R$ 288</td><td class="warn">baixa</td></tr>
+    </table>
+    <p class="note">Resultados já descontam custos e 1 tick de derrapagem nos stops.<br>
+    "Confiança" sobe com o número de operações: com menos de 50 trades, o resultado pode ser sorte.<br>
+    Clique num trader para ver o diário dele, operação por operação, com o gráfico.</p>
+  </section>
+
+  <section class="card" style="display:flex;flex-direction:column">
+    <h3>Curva de capital de cada trader (R$)</h3>
+    <svg id="eq" viewBox="0 0 700 520" style="flex:1;width:100%"></svg>
+  </section>
+</div>
+<div class="ill">Mockup · dados ilustrativos</div>
+
+<script>
+let s=11;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+const D=21,W=700,H=520,L=60,B=30,T=[['#4c8dff',2140],['#c084fc',1320],['#26a69a',410],['#f0b429',-260],['#ef5350',-740]];
+const mx=2600,mn=-1400,y=v=>10+(mx-v)/(mx-mn)*(H-B-10),x=d=>L+d/(D)*(W-L-110);
+let g='';for(let v=-1000;v<=2500;v+=500)g+=`<line x1="${L}" x2="${W-100}" y1="${y(v)}" y2="${y(v)}" stroke="${v?'#18212c':'#3a4756'}"/><text x="${L-8}" y="${y(v)+4}" fill="#8b98a5" font-size="11" text-anchor="end">${v.toLocaleString('pt-BR')}</text>`;
+for(let d=0;d<=D;d+=5)g+=`<text x="${x(d)}" y="${H-8}" fill="#8b98a5" font-size="11" text-anchor="middle">${d?'dia '+d:'início'}</text>`;
+T.forEach(([cor,fim],k)=>{let v=0,pts=[[0,0]];for(let d=1;d<=D;d++){v+=(fim-v)/(D-d+1)+(r()-.5)*380;if(d==D)v=fim;pts.push([d,v])}
+ g+=`<path d="${pts.map((p,i)=>(i?'L':'M')+x(p[0])+' '+y(p[1])).join('')}" fill="none" stroke="${cor}" stroke-width="2.2"/>`;
+ g+=`<text x="${x(D)+8}" y="${y(fim)+4+(k==3?-6:k==2?4:0)}" fill="${cor}" font-size="12">${(fim>0?'+':'−')+'R$ '+Math.abs(fim).toLocaleString('pt-BR')}</text>`});
+document.getElementById('eq').innerHTML=g;
+</script>
+</body>
+</html>

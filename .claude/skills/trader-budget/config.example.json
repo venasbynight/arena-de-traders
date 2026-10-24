@@ -1,0 +1,18 @@
+{
+  "capital": 5000,
+  "ativos": {
+    "WDO": {"margem_por_contrato": 150, "custo_por_contrato": 0.5},
+    "WIN": {"margem_por_contrato": 100, "custo_por_contrato": 0.25}
+  },
+  "max_contratos": 5,
+  "max_perda_por_trade": 100,
+  "max_perda_dia": 300,
+  "max_trades_dia": 10,
+  "max_stops_dia": 3,
+  "rr_minimo": 1.0,
+  "sem_entrada_antes": "09:05",
+  "sem_entrada_depois": "18:00",
+  "zerar_ate": "18:15",
+  "feriados": [],
+  "simulado": true
+}
