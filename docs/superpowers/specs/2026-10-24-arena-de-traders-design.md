@@ -26,6 +26,12 @@ Dentro:
 - Modo ao vivo lendo o MT5.
 - Risco e tamanho de posição pelas skills `trader-risk` e `trader-budget`
   (já adaptadas para WDO e WIN em `.claude/skills/`).
+- Gamificação leve (seção "Gamificação"): ficha de RPG do trader, rivais de
+  controle na liga, painel de pensamento e letreiro de eventos.
+
+Segunda versão:
+
+- Escritório isométrico da firma (mockup em `mockups/escritorio.png`).
 
 Fora (depois):
 
@@ -119,6 +125,46 @@ lado a lado; o usuário escolhe.
 Risco conhecido: o histórico de ticks no MT5 depende da corretora e pode ser
 mais curto que o de candles; o backtest do Caio cobre só o período com ticks.
 
+## Gamificação
+
+Inspirada no jogo "Day Trader Tycoon" (vídeo analisado em 2026-10-24): a
+arena vira uma firma de trading, e os traders são a equipe. Regra de ouro: o
+jogo premia disciplina e consistência, nunca risco maior. Não há alavancagem
+como prêmio nem dinheiro real.
+
+Primeira versão (usa os mesmos dados do placar e do diário):
+
+- **Ficha do trader (RPG):** nível, barra de XP, apelido de estilo e
+  atributos calculados dos números reais:
+  - Disciplina: proporção de ordens dentro das regras (BLOCKs evitados, dia
+    nunca estourado).
+  - Precisão: taxa de acerto.
+  - Paciência: poucas operações por dia em relação à média dos traders.
+  - Consistência: proporção de dias positivos.
+  - Frieza: resultado da operação seguinte a um stop.
+  - XP vem desses atributos, não só do lucro. A ficha mostra também o
+    resultado desde a "contratação" e o resultado médio por operação.
+- **Contratação e promoção:** trader novo entra "em experiência" no backtest;
+  passando na prova final (os 3 meses reservados), é promovido para a mesa ao
+  vivo. Evoluir libera mesas e ativos, nunca limites de risco maiores.
+- **Liga com rivais de controle:** firmas fictícias que operam o mesmo
+  mercado com as mesmas regras de risco: "Cara ou Coroa" (entradas
+  aleatórias) e "Só Tendência" (segue a tendência do 60 sem gatilho). A pior
+  delas para cada trader é marcada como NÊMESIS. Trader que não bate o "Cara
+  ou Coroa" não tem vantagem demonstrada.
+- **Painel de pensamento:** cada trader explica cada decisão, inclusive as
+  que não tomou ("pulei: risco:retorno 0,8 abaixo do mínimo").
+- **Letreiro no rodapé:** eventos de todos os traders passando, mais a agenda
+  que mexe com dólar e índice (Copom, payroll, IPCA) quando houver fonte.
+
+Segunda versão:
+
+- **Escritório isométrico:** cada trader é um bonequinho voxel na mesa do seu
+  ativo (WDO ou WIN), com balão de status em cima ("vendida 2", "parou: 3
+  stops"); clicar abre o gráfico e a ficha. O escritório cresce com o nível da
+  firma (mais mesas, decoração, troféus). É uma tela "Firma" ao lado da sala de
+  operações, alimentada pelos mesmos eventos.
+
 ## Arquitetura
 
 Python 3.14 (instalado; a biblioteca `MetaTrader5` instala nele). Única
@@ -179,6 +225,8 @@ Fluxo:
 - Tela de resultado com o placar dos dois.
 - Laboratório do delta do WDO mostra a distribuição e os 4 cenários.
 - Modo ao vivo acompanha o pregão pelo MT5.
+- Ficha de cada trader, liga com os rivais "Cara ou Coroa" e "Só Tendência",
+  painel de pensamento e letreiro funcionando.
 - Todos os testes passam.
 
 ## Pendências do usuário

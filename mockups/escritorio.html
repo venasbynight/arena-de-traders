@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Arena de Traders — escritório da firma</title>
+<style>
+  :root{--bg:#0e1a16;--panel:#16261f;--panel2:#1d3329;--line:#2b4a3c;--txt:#e9f2ec;--mut:#93a89c;--up:#3fd18f;--dn:#ff6b6b;--gold:#ffc94a;--acc:#7aa7ff;--pur:#b48cff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif;width:1600px;height:960px;position:relative;overflow:hidden}
+  #cena{position:absolute;inset:0}
+  .bar{position:absolute;left:0;right:0;top:0;height:58px;background:var(--panel);border-bottom:2px solid var(--line);display:flex;align-items:center;gap:22px;padding:0 20px}
+  .logo{font-weight:800;font-size:18px;letter-spacing:.4px}.logo span{color:var(--gold)}
+  .lvl{display:flex;align-items:center;gap:10px}.lvl b{background:var(--gold);color:#2a1d00;border-radius:6px;padding:2px 8px}
+  .xp{width:200px;height:10px;background:#0b1511;border:1px solid var(--line);border-radius:5px;overflow:hidden}.xp i{display:block;height:100%;width:62%;background:linear-gradient(90deg,#ffc94a,#ffe08a)}
+  .mut{color:var(--mut)}.up{color:var(--up)}.dn{color:var(--dn)}.gold{color:var(--gold)}
+  .tabs{margin-left:auto;display:flex;gap:6px}.tabs div{padding:7px 14px;border-radius:8px;border:1px solid var(--line);color:var(--mut)}.tabs .sel{background:var(--gold);color:#2a1d00;border-color:var(--gold);font-weight:600}
+  .win{position:absolute;background:var(--panel);border:2px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .win h3{background:var(--panel2);padding:8px 12px;font-size:12px;letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;border-radius:8px 8px 0 0}
+  .win .c{padding:10px 12px}
+  table{width:100%;border-collapse:collapse;font-size:12px}td{padding:6px 4px;border-bottom:1px solid #22392f}td:last-child{text-align:right}
+  .tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--dn);color:#fff;font-weight:700;margin-left:4px}
+  .you{background:rgba(255,201,74,.12)}
+  .stat{display:grid;grid-template-columns:96px 1fr 22px;gap:8px;align-items:center;margin:6px 0;font-size:12px}
+  .stat .b{height:8px;background:#0b1511;border-radius:4px;overflow:hidden}.stat .b i{display:block;height:100%}
+  .think div{font-size:12px;padding:4px 0;border-bottom:1px dashed #22392f}.think time{color:var(--mut);margin-right:6px}
+  .ticker{position:absolute;left:0;right:0;bottom:0;height:38px;background:#0a1410;border-top:2px solid var(--line);display:flex;align-items:center;gap:28px;padding:0 20px;white-space:nowrap;font-size:12px}
+  .ticker b{color:var(--gold)}
+  .ill{position:absolute;right:16px;bottom:44px;font-size:11px;color:var(--mut)}
+</style>
+</head>
+<body>
+<svg id="cena" viewBox="0 0 1600 960"></svg>
+
+<div class="bar">
+  <div class="logo">Arena <span>Capital</span></div>
+  <div class="lvl"><b>Nível 4</b><div class="xp"><i></i></div><span class="mut">1.240 / 2.000 XP</span></div>
+  <div>Patrimônio simulado <b class="up">R$ 32.872</b> <span class="mut">(6 traders · R$ 5.000 cada)</span></div>
+  <div class="tabs"><div class="sel">🏢 Firma</div><div>📈 Sala de operações</div><div>🏆 Resultado</div></div>
+</div>
+
+<div class="win" style="left:18px;top:76px;width:300px">
+  <h3><span>Liga · setembro</span><span class="mut">mesmo mercado</span></h3>
+  <div class="c"><table>
+    <tr><td>1</td><td>Só Tendência <span class="tag">NÊMESIS</span></td><td class="up">+R$ 3.410</td></tr>
+    <tr class="you"><td>2</td><td><b>Arena Capital</b> <span class="mut">(você)</span></td><td class="up">+R$ 2.872</td></tr>
+    <tr><td>3</td><td>Cara ou Coroa</td><td class="dn">−R$ 640</td></tr>
+  </table></div>
+</div>
+
+<div class="win" style="left:18px;top:248px;width:300px">
+  <h3><span>Bate o Cara ou Coroa?</span><span class="mut">vantagem real</span></h3>
+  <div class="c"><table>
+    <tr><td>Sofia SMC</td><td class="up">✔ +R$ 2.780</td></tr>
+    <tr><td>Caio Contrafluxo</td><td class="up">✔ +R$ 1.020</td></tr>
+    <tr><td>Didi Agulhada</td><td class="up">✔ +R$ 1.960</td></tr>
+    <tr><td>Rafa Rompimento</td><td class="up">✔ +R$ 1.050</td></tr>
+    <tr><td>Vera VWAP</td><td class="dn">✘ +R$ 380</td></tr>
+    <tr><td>Leo Liquidez</td><td class="dn">✘ −R$ 100</td></tr>
+  </table>
+  <div class="mut" style="font-size:11px;margin-top:8px">Diferença para o rival aleatório. Abaixo de +R$ 500 não conta como vantagem.</div></div>
+</div>
+
+<div class="win" style="right:18px;top:76px;width:330px">
+  <h3><span>Ficha · Sofia SMC</span><span class="gold">Nível 7</span></h3>
+  <div class="c">
+    <div style="display:flex;justify-content:space-between"><span>“Caçadora de FVG” · Mesa WDO</span><span class="mut">640 / 900 XP</span></div>
+    <div class="xp" style="width:100%;margin:6px 0 10px"><i style="width:71%"></i></div>
+    <div class="stat"><span>Disciplina</span><div class="b"><i style="width:90%;background:var(--up)"></i></div><b>9</b></div>
+    <div class="stat"><span>Precisão</span><div class="b"><i style="width:55%;background:var(--acc)"></i></div><b>5</b></div>
+    <div class="stat"><span>Paciência</span><div class="b"><i style="width:80%;background:var(--pur)"></i></div><b>8</b></div>
+    <div class="stat"><span>Consistência</span><div class="b"><i style="width:70%;background:var(--gold)"></i></div><b>7</b></div>
+    <div class="stat"><span>Frieza</span><div class="b"><i style="width:50%;background:var(--dn)"></i></div><b>5</b></div>
+    <div style="margin-top:10px;font-size:12px">Desde a contratação: <b class="up">+R$ 2.140</b> · 61 trades · <b>R$ 35</b> por trade</div>
+    <div style="margin-top:6px;font-size:12px">Em experiência: <b>prova final 2 de 3 meses</b> → mesa ao vivo</div>
+  </div>
+</div>
+
+<div class="win think" style="right:18px;top:430px;width:330px">
+  <h3><span>Pensamento · Sofia</span><span class="mut">12/09</span></h3>
+  <div class="c">
+    <div><time>10:35</time>Vendi 2 no meio do FVG (5.432,5). Tendência do 60 em baixa; alvo no fundo de 5.420.</div>
+    <div><time>10:05</time>Pulei: FVG de 0,5 ponto, abaixo do mínimo de 1.</div>
+    <div><time>09:40</time>Pulei: risco:retorno 0,8, abaixo do mínimo.</div>
+    <div><time>09:15</time>Tendência do 60 virou para baixa (fechou abaixo de 5.441).</div>
+  </div>
+</div>
+
+<div class="ticker">
+  <span><b>10:35</b> Sofia vendeu 2 WDO no FVG</span>
+  <span><b>10:30</b> Rafa comprou 1 WIN no rompimento</span>
+  <span><b>10:25</b> Vera parou: 3 stops</span>
+  <span><b>Agenda</b> quarta 18:30 Copom · sexta 9:30 Payroll</span>
+  <span><b>Conquista</b> Didi: 100 operações 🏅</span>
+</div>
+<div class="ill">Mockup · dados ilustrativos</div>
+
+<script>
+const S=40,C=Math.cos(Math.PI/6),OX=790,OY=190,svg=document.getElementById('cena');
+const P=(x,y,z=0)=>[OX+(x-y)*C*S,OY+(x+y)*0.5*S-z*S];
+const pts=a=>a.map(p=>P(...p).join(',')).join(' ');
+const sh=(hex,f)=>{const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;r=Math.min(255,r*f|0);g=Math.min(255,g*f|0);b=Math.min(255,b*f|0);return`rgb(${r},${g},${b})`};
+let objs=[];
+// caixa (voxel): profundidade = canto da frente
+let vies=0;
+const box=(x,y,z,w,d,h,cor,extra='')=>objs.push({k:x+w+y+d+z*0.01+vies,s:
+ `<polygon points="${pts([[x+w,y,z],[x+w,y+d,z],[x+w,y+d,z+h],[x+w,y,z+h]])}" fill="${sh(cor,.78)}"/>`+
+ `<polygon points="${pts([[x,y+d,z],[x+w,y+d,z],[x+w,y+d,z+h],[x,y+d,z+h]])}" fill="${sh(cor,.6)}"/>`+
+ `<polygon points="${pts([[x,y,z+h],[x+w,y,z+h],[x+w,y+d,z+h],[x,y+d,z+h]])}" fill="${sh(cor,1.12)}" ${extra}/>`});
+const add=(k,s)=>objs.push({k,s});
+let g='';
+// chão
+const FX=14,FY=11;
+for(let i=0;i<FX;i++)for(let j=0;j<FY;j++){let cor=(i+j)%2?'#c9c3b4':'#d3cdbe';if(i>=1&&i<6&&j>=1&&j<9)cor=(i+j)%2?'#9fb6d6':'#a9bfdd';if(i>=7&&i<12&&j>=1&&j<9)cor=(i+j)%2?'#a4cbb0':'#aed4b9';
+ g+=`<polygon points="${pts([[i,j,0],[i+1,j,0],[i+1,j+1,0],[i,j+1,0]])}" fill="${cor}" stroke="rgba(0,0,0,.06)"/>`}
+// paredes do fundo
+g+=`<polygon points="${pts([[0,0,0],[FX,0,0],[FX,0,3],[0,0,3]])}" fill="#ece6d6"/><polygon points="${pts([[0,0,0],[0,FY,0],[0,FY,3],[0,0,3]])}" fill="#ddd6c4"/>`;
+g+=`<polygon points="${pts([[0,0,3],[FX,0,3],[FX,-.3,3],[0,-.3,3]])}" fill="#f6f1e4"/><polygon points="${pts([[0,0,3],[0,FY,3],[-.3,FY,3],[-.3,0,3]])}" fill="#f6f1e4"/>`;
+for(const y of [2,5,8])g+=`<polygon points="${pts([[0,y,1.1],[0,y+1.6,1.1],[0,y+1.6,2.4],[0,y,2.4]])}" fill="#8fc1e3" stroke="#f6f1e4" stroke-width="3"/>`;
+// telão na parede do fundo
+const tx=P(4.2,0,2.7);g+=`<g transform="matrix(${C},0.5,0,1,${tx[0]},${tx[1]})"><rect width="${5.6*S}" height="${1.7*S}" rx="6" fill="#0d1a14" stroke="#333" stroke-width="4"/>
+<text x="16" y="28" fill="#93a89c" font-size="15" font-weight="700">WDOX26</text><text x="16" y="56" fill="#ff6b6b" font-size="24" font-weight="800">5.428,5 ▼</text>
+<text x="${2.9*S}" y="28" fill="#93a89c" font-size="15" font-weight="700">WINZ26</text><text x="${2.9*S}" y="56" fill="#3fd18f" font-size="24" font-weight="800">128.450 ▲</text></g>`;
+// letreiros no chão
+const lab=(x,y,t,c)=>{const p=P(x,y);return`<g transform="matrix(${C},0.5,${-C},0.5,${p[0]},${p[1]})"><text font-size="22" font-weight="800" fill="${c}" opacity=".85">${t}</text></g>`};
+g+=lab(1.3,8.6,'MESA WDO','#3d5f8f')+lab(7.3,8.6,'MESA WIN','#3a7a52');
+// mesas
+const mesa=(x,y,cor)=>{box(x,y,0,2.2,1,.72,'#8a6a4a');box(x+.3,y+.15,.72,.7,.08,.5,'#22272e');box(x+1.2,y+.15,.72,.7,.08,.5,'#22272e');box(x+.8,y+.55,.72,.6,.25,.04,'#3a3f47');box(x+.75,y+1.25,0,.7,.6,.42,cor)};
+// trader voxel de costas para a câmera, sentado na cadeira
+const trader=(x,y,camisa,cabelo,nome,status,corSt)=>{vies=1.5;box(x-.05,y,.42,.62,.48,.75,camisa);box(x-.07,y+.08,.42,.14,.3,.55,sh(camisa,.8));box(x+.47,y+.08,.42,.14,.3,.55,sh(camisa,.8));
+ box(x+.03,y+.03,1.17,.48,.44,.46,'#e6b98f');box(x,y,1.6,.54,.5,.14,cabelo);box(x,y+.4,1.2,.54,.1,.45,cabelo);vies=0;
+ const p=P(x+.25,y+.2,1.75);add(x+y+2.6,`<g transform="translate(${p[0]},${p[1]})"><rect x="-62" y="-42" width="124" height="38" rx="8" fill="#16261f" stroke="${corSt}" stroke-width="2"/><text y="-26" text-anchor="middle" fill="#e9f2ec" font-size="12" font-weight="700">${nome}</text><text y="-11" text-anchor="middle" fill="${corSt}" font-size="11">${status}</text><path d="M-6 -4 L0 4 L6 -4z" fill="${corSt}"/></g>`)};
+mesa(1.5,1.8,'#2f4f7f');trader(2.35,3.2,'#4c8dff','#3b2a1a','Sofia · Nv 7','vendida 2','#ff6b6b');
+mesa(3.9,1.8,'#2f4f7f');trader(4.75,3.2,'#2bb3a3','#111','Caio · Nv 3','lendo o delta','#7aa7ff');
+mesa(1.5,5.6,'#2f4f7f');trader(2.35,7.0,'#e0a030','#6b3b1a','Vera · Nv 2','parou: 3 stops','#ffc94a');
+mesa(7.5,1.8,'#2f6f4f');trader(8.35,3.2,'#9b6bff','#222','Didi · Nv 6','aguarda agulhada','#93a89c');
+mesa(9.9,1.8,'#2f6f4f');trader(10.75,3.2,'#3fd18f','#8a5a2a','Rafa · Nv 4','comprado 1','#3fd18f');
+mesa(7.5,5.6,'#2f6f4f');trader(8.35,7.0,'#ff7a7a','#3b2a1a','Leo · Nv 2','espera CHoCH','#93a89c');
+// vaga para contratar
+g+=`<polygon points="${pts([[9.9,5.6,0],[12.1,5.6,0],[12.1,7.8,0],[9.9,7.8,0]])}" fill="rgba(255,201,74,.12)" stroke="#c99a2a" stroke-width="2" stroke-dasharray="8 6"/>`;
+{const p=P(11,6.7,0);g+=`<text x="${p[0]}" y="${p[1]+5}" text-anchor="middle" fill="#8a6a1a" font-size="14" font-weight="800">+ CONTRATAR</text>`}
+// decoração
+const planta=(x,y)=>{box(x,y,0,.5,.5,.45,'#a0522d');box(x-.05,y-.05,.45,.6,.6,.55,'#3c9a4a');box(x+.1,y+.1,1,.3,.3,.3,'#48b05a')};
+planta(.3,.3);planta(13.1,.3);planta(.3,10.1);planta(13.1,9.8);
+box(12.6,3.4,0,.9,.9,.6,'#5a6470');box(12.75,3.55,.6,.6,.6,.35,'#8a96a3');box(12.85,3.65,.95,.4,.4,.55,'#ffc94a'); // troféu
+{const p=P(13,3.8,1.9);add(30,`<text x="${p[0]}" y="${p[1]}" text-anchor="middle" fill="#8a6a1a" font-size="11" font-weight="700">1ª semana positiva</text>`)}
+box(5.4,9.4,0,.6,.6,1.1,'#d8e4ee');box(5.45,9.45,1.1,.5,.5,.5,'#7fb6e6'); // bebedouro
+box(6.6,4.6,0,.25,2.6,1.2,'#b9b3a3'); // divisória entre mesas
+objs.sort((a,b)=>a.k-b.k);svg.innerHTML=g+objs.map(o=>o.s).join('');
+</script>
+</body>
+</html>
