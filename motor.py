@@ -54,15 +54,16 @@ class Conta:
         if self.posicao:
             return []
         self.pendentes, eventos = [], []
+        cfg = {**self.cfg, "capital": self.saldo}  # margem e tamanho pelo saldo atual, não pelo inicial
         for p in planos:
             plano = {"simbolo": simbolo, "lado": p.lado, "tipo": p.tipo, "entrada": p.entrada,
                      "stop": p.stop, "alvo": p.alvo, "setup": p.setup}
             try:
-                ordem, _, _ = size.dimensionar(plano, self.cfg, agora.date().isoformat())
+                ordem, _, _ = size.dimensionar(plano, cfg, agora.date().isoformat())
             except size.Recusa as e:
                 eventos.append(self._ev(agora, "block", plano=plano, motivos=[str(e)]))
                 continue
-            r = check.checar([ordem], self.cfg, dict(self.dia), agora)[0]
+            r = check.checar([ordem], cfg, dict(self.dia), agora)[0]
             if not r["ok"]:
                 eventos.append(self._ev(agora, "block", plano=plano, motivos=r["motivos"]))
                 continue
@@ -139,3 +140,73 @@ class Conta:
         self.dia["posicao_aberta"] = False
         self.posicao = None
         return [self._ev(t, "saida", motivo=motivo, preco=preco, resultado_rs=resultado)]
+
+
+def placar(operacoes):
+    """Números do ranking a partir das operações fechadas."""
+    rs = [o["resultado_rs"] for o in operacoes]
+    ganhos, perdas = sum(v for v in rs if v > 0), -sum(v for v in rs if v < 0)
+    por_dia = {}
+    for o in operacoes:
+        por_dia[o["entrada_t"][:10]] = por_dia.get(o["entrada_t"][:10], 0.0) + o["resultado_rs"]
+    acum, pico, drawdown = 0.0, 0.0, 0.0
+    for d in sorted(por_dia):
+        acum += por_dia[d]
+        pico = max(pico, acum)
+        drawdown = min(drawdown, acum - pico)
+    n = len(rs)
+    return {"resultado": round(sum(rs), 2), "trades": n,
+            "acerto": sum(v > 0 for v in rs) / n if n else 0.0,
+            "fator_lucro": round(ganhos / perdas, 2) if perdas else None,
+            "drawdown": round(drawdown, 2), "pior_dia": round(min(por_dia.values()), 2) if por_dia else 0.0,
+            "confianca": "baixa" if n < 50 else "média" if n < 200 else "alta"}
+
+
+def rodar_backtest(ativo, candles5, modulos_traders, cfg):
+    """Roda os traders candle a candle; cada um só vê candles já fechados."""
+    from datetime import timedelta
+    from dados import agrupar, por_dia
+
+    tick = size.ATIVOS[ativo]["tick"]
+    simbolo = cfg["ativos"][ativo].get("simbolo_mt5", ativo)
+    c60 = agrupar(candles5, 60)
+    mesa = [(m, m.Trader(ativo, tick), Conta(m.NOME, ativo, cfg)) for m in modulos_traders]
+    eventos = {m.NOME: [] for m in modulos_traders}
+    ultimo = {m.NOME: {} for m in modulos_traders}  # para não repetir o mesmo estudo/ordem a cada candle
+
+    def novo(nome, chave, valor):
+        if ultimo[nome].get(chave) == valor:
+            return False
+        ultimo[nome][chave] = valor
+        return True
+
+    ontem5, k60 = [], 0
+    for hoje in por_dia(candles5).values():
+        for i, c in enumerate(hoje):
+            fim_do_dia = i == len(hoje) - 1
+            for m, _, conta in mesa:
+                eventos[m.NOME] += conta.executar_candle(c, fim_do_dia)
+            if fim_do_dia:
+                continue
+            # bloco de 60 fechado: já passou o último candle de 5 min dele, ou é de um dia anterior
+            while k60 < len(c60) and (c60[k60].t + timedelta(minutes=55) <= c.t or c60[k60].t.date() < c.t.date()):
+                k60 += 1
+            fechados60 = c60[max(0, k60 - 200):k60]  # ponytail: 200 candles de 60 bastam para a estrutura
+            agora = c.t + timedelta(minutes=5)
+            for m, trader, conta in mesa:
+                d = trader.decidir(hoje[:i + 1], ontem5, fechados60)
+                evs = conta.colocar(d.planos, agora, simbolo)
+                if novo(m.NOME, "estudo", d.desenhos):
+                    eventos[m.NOME].append(conta._ev(agora, "desenho", desenhos=d.desenhos))
+                if novo(m.NOME, "pensamento", d.pensamento):
+                    eventos[m.NOME].append(conta._ev(agora, "pensamento", linhas=d.pensamento))
+                if novo(m.NOME, "ordens", [{k: v for k, v in e.items() if k != "t"} for e in evs]):
+                    eventos[m.NOME] += evs
+        ontem5 = hoje
+
+    return {"ativo": ativo,
+            "candles": [[k.t.isoformat(), k.o, k.h, k.l, k.c] for k in candles5],
+            "traders": {m.NOME: {"estilo": m.ESTILO, "eventos": eventos[m.NOME], "placar": placar(conta.operacoes),
+                                 "equity": [[t.isoformat(), s] for t, s in conta.equity],
+                                 "operacoes": conta.operacoes}
+                        for m, _, conta in mesa}}

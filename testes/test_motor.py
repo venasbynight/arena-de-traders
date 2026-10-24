@@ -84,12 +84,67 @@ class TestConta(unittest.TestCase):
         c.executar_candle(vela(2, 5431, 5439, 5430, 5438), False)
         self.assertEqual(c.operacoes[-1]["resultado_rs"], 168.0)
 
+    def test_conta_quebrada_nao_opera(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.saldo = 100.0  # menos que a margem de 1 contrato (R$ 150)
+        ev = c.colocar([COMPRA], T, "WDO$")
+        self.assertEqual(ev[0]["tipo"], "block")
+        self.assertEqual(c.pendentes, [])
+
     def test_cria_config_na_primeira_vez(self):
         with tempfile.TemporaryDirectory() as d:
             caminho = os.path.join(d, "trader", "config.json")
             cfg = motor.carregar_config(caminho)
             self.assertTrue(os.path.exists(caminho))
             self.assertEqual(cfg["capital"], CFG["capital"])
+
+
+def dias_sinteticos(n_dias, semente=1):
+    """Passeio aleatório de WDO, 114 candles de 5 min por dia a partir das 9:00, em dias úteis."""
+    import random
+    r, out, preco, dia = random.Random(semente), [], 5400.0, datetime(2026, 9, 1)
+    while n_dias:
+        if dia.weekday() < 5:
+            for k in range(114):
+                o = preco
+                c = round((o + r.gauss(0, 2.5)) * 2) / 2
+                out.append(Candle(dia.replace(hour=9) + timedelta(minutes=5 * k), o,
+                                  max(o, c) + r.choice([0, 0.5, 1, 1.5]), min(o, c) - r.choice([0, 0.5, 1, 1.5]), c))
+                preco = c
+            n_dias -= 1
+        dia += timedelta(days=1)
+    return out
+
+
+class TestBacktest(unittest.TestCase):
+    def test_placar_basico(self):
+        ops = [{"entrada_t": "2026-09-01T10:00:00", "resultado_rs": v} for v in (100.0, -50.0, 30.0)]
+        p = motor.placar(ops)
+        self.assertEqual((p["resultado"], p["trades"], p["fator_lucro"], p["confianca"]), (80.0, 3, 2.6, "baixa"))
+        self.assertAlmostEqual(p["acerto"], 2 / 3)
+
+    def test_placar_drawdown_e_pior_dia(self):
+        ops = [{"entrada_t": f"2026-09-0{d}T10:00:00", "resultado_rs": v} for d, v in ((1, 200.0), (2, -150.0),
+                                                                                        (3, -100.0), (4, 300.0))]
+        p = motor.placar(ops)
+        self.assertEqual((p["drawdown"], p["pior_dia"]), (-250.0, -150.0))
+
+    def test_nao_ve_o_futuro(self):
+        from traders import sofia_smc
+        cs = dias_sinteticos(3)
+        dia2 = cs[114].t.date()
+        curto = motor.rodar_backtest("WDO", cs[:228], [sofia_smc], CFG)
+        longo = motor.rodar_backtest("WDO", cs, [sofia_smc], CFG)
+        so_dia2 = lambda r: [e for e in r["traders"]["Sofia SMC"]["eventos"] if e["t"].startswith(dia2.isoformat())]
+        self.assertTrue(so_dia2(curto))
+        self.assertEqual(so_dia2(curto), so_dia2(longo))
+
+    def test_eventos_ordenados_por_horario(self):
+        from traders import sofia_smc
+        r = motor.rodar_backtest("WDO", dias_sinteticos(2), [sofia_smc], CFG)
+        ts = [e["t"] for e in r["traders"]["Sofia SMC"]["eventos"]]
+        self.assertEqual(ts, sorted(ts))
+        self.assertEqual(len(r["candles"]), 228)
 
 
 if __name__ == "__main__":
