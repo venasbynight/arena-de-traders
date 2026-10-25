@@ -633,6 +633,7 @@ function cadeira(g, x, z, rot = 0, executiva = false) {
     caixa(c, 0.035, 0.2, 0.035, M.metal, s * 0.25, 0.57, -0.06);
     caixa(c, 0.06, 0.03, 0.26, M.preto, s * 0.25, 0.68, -0.02);
   }
+  return c;
 }
 
 function cadeiraVisita(g, x, z, rot) {
@@ -1047,22 +1048,35 @@ const PALETAS = [
   { pele: "#a86f4c", cabelo: "#2a2a2a", camisa: "#8a6bd8", calca: "#22303f" },
 ];
 const CABELO = { "Sofia SMC": "longo", "Vera VWAP": "coque", "Rafa Rompimento": "curto" };
-const animados = [];  // bonecos com respiração e digitação
+const animados = [];  // bonecos parados com respiração e digitação (o diretor); os funcionários andam (ver "funcionários")
 
-// boneco sentado (≈1,75 m em pé): origem no chão sob o assento, olhando para +z (a mesa)
+// boneco articulado (≈1,85 m em pé): origem no chão sob o quadril, olhando para +z. Nasce sentado à mesa
+// (quadril a 0,575 m, coxas na horizontal); `posar` troca a pose (em pé, andando, sofá, café...).
+const COXA = 0.42, CANELA = 0.575;   // quadril→joelho e joelho→sola: em pé o quadril fica a 0,995 m
 function boneco(pal, { cabelo = "curto", terno = null, gravata = "#b8323a" } = {}) {
   const g = new THREE.Group();
   const pele = mat(pal.pele), roupa = mat(terno || pal.camisa, { roughness: 0.9 }), calca = mat(pal.calca, { roughness: 0.9 });
   const fio = mat(pal.cabelo, { roughness: 0.8 }), sapato = mat("#1d1d22", { roughness: 0.5 });
+  const quadril = new THREE.Group();
+  quadril.position.set(0, 0.575, -0.03);
+  g.add(quadril);
+  caixa(quadril, 0.36, 0.16, 0.3, calca, 0, 0.005, 0.01);
+  const pernas = [];
   for (const s of [-1, 1]) {
-    caixa(g, 0.15, 0.15, 0.46, calca, s * 0.095, 0.575, 0.17);
-    caixa(g, 0.13, 0.47, 0.14, calca, s * 0.095, 0.27, 0.38);
-    caixa(g, 0.14, 0.07, 0.24, sapato, s * 0.095, 0.035, 0.43);
+    const coxa = new THREE.Group(), joelho = new THREE.Group();
+    coxa.position.x = s * 0.095;
+    coxa.rotation.x = -Math.PI / 2;
+    joelho.position.y = -COXA;
+    joelho.rotation.x = Math.PI / 2;
+    quadril.add(coxa); coxa.add(joelho);
+    caixa(coxa, 0.15, 0.45, 0.15, calca, 0, -0.21, 0);
+    caixa(joelho, 0.13, 0.5, 0.14, calca, 0, -0.25, 0);
+    caixa(joelho, 0.14, 0.07, 0.24, sapato, 0, -0.54, 0.05);
+    pernas.push({ coxa, joelho });
   }
-  caixa(g, 0.36, 0.16, 0.3, calca, 0, 0.58, -0.02);
   const tronco = new THREE.Group();
-  tronco.position.set(0, 0.64, -0.03);
-  g.add(tronco);
+  tronco.position.set(0, 0.065, 0);
+  quadril.add(tronco);
   caixa(tronco, 0.38, 0.46, 0.22, roupa, 0, 0.23, 0);
   if (terno) {
     caixa(tronco, 0.12, 0.28, 0.01, M.branco, 0, 0.31, 0.111);
@@ -1085,7 +1099,7 @@ function boneco(pal, { cabelo = "curto", terno = null, gravata = "#b8323a" } = {
     for (const s of [-1, 1]) caixa(cabeca, 0.03, 0.1, 0.2, fio, s * 0.133, 0.21, -0.02);
     if (cabelo === "coque") caixa(cabeca, 0.13, 0.13, 0.13, fio, 0, 0.28, -0.15);
   }
-  const ombros = [];
+  const ombros = [], cotovelos = [], maos = [];
   for (const s of [-1, 1]) {
     const ombro = new THREE.Group();
     ombro.position.set(s * 0.245, 0.42, 0);
@@ -1097,8 +1111,8 @@ function boneco(pal, { cabelo = "curto", terno = null, gravata = "#b8323a" } = {
     cotovelo.rotation.x = -0.98;   // antebraço na horizontal, apoiado no tampo (0,75 m)
     ombro.add(cotovelo);
     caixa(cotovelo, 0.1, 0.3, 0.1, roupa, 0, -0.14, 0);
-    caixa(cotovelo, 0.09, 0.1, 0.09, pele, 0, -0.33, 0.01);
-    ombros.push(ombro);
+    maos.push(caixa(cotovelo, 0.09, 0.1, 0.09, pele, 0, -0.33, 0.01));
+    ombros.push(ombro); cotovelos.push(cotovelo);
   }
   // contorno de seleção (casco invertido) em cada peça, ligado só no hover
   const contornos = [];
@@ -1112,8 +1126,7 @@ function boneco(pal, { cabelo = "curto", terno = null, gravata = "#b8323a" } = {
     o.add(c);
     contornos.push(c);
   }
-  g.userData = { tronco, ombros, contornos, fase: rnd() * 6.28 };
-  animados.push(g);
+  g.userData = { quadril, pernas, tronco, ombros, cotovelos, maos, contornos, fase: rnd() * 6.28, topo: 1.465 };
   return g;
 }
 
@@ -1133,7 +1146,24 @@ plumbob.visible = false;
 
 // ---------------------------------------------------------------- rótulos (sprites de canvas)
 const rotulos = [];
-function rotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
+function rotulo(titulo, sub, corSub, corBorda) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texRotulo(titulo, sub, corSub, corBorda), depthTest: false, depthWrite: false, toneMapped: false }));
+  s.renderOrder = 10;
+  s.center.set(0.5, 0);
+  s.userData.base = 1.5;
+  s.scale.set(1.5, 1.5 * 150 / 512, 1);
+  rotulos.push(s);
+  return s;
+}
+// troca o texto de um rótulo (só quando muda: cada troca desenha um canvas novo)
+function retextar(s, ...args) {
+  const k = args.join("|");
+  if (s.userData.texto === k) return;
+  s.userData.texto = k;
+  s.material.map.dispose();
+  s.material.map = texRotulo(...args);
+}
+function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
   const W = 512, H = 150;
   const tex = canvasTex(W, H, g => {
     g.font = "600 46px Segoe UI, sans-serif";
@@ -1151,19 +1181,26 @@ function rotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
     g.fillStyle = corSub; g.font = "36px Segoe UI, sans-serif"; g.fillText(sub, W / 2, 108, W - 48);  // texto longo encolhe, não corta
   });
   tex.anisotropy = 1;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, toneMapped: false }));
-  s.renderOrder = 10;
-  s.center.set(0.5, 0);
-  s.userData.base = 1.5;
-  s.scale.set(1.5, 1.5 * H / W, 1);
-  rotulos.push(s);
-  return s;
+  return tex;
 }
 
 // ---------------------------------------------------------------- salas
 const dinamicos = [];   // objetos refeitos a cada atualização do estado
 const clicaveis = [];   // bonecos e rótulos que abrem o painel
 const salas = {};       // ATIVO → {def, estacoes, traders}
+
+// vaga nomeada num ponto local (x, z, giro) do grupo g, convertida para o mundo
+const pontoVaga = new THREE.Object3D(), posVaga = new THREE.Vector3(), quatVaga = new THREE.Quaternion(), giroVaga = new THREE.Euler();
+function vaga(tipo, g, x, z, rot, pose) {
+  pontoVaga.position.set(x, 0, z);
+  pontoVaga.rotation.set(0, rot, 0);
+  g.add(pontoVaga);
+  pontoVaga.updateWorldMatrix(true, false);
+  pontoVaga.matrixWorld.decompose(posVaga, quatVaga, giroVaga);
+  pontoVaga.removeFromParent();
+  const y = giroVaga.setFromQuaternion(quatVaga, "YXZ").y, r = v => Math.round(v * 100) / 100;
+  return { tipo, pos: [r(posVaga.x), r(posVaga.z)], rot: Math.round(y * 1000) / 1000, pose };
+}
 
 // estação de trabalho: mesa, monitor, teclado, caneca, cadeira e lixeira; o trader senta em z = -0.78
 function estacao(pai, x, z, rot, corCaneca) {
@@ -1172,9 +1209,9 @@ function estacao(pai, x, z, rot, corCaneca) {
   const tela = monitor(g, 0, 0.16);
   teclado(g, -0.05, -0.17);
   caneca(g, 0.52, -0.05, corCaneca);
-  cadeira(g, 0, -0.78);
+  const assento = cadeira(g, 0, -0.52);   // empurrada para baixo da mesa; o trader a puxa (−0,78) ao sentar
   lixeira(g, 0.88, -0.5);
-  return { grupo: g, tela };
+  return { grupo: g, tela, cadeira: assento, vaga: vaga("mesa", g, 0, -0.78, 0, "sentado"), puxada: -0.78, guardada: -0.52 };
 }
 
 const CORES_CANECA = ["#ffffff", "#ef5350", "#4c8dff", "#f0b429", "#26a69a"];
@@ -1209,12 +1246,8 @@ mesa(mesaGerente, 1.8, 0.8, M.madeiraEscura);
 const telaGerente = monitor(mesaGerente, 0.3, 0.18);
 teclado(mesaGerente, 0.3, -0.18);
 caneca(mesaGerente, -0.6, -0.1, "#4c8dff");
-cadeira(mesaGerente, 0, -0.85, 0, true);
-const gerente = boneco({ pele: "#d9a37c", cabelo: "#4a4a4a", camisa: "#e9ecef", calca: "#25324a" }, { terno: "#25324a" });
-gerente.position.set(0, 0, -0.85);
-mesaGerente.add(gerente);
-gerente.userData.alvo = "gerente";
-clicaveis.push(gerente);
+// o gerente (um funcionário que anda, ver "funcionários") só senta aqui durante o ciclo real
+const mesaDoGerente = { cadeira: cadeira(mesaGerente, 0, -0.6, 0, true), vaga: vaga("mesa", mesaGerente, 0, -0.85, 0, "sentado"), puxada: -0.85, guardada: -0.6 };
 
 const quadro = grupo(predio, 0, -3.62, 0);
 caixa(quadro, 2.7, 1.55, 0.08, M.preto, 0, 1.62, 0);
@@ -1253,6 +1286,7 @@ cadeira(mesaDiretor, 0, -0.85, 0, true);
 cadeiraVisita(predio, dir.x - 0.55, dir.z - 0.55, Math.PI / 2);
 cadeiraVisita(predio, dir.x - 0.55, dir.z + 0.55, Math.PI / 2);
 const diretor = boneco({ pele: "#e8b896", cabelo: "#2b1d14", camisa: "#e9ecef", calca: "#2f2f35" }, { terno: "#2f2f35", gravata: "#4c8dff" });
+animados.push(diretor);
 diretor.position.set(0, 0, -0.85);
 mesaDiretor.add(diretor);
 diretor.userData.alvo = "gerente";
@@ -1276,19 +1310,6 @@ clicaveis.push(rotDiretor);
 const rotDiretoria = rotulo("Diretoria", "sala do diretor", "#8b98a5", dir.cor);
 rotDiretoria.position.set(dir.porta[0] - 0.5, 2.2, dir.porta[1]);
 predio.add(rotDiretoria);
-
-// vaga nomeada num ponto local (x, z, giro) do grupo g, convertida para o mundo
-const pontoVaga = new THREE.Object3D(), posVaga = new THREE.Vector3(), quatVaga = new THREE.Quaternion(), giroVaga = new THREE.Euler();
-function vaga(tipo, g, x, z, rot, pose) {
-  pontoVaga.position.set(x, 0, z);
-  pontoVaga.rotation.set(0, rot, 0);
-  g.add(pontoVaga);
-  pontoVaga.updateWorldMatrix(true, false);
-  pontoVaga.matrixWorld.decompose(posVaga, quatVaga, giroVaga);
-  pontoVaga.removeFromParent();
-  const y = giroVaga.setFromQuaternion(quatVaga, "YXZ").y, r = v => Math.round(v * 100) / 100;
-  return { tipo, pos: [r(posVaga.x), r(posVaga.z)], rot: Math.round(y * 1000) / 1000, pose };
-}
 
 // Descanso e jogos: TV com videogame e sofá em L, café, refri, pebolim, pufes e uma mesa alta
 const desc = PLANTA.salas.DESCANSO;
@@ -1362,10 +1383,6 @@ VAGAS_CONVERSA.push(par(-14.0, -1.9, "x"), par(-9.6, 2.0, "x"), par(-9.6, -2.2, 
 const brl = v => (v < 0 ? "−" : v > 0 ? "+" : "") + "R$ " + Math.abs(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 const STATUS = { promovido: ["promovido", "#26a69a"], experiencia: ["em experiência", "#f0b429"], pausado: ["pausado", "#ef5350"],
   sem_tarefa: ["sem tarefa", "#8b98a5"] };
-const resultadoDia = t => {
-  const eq = t.equity || [];
-  return eq.length > 1 ? eq.at(-1)[1] - eq.at(-2)[1] : 0;
-};
 
 function texCurva(t) {
   return canvasTex(320, 190, (g, w, h) => {
@@ -1528,7 +1545,7 @@ function cavalete(x, z, ativo) {
 // Funde mobília, pisos e área externa por material: ~1.500 malhas viram poucas dezenas de chamadas
 // de desenho. Ficam de fora o que muda: telas, bonecos (animados) e quadros (somem com o recorte).
 function fundirEstaticos(raizes, manter) {
-  const porMaterial = new Map();
+  const porMaterial = new Map(), fundidas = [];
   const visitar = o => {
     if (manter.has(o)) return;
     if (o.isMesh) {
@@ -1547,19 +1564,392 @@ function fundirEstaticos(raizes, manter) {
     m.castShadow = sombra;
     m.receiveShadow = true;
     cena.add(m);
+    fundidas.push(m);
     geos.forEach(g => g.dispose());
   }
+  return fundidas;
 }
-fundirEstaticos([predio, fora], new Set([
-  ...EQUIPES.flatMap(a => [...salas[a].estacoes.map(e => e.tela), salas[a].quadro]),
-  telaGerente, telaDiretor, telaRanking, telaRankingVerso, gerente, diretor,
+const malhasFixas = fundirEstaticos([predio, fora], new Set([
+  ...EQUIPES.flatMap(a => [...salas[a].estacoes.flatMap(e => [e.tela, e.cadeira]), salas[a].quadro]),
+  telaGerente, telaDiretor, telaRanking, telaRankingVerso, diretor, mesaDoGerente.cadeira,
   ...pecas.filter(pc => pc.inteira).map(pc => pc.m),
 ]));
+
+// ---------------------------------------------------------------- funcionários: rotina pela atividade real
+// Cada trader (e o gerente) é uma pessoa que sobrevive aos polls (chave "sala:nome"). Só trabalha na mesa quando
+// o gerente está processando a sala dele (/api/atividade); senão vai para o descanso ou conversa no corredor.
+// Anda a 1,3 m/s por uma grade de 10 cm (paredes e móveis bloqueados, portas abertas) com A*.
+const GR = { x0: -16.2, z0: -10.2, passo: 0.1, nx: 305, nz: 205 };
+const bloqueio = new Uint8Array(GR.nx * GR.nz);
+function bloquear(x0, z0, x1, z1, folga) {   // marca as células com centro dentro do retângulo alargado pela folga
+  const i0 = Math.max(0, Math.ceil((x0 - folga - GR.x0) / GR.passo)), i1 = Math.min(GR.nx - 1, Math.floor((x1 + folga - GR.x0) / GR.passo));
+  const k0 = Math.max(0, Math.ceil((z0 - folga - GR.z0) / GR.passo)), k1 = Math.min(GR.nz - 1, Math.floor((z1 + folga - GR.z0) / GR.passo));
+  for (let k = k0; k <= k1 && i0 <= i1; k++) bloqueio.fill(1, k * GR.nx + i0, k * GR.nx + i1 + 1);
+}
+for (const c of COLISORES) bloquear(c.min[0], c.min[2], c.max[0], c.max[2], 0.25);   // paredes: folga do ombro
+// móveis: cada triângulo da mobília fundida entre 8 cm e 1,5 m de altura (pisos e tapetes ficam de fora)
+for (const m of malhasFixas) {
+  const p = m.geometry.attributes.position.array, idx = m.geometry.index?.array, n = idx ? idx.length : p.length / 3;
+  for (let t = 0; t < n; t += 3) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let v = 0; v < 3; v++) {
+      const j = 3 * (idx ? idx[t + v] : t + v), x = p[j], y = p[j + 1], z = p[j + 2];
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+    if (y1 < 0.08 || y0 > 1.5 || x1 < -16.2 || x0 > 14.2 || z1 < -10.2 || z0 > 10.2) continue;
+    bloquear(x0, z0, x1, z1, 0.1);
+  }
+}
+const celula = (x, z) => [Math.round((x - GR.x0) / GR.passo), Math.round((z - GR.z0) / GR.passo)];
+const livre = (i, k) => i >= 0 && k >= 0 && i < GR.nx && k < GR.nz && !bloqueio[k * GR.nx + i];
+const pontoDe = c => [GR.x0 + (c % GR.nx) * GR.passo, GR.z0 + Math.floor(c / GR.nx) * GR.passo];
+function celulaLivre(x, z) {   // a célula livre mais perto de (x, z): quem está no sofá começa e termina fora dele
+  const [ci, ck] = celula(x, z);
+  for (let r = 0; r < 30; r++) {
+    let melhor = -1, dm = Infinity;
+    for (let dk = -r; dk <= r; dk++) for (let di = -r; di <= r; di++) {
+      if (Math.max(Math.abs(di), Math.abs(dk)) !== r || !livre(ci + di, ck + dk)) continue;
+      const d = di * di + dk * dk;
+      if (d < dm) { dm = d; melhor = (ck + dk) * GR.nx + ci + di; }
+    }
+    if (melhor >= 0) return melhor;
+  }
+  return -1;
+}
+const enxerga = (a, b) => {   // segmento todo em células livres (para encurtar a rota em linhas retas)
+  const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.05);
+  for (let s = 1; s < n; s++) if (!livre(...celula(a[0] + (b[0] - a[0]) * s / n, a[1] + (b[1] - a[1]) * s / n))) return false;
+  return true;
+};
+const custoG = new Float32Array(GR.nx * GR.nz), veio = new Int32Array(GR.nx * GR.nz), geracao = new Uint32Array(GR.nx * GR.nz);
+let geracaoAtual = 0;
+const VIZ = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
+// rota de `de` até `ate` ([x, z]): pontos de passagem pelas portas, terminando exatamente em `ate`
+function caminho(de, ate) {
+  const a = celulaLivre(...de), b = celulaLivre(...ate);
+  if (a < 0 || b < 0) return [ate];
+  const g = ++geracaoAtual, bx = b % GR.nx, bk = Math.floor(b / GR.nx);
+  const h = c => 1.5 * Math.hypot(c % GR.nx - bx, Math.floor(c / GR.nx) - bk);   // A* com peso: bem menos células, rota quase ótima
+  const heap = [[h(a), a]];   // heap binário de [f, célula]
+  const sobe = () => { let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const tira = () => {
+    const topo = heap[0], ult = heap.pop();
+    if (heap.length) {
+      heap[0] = ult;
+      for (let i = 0; ;) {
+        const l = 2 * i + 1, r = l + 1;
+        let m = i;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+        [heap[m], heap[i]] = [heap[i], heap[m]]; i = m;
+      }
+    }
+    return topo;
+  };
+  geracao[a] = g; custoG[a] = 0; veio[a] = -1;
+  let melhor = a, hm = h(a);
+  while (heap.length) {
+    const [f, c] = tira();
+    if (c === b) { melhor = b; break; }
+    if (f - h(c) > custoG[c] + 1e-3) continue;   // entrada velha do heap
+    const ci = c % GR.nx, ck = Math.floor(c / GR.nx);
+    for (const [di, dk, w] of VIZ) {
+      const ni = ci + di, nk = ck + dk;
+      if (!livre(ni, nk) || (di && dk && (!livre(ci + di, ck) || !livre(ci, ck + dk)))) continue;   // sem cortar quina
+      const n = nk * GR.nx + ni, ng = custoG[c] + w;
+      if (geracao[n] === g && ng >= custoG[n]) continue;
+      geracao[n] = g; custoG[n] = ng; veio[n] = c;
+      const hn = h(n);
+      if (hn < hm) { hm = hn; melhor = n; }
+      heap.push([ng + hn, n]); sobe();
+    }
+  }
+  const celulas = [];
+  for (let c = melhor; c >= 0; c = veio[c]) celulas.push(pontoDe(c));
+  celulas.reverse();
+  const rota = [celulas[0]];   // encurta: de cada ponto, vai em linha reta até o último que ainda enxerga
+  for (let i = 0; i < celulas.length - 1;) {
+    let j = i + 1;
+    while (j + 1 < celulas.length && enxerga(celulas[i], celulas[j + 1])) j++;
+    rota.push(celulas[j]); i = j;
+  }
+  rota.push(ate);
+  return rota;
+}
+
+// poses: altura do quadril (q: "assento" = da vaga; sem q = em pé), inclinação do tronco e os braços
+// [ombro.x, cotovelo.x, ombro para dentro] do direito (x−) e do esquerdo
+const BRACO_SOLTO = [0.02, -0.12, -0.06];
+const POSES = {
+  digitando: { q: true, bracos: [[-0.55, -0.98, 0], [-0.55, -0.98, 0]] },
+  sentado: { q: true, incl: -0.1, bracos: [[-0.25, -0.95, 0.05], [-0.25, -0.95, 0.05]] },
+  videogame: { q: true, incl: -0.05, bracos: [[-0.6, -0.9, 0.32], [-0.6, -0.9, 0.32]], prop: "controle" },
+  em_pe: { bracos: [BRACO_SOLTO, BRACO_SOLTO] },
+  caneca: { bracos: [[-0.35, -1.25, 0.15], BRACO_SOLTO], prop: "caneca" },
+  lata: { bracos: [[-0.35, -1.25, 0.15], BRACO_SOLTO], prop: "lata" },
+  pebolim: { incl: 0.2, bracos: [[-0.5, -0.1, 0], [-0.5, -0.1, 0]] },
+  conversa: { bracos: [BRACO_SOLTO, BRACO_SOLTO] },
+  andando: { bracos: [[0, -0.25, -0.06], [0, -0.25, -0.06]] },
+};
+const ASSENTO = { mesa: 0.575, sofa: 0.535, pufe: 0.48 };
+// o que cada vaga do descanso vira: os dois lugares do sofá de frente para a TV jogam videogame
+const ATIVIDADES = VAGAS_DESCANSO.map(v => v.tipo === "sofa"
+  ? (Math.abs(Math.abs(v.rot) - Math.PI) < 0.1 ? { pose: "videogame", texto: "jogando videogame" } : { pose: "sentado", texto: "no sofá" })
+  : { pufe: { pose: "sentado", texto: "no pufe" }, cafe: { pose: "caneca", texto: "no café" }, refri: { pose: "lata", texto: "tomando um refri" },
+      pebolim: { pose: "pebolim", texto: "pebolim" } }[v.tipo]);
+const IDX_CAFE = VAGAS_DESCANSO.flatMap((v, i) => v.tipo === "cafe" ? [i] : []), IDX_TODAS = VAGAS_DESCANSO.map((v, i) => i);
+
+const v3 = new THREE.Vector3(), v3b = new THREE.Vector3();
+function posar(p, nome, assento = 0.575) {
+  const P = POSES[nome], u = p.b.userData;
+  const q = P.q ? assento : COXA + CANELA, coxa = P.q ? -Math.acos(THREE.MathUtils.clamp((q - CANELA) / COXA, -1, 1)) : 0;
+  u.quadril.position.y = q;
+  u.pernas.forEach(pr => { pr.coxa.rotation.x = coxa; pr.joelho.rotation.x = -coxa; });   // canela sempre na vertical
+  u.tronco.rotation.set(P.incl || 0, 0, 0);
+  P.bracos.forEach(([ox, cx, dentro], i) => { u.ombros[i].rotation.set(ox, 0, (i ? -1 : 1) * dentro); u.ombros[i].position.y = 0.42; u.cotovelos[i].rotation.x = cx; });
+  u.topo = q + 0.89;
+  p.rot.position.y = u.topo + 0.5;
+  p.balao.position.y = u.topo - 0.12;
+  p.pose = nome;
+  // a caneca, a lata ou o controle vão para a mão direita (e acompanham o gole / o jogo)
+  for (const [k, o] of Object.entries(p.props)) {
+    o.visible = k === P.prop;
+    if (!o.visible) continue;
+    p.raiz.add(o);
+    p.raiz.updateMatrixWorld(true);
+    p.raiz.worldToLocal(u.maos[0].getWorldPosition(v3));
+    if (k === "controle") v3.add(p.raiz.worldToLocal(u.maos[1].getWorldPosition(v3b))).multiplyScalar(0.5);
+    o.position.copy(v3).add(v3b.set(k === "controle" ? 0 : 0.02, k === "controle" ? 0.02 : 0.03, 0.02));
+    o.rotation.set(k === "controle" ? -0.5 : 0, 0, 0);
+    p.raiz.updateMatrixWorld(true);
+    u.cotovelos[0].attach(o);
+  }
+}
+
+// balão "…" de quem está falando: três quadros (•, ••, •••)
+const texBalao = [1, 2, 3].map(n => canvasTex(128, 96, g => {
+  g.fillStyle = "#ffffff"; g.strokeStyle = "#1f2a36"; g.lineWidth = 5;
+  g.beginPath(); g.roundRect(6, 6, 116, 62, 24); g.moveTo(40, 66); g.lineTo(30, 90); g.lineTo(62, 66); g.fill(); g.stroke();
+  g.fillStyle = "#ffffff"; g.fillRect(38, 60, 26, 9);
+  g.fillStyle = "#1f2a36";
+  for (let k = 0; k < n; k++) { g.beginPath(); g.arc(36 + k * 28, 37, 8, 0, 7); g.fill(); }
+}));
+
+const pessoas = new Map();   // chave → pessoa
+const parametros = new URLSearchParams(location.search), INSTANTANEO = parametros.get("instantaneo") === "1";
+// ?atividade=sala:WIN[:trader] (ou ocioso) simula o ciclo do gerente para capturas; firma.simularAtividade(json) idem
+const ativ = { real: null, simulada: null };
+if (parametros.get("atividade")) {
+  const [tipo, sala, trader] = parametros.get("atividade").split(":");
+  ativ.simulada = { gerente: tipo === "sala" ? { estado: "trabalhando", sala, trader: trader || null } : { estado: "ocioso", sala: null, trader: null } };
+}
+const atividadeAgora = () => (ativ.simulada ?? ativ.real)?.gerente || { estado: "ocioso" };
+
+function criarPessoa(chave, pal, opc) {
+  const raiz = new THREE.Group(), b = boneco(pal, opc);
+  raiz.add(b);
+  cena.add(raiz);
+  const rot = rotulo("", "");
+  rot.userData.boneco = b;
+  raiz.add(rot);
+  clicaveis.push(b, rot);
+  // balão ao lado da cabeça (o centro deslocado põe o sprite à direita na tela, de qualquer ângulo); escala como os rótulos
+  const balao = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBalao[2], depthTest: false, depthWrite: false, toneMapped: false }));
+  balao.center.set(-0.25, 0.1); balao.renderOrder = 11; balao.visible = false;
+  Object.assign(balao.userData, { base: 0.42, aspecto: 0.75 });
+  raiz.add(balao);
+  rotulos.push(balao);
+  const props = { caneca: new THREE.Group(), lata: new THREE.Group(), controle: new THREE.Group() };
+  caneca(props.caneca, 0, 0, "#ffffff", 0);
+  cilindro(props.lata, 0.033, 0.033, 0.12, mat("#e53935", { roughness: 0.3, metalness: 0.5 }), 0, 0, 0, 12);
+  controle(props.controle, 0, 0, 0, 0, "#2b2f36");
+  const p = { chave, raiz, b, rot, balao, props, novo: true, rota: [], destino: null, fase: rnd() * 6.28, giroAlvo: 0 };
+  pessoas.set(chave, p);
+  posar(p, "em_pe");
+  return p;
+}
+function definirAlvo(p, alvo, titulo, corBorda) {
+  p.alvo = p.b.userData.alvo = p.rot.userData.alvo = alvo;
+  p.titulo = titulo; p.corBorda = corBorda;
+}
+function removerPessoa(p) {
+  if (selecionado === p.b) selecionar(null);
+  if (sobre === p.b) marcarSobre(null);
+  p.raiz.removeFromParent();
+  for (const o of [p.b, p.rot]) clicaveis.splice(clicaveis.indexOf(o), 1);
+  for (const o of [p.rot, p.balao]) rotulos.splice(rotulos.indexOf(o), 1);
+  p.rot.material.map.dispose(); p.rot.material.dispose(); p.balao.material.dispose();
+  pessoas.delete(p.chave);
+}
+function legenda(p) {   // o rótulo mostra a atividade real; andando para o descanso, "aguardando tarefa"
+  const d = p.destino, andando = p.rota.length > 0;
+  const pausado = p.alvo?.status === "pausado" && d.chave !== "mesa";
+  const texto = andando && d.chave !== "mesa" ? "aguardando tarefa" : d.texto;
+  retextar(p.rot, p.titulo, pausado ? `pausado · ${texto}` : texto, d.chave === "mesa" ? "#26a69a" : pausado ? "#ef5350" : "#c9d1d9", p.corBorda);
+}
+
+// a gente da firma no estado novo: cria quem chegou, atualiza a ficha de quem ficou e tira quem saiu
+const gerente = criarPessoa("gerente", { pele: "#d9a37c", cabelo: "#4a4a4a", camisa: "#e9ecef", calca: "#25324a" }, { terno: "#25324a" });
+definirAlvo(gerente, "gerente", "Gerente", "#4c8dff");
+gerente.mesa = mesaDoGerente;
+function sincronizarPessoas(estado) {
+  const vivos = new Set(["gerente"]);
+  EQUIPES.forEach((ativo, i) => {
+    const dados = estado?.salas?.[ativo];
+    const lista = ativo === "OPCOES" || dados?.status === "ok" ? (dados?.traders || []).slice(0, 3) : [];   // 3 mesas por sala
+    lista.forEach((t, k) => {
+      const chave = `${ativo}:${t.nome}`;
+      vivos.add(chave);
+      const p = pessoas.get(chave) || criarPessoa(chave, PALETAS[(i * 3 + k) % 6], { cabelo: CABELO[t.nome] || "curto" });
+      definirAlvo(p, { ...t, sala: ativo }, t.nome, (STATUS[t.status] || [])[1] || "#8b98a5");
+      p.sala = ativo;
+      p.mesa = salas[ativo].estacoes[k];
+    });
+  });
+  for (const [chave, p] of pessoas) if (!vivos.has(chave)) removerPessoa(p);
+  equipeConhecida = true;
+  distribuir();
+}
+let equipeConhecida = false;   // até o primeiro estado ninguém se mexe (o gerente não vai ao café e volta)
+
+const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+// Quem vai para onde. Trabalha só quem tem tarefa (a sala que o gerente processa agora; o gerente, na mesa
+// dele, durante o ciclo). Cada ocioso tem a sua "vez" (troca a cada 2–5 min, período e fase tirados do nome):
+// enquanto a vez não muda ele fica onde está; na troca sorteia (nome + vez) entre conversar em par no corredor e
+// uma vaga livre do descanso. Pausados não conversam; o gerente prefere o café.
+function distribuir() {
+  const g = atividadeAgora(), salaAtiva = g.estado === "trabalhando" ? g.sala : null, agora = Date.now() / 1000;
+  const destinos = new Map(), ociosos = [];
+  for (const p of pessoas.values()) {
+    if (!p.alvo) continue;
+    const gerente = p.chave === "gerente";
+    if (salaAtiva && (gerente || p.sala === salaAtiva)) {
+      const v = p.mesa.vaga, quem = gerente && g.trader ? ` · ${g.trader}` : "";
+      destinos.set(p, { chave: "mesa", pos: v.pos, rot: v.rot, pose: "digitando", assento: ASSENTO.mesa, texto: `trabalhando: backtest ${salaAtiva}${quem}` });
+    } else ociosos.push(p);
+  }
+  const vez = p => { const h = hash(p.chave), periodo = 120 + h % 181; return Math.floor((agora + h % periodo) / periodo); };
+  const sorteio = p => hash(`${p.chave}:${vez(p)}`);
+  for (const p of ociosos) {   // quem não trocou de vez fica (a troca de um não empurra os outros)
+    const d = p.destino;
+    if (d && d.vez === vez(p) && !(d.par !== undefined && p.alvo.status === "pausado")) destinos.set(p, d);
+  }
+  const pares = new Map();   // par do corredor → quantos ficaram nele; quem ficou sozinho escolhe de novo
+  for (const d of destinos.values()) if (d.par !== undefined) pares.set(d.par >> 1, (pares.get(d.par >> 1) || 0) + 1);
+  for (const [p, d] of destinos) if (d.par !== undefined && pares.get(d.par >> 1) === 1) { destinos.delete(p); pares.delete(d.par >> 1); }
+  const ocupada = new Set([...destinos.values()].map(d => d.chave));
+  const novos = ociosos.filter(p => !destinos.has(p)).sort((a, b) => (b.chave === "gerente") - (a.chave === "gerente") || (a.chave < b.chave ? -1 : 1));
+  const papo = novos.filter(p => p.alvo.status !== "pausado" && sorteio(p) % 3 === 0);
+  const paresLivres = VAGAS_CONVERSA.map((_, i) => i).filter(i => !pares.has(i));
+  for (let k = 0; k + 1 < papo.length && paresLivres.length; k += 2) {
+    const i = paresLivres.shift();
+    [papo[k], papo[k + 1]].forEach((p, lado) => {
+      const v = VAGAS_CONVERSA[i][lado];
+      destinos.set(p, { chave: `c${2 * i + lado}`, pos: v.pos, rot: v.rot, pose: "conversa", texto: "conversando", par: 2 * i + lado, vez: vez(p) });
+    });
+  }
+  for (const p of novos) {
+    if (destinos.has(p)) continue;
+    const s = sorteio(p), livreEm = cand => cand.map((_, k) => cand[(s + k) % cand.length]).find(i => !ocupada.has(`d${i}`));
+    const i = (p.chave === "gerente" ? livreEm(IDX_CAFE) : undefined) ?? livreEm(IDX_TODAS);
+    let d;
+    if (i === undefined) {   // descanso lotado: espera em pé no corredor, à beira da passadeira
+      let n = 0;
+      while (ocupada.has(`s${n}`)) n++;
+      const lado = n % 2 ? 1 : -1;
+      d = { chave: `s${n}`, pos: [-14.6 + (n >> 1) * 0.9, lado * 1.15], rot: lado > 0 ? Math.PI : 0, pose: "em_pe", texto: "aguardando tarefa" };
+    } else {
+      const v = VAGAS_DESCANSO[i];
+      d = { chave: `d${i}`, pos: v.pos, rot: v.rot, assento: ASSENTO[v.tipo], ...ATIVIDADES[i] };
+    }
+    d.vez = vez(p);
+    ocupada.add(d.chave);
+    destinos.set(p, d);
+  }
+  for (const [p, d] of destinos) irPara(p, d);
+}
+
+function irPara(p, d) {
+  const mesmo = p.destino === d || (p.destino?.chave === d.chave && p.destino.pos === d.pos);
+  p.destino = d;
+  if (mesmo) return legenda(p);
+  p.balao.visible = false;
+  if (p.novo || INSTANTANEO) {   // quem acabou de aparecer (ou ?instantaneo=1) já está no lugar
+    p.novo = false;
+    p.raiz.position.set(d.pos[0], 0, d.pos[1]);
+    p.raiz.rotation.y = d.rot;
+    p.rota = [];
+    posar(p, d.pose, d.assento);
+  } else {
+    p.rota = caminho([p.raiz.position.x, p.raiz.position.z], d.pos);
+    posar(p, "andando");
+  }
+  legenda(p);
+}
+
+const VELOCIDADE = 1.3, GIRO = 7;   // m/s e rad/s
+const angulo = a => Math.atan2(Math.sin(a), Math.cos(a));
+function girar(p, alvo, dt) {
+  const dif = angulo(alvo - p.raiz.rotation.y);
+  p.raiz.rotation.y += Math.sign(dif) * Math.min(Math.abs(dif), GIRO * dt);
+  return dif;
+}
+function atualizarPessoas(dt, t) {
+  for (const p of pessoas.values()) {
+    const u = p.b.userData, d = p.destino;
+    u.tronco.scale.y = 1 + 0.012 * Math.sin(t * 2 * Math.PI / 3.5 + u.fase);   // respiração
+    if (p.mesa) {   // cadeira puxada só para quem vai sentar; quem não trabalha deixa a mesa arrumada
+      const c = p.mesa.cadeira, alvo = d?.chave === "mesa" ? p.mesa.puxada : p.mesa.guardada;
+      c.position.z += Math.sign(alvo - c.position.z) * Math.min(Math.abs(alvo - c.position.z), 0.8 * dt);
+    }
+    if (!d) continue;
+    if (p.rota.length) {
+      const [x, z] = p.rota[0], pos = p.raiz.position, dx = x - pos.x, dz = z - pos.z, dist = Math.hypot(dx, dz);
+      const dif = dist > 0.02 ? girar(p, Math.atan2(dx, dz), dt) : 0;
+      const passo = VELOCIDADE * dt * Math.max(0.15, Math.cos(dif));   // curva fechada: quase para e gira
+      if (dist <= passo) { pos.x = x; pos.z = z; p.rota.shift(); } else { pos.x += dx / dist * passo; pos.z += dz / dist * passo; }
+      // passada: 1 ciclo por 1,3 m; a perna de trás dobra o joelho; o quadril desce para o pé da frente tocar o chão
+      p.fase += passo / 1.3 * 2 * Math.PI;
+      const a = 0.42 * Math.sin(p.fase);
+      u.pernas.forEach((pr, i) => {
+        const ang = i ? -a : a;
+        pr.coxa.rotation.x = ang; pr.joelho.rotation.x = Math.max(0, ang) * 1.3;
+        u.ombros[i].rotation.x = -ang * 1.1;
+      });
+      u.quadril.position.y = (COXA + CANELA) * Math.cos(a);
+      if (!p.rota.length) { posar(p, d.pose, d.assento); legenda(p); }
+      continue;
+    }
+    girar(p, d.rot, dt);
+    const fase = t + u.fase;
+    if (p.pose === "digitando") u.ombros.forEach((o, i) => (o.position.y = 0.42 + 0.01 * Math.sin(fase * 2 * Math.PI + i * Math.PI)));
+    else if (p.pose === "videogame") u.cotovelos.forEach((c, i) => (c.rotation.x = -0.9 + 0.06 * Math.sin(fase * 11 + i)));
+    else if (p.pose === "pebolim") {
+      u.ombros.forEach((o, i) => (o.rotation.x = -0.5 + 0.14 * Math.sin(fase * 6 + i * Math.PI)));
+      u.tronco.rotation.y = 0.1 * Math.sin(fase * 3);
+    } else if (p.pose === "caneca" || p.pose === "lata") {   // um gole a cada ~8 s
+      const k = Math.max(0, Math.sin(Math.min(1, (fase % 8) / 1.6) * Math.PI));
+      u.ombros[0].rotation.x = -0.35 - 0.55 * k; u.cotovelos[0].rotation.x = -1.25 - 0.75 * k;
+    } else if (p.pose === "conversa") {   // os dois do par revezam a fala a cada 3,5 s; quem fala gesticula
+      const fala = (Math.floor((t + (d.par >> 1) * 1.7) / 3.5) % 2) === (d.par & 1);
+      p.balao.visible = fala;
+      if (fala) p.balao.material.map = texBalao[Math.floor(t * 2.5) % 3];
+      u.ombros[0].rotation.x = fala ? -0.35 + 0.25 * Math.sin(fase * 2.6) : BRACO_SOLTO[0];
+      u.cotovelos[0].rotation.x = fala ? -0.9 : BRACO_SOLTO[1];
+    }
+  }
+}
+// estado da rotina para testes: firma.pessoas() → [{chave, texto, pos, andando}]
+const resumoPessoas = () => [...pessoas.values()].map(p => ({ chave: p.chave, texto: p.rot.userData.texto, destino: p.destino?.chave,
+  pos: [+p.raiz.position.x.toFixed(2), +p.raiz.position.z.toFixed(2)], andando: p.rota.length > 0 }));
 
 // ---------------------------------------------------------------- estado → cena
 let modoAtual = "cima";   // "cima" | "fp"; firma.modo = ... aplica a troca inteira
 const firma = window.firma = {
   estado: null, abrirPainel, salas, vagas: { descanso: VAGAS_DESCANSO, conversa: VAGAS_CONVERSA },
+  pessoas: resumoPessoas,
+  simularAtividade(json) { ativ.simulada = json ?? null; if (equipeConhecida) distribuir(); return atividadeAgora(); },   // null volta ao real
   get modo() { return modoAtual; },
   set modo(m) { trocarModo(m); },
 };
@@ -1587,9 +1977,7 @@ function trocarTela(tela, textura) {
 function aplicarEstado(estado) {
   limparDinamicos();
   firma.estado = estado;
-  const alvoAntes = selecionado?.userData.alvo;
-  selecionado = null;
-  plumbob.visible = false;
+  sincronizarPessoas(estado);   // as pessoas não são refeitas: quem anda continua andando (e selecionado)
 
   MERCADOS.forEach((ativo, i) => {
     const sala = salas[ativo], s = sala.def, dados = estado?.salas?.[ativo];
@@ -1598,16 +1986,6 @@ function aplicarEstado(estado) {
     sala.estacoes.forEach((est, k) => {
       const t = sala.traders[k];
       trocarTela(est.tela, t ? texCurva(t) : null);
-      if (!t) return;
-      const b = dinamico(boneco(PALETAS[(i * 3 + k) % 6], { cabelo: CABELO[t.nome] || "curto" }), est.grupo, true);
-      b.position.z = -0.78;
-      b.userData.alvo = t;
-      const [nomeSt, corSt] = STATUS[t.status] || [t.status, "#8b98a5"];
-      const dia = resultadoDia(t);
-      const r = dinamico(rotulo(t.nome, `${nomeSt} · último pregão ${brl(dia)}`, dia >= 0 ? "#26a69a" : "#ef5350", corSt), est.grupo, true);
-      r.position.set(0, 1.98, -0.78);
-      Object.assign(r.userData, { alvo: t, boneco: b });
-      if (alvoAntes?.nome === t.nome && alvoAntes?.sala === ativo) selecionar(b);
     });
     const placa = rotulo(`${ativo} · ${s.nome}`, ok ? `${sala.traders.length} traders` : "aguardando dados", ok ? "#8b98a5" : "#f0b429", s.cor);
     placa.position.set(s.porta[0], 2.2, s.porta[1] + (s.z < 0 ? -0.5 : 0.5));
@@ -1621,10 +1999,6 @@ function aplicarEstado(estado) {
   trocarTela(telaGerente, texRanking(estado));
   trocarTela(telaDiretor, texRanking(estado));
   const quando = estado?.gerado_em ? new Date(estado.gerado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
-  const rg = dinamico(rotulo("Gerente", `ciclo ${quando}`, "#8b98a5", "#4c8dff"), predio, true);
-  rg.position.set(0, 1.98, -2.55);
-  Object.assign(rg.userData, { alvo: "gerente", boneco: gerente });
-  if (alvoAntes === "gerente") selecionar(gerente);
   $("#ciclo").textContent = estado ? `Ciclo do gerente: ${quando}` : "sem estado do gerente";
   $("#exemplo").hidden = !estado?.exemplo;
   if ($("#painel").classList.contains("aberto") && painelAlvo) abrirPainel(selecionado?.userData.alvo ?? painelAlvo);
@@ -1779,7 +2153,8 @@ function focar(x, z, distancia, azimute = -35 * GRAU, polar = 45 * GRAU) {
 
 // ?cam=geral | sala&sala=EURUSD (ou DESCANSO, OPCOES…) | quadro&sala=WIN (de frente para a lousa) | diretoria
 // (padrão: Diretoria) | fp[&pos=x,z,yaw°,pitch°] (primeira pessoa; o mouse só trava no primeiro clique);
-// &trader=<nome> abre a ficha — útil para capturas
+// | foco&foco=x,z,distância[,azimute°,polar°]; &trader=<nome> abre a ficha; &atividade=sala:WIN simula o ciclo
+// do gerente e &instantaneo=1 põe todo mundo direto no lugar — úteis para capturas
 const pedido = new URLSearchParams(location.search);
 const salaPedida = PLANTA.salas[pedido.get("sala")], quadroPedido = salas[pedido.get("sala")]?.quadro;
 if (pedido.get("cam") === "geral") focar(-1, 1, 41, -30 * GRAU, 42 * GRAU);
@@ -1790,6 +2165,10 @@ else if (pedido.get("cam") === "quadro" && quadroPedido) {
   controles.target.copy(p);
   camera.position.copy(p).addScaledVector(frente, 2.6).setY(p.y + 1.5);
   controles.update();
+}
+else if (pedido.get("cam") === "foco") {
+  const [x, z, d, az, po] = (pedido.get("foco") || "").split(",").map(Number);
+  focar(x || 0, z || 0, d || 12, (az ?? -35) * GRAU, (po ?? 45) * GRAU);
 }
 else focar(dir.x - 1, dir.z, 11);
 
@@ -2054,8 +2433,19 @@ async function carregar() {
     (!salaPedida || o.userData.alvo.sala === pedido.get("sala")));
   if (b) { selecionar(b); abrirPainel(b.userData.alvo); }
 }
-carregar();
+// atividade do gerente a cada 5 s (decide quem trabalha; também é quando os ociosos trocam de atividade)
+let textoAtividade = "";
+async function carregarAtividade() {
+  try {
+    const r = await fetch("/api/atividade", { cache: "no-store" });
+    const texto = r.ok ? await r.text() : textoAtividade;
+    if (texto !== textoAtividade) { ativ.real = JSON.parse(texto); textoAtividade = texto; }
+  } catch {}   // servidor fora: fica a última atividade conhecida
+  if (equipeConhecida) distribuir();
+}
+carregarAtividade().finally(carregar);   // a primeira cena já nasce com cada um no lugar certo
 setInterval(carregar, 30000);
+setInterval(carregarAtividade, 5000);
 
 // ---------------------------------------------------------------- laço de render
 new ResizeObserver(() => {
@@ -2067,16 +2457,17 @@ new ResizeObserver(() => {
 
 const relogio = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const dt = Math.min(relogio.getDelta(), 0.1), t = relogio.elapsedTime;
+  const bruto = relogio.getDelta(), dt = Math.min(bruto, 0.1), t = relogio.elapsedTime;
   modos[firma.modo]?.(dt);
   atualizarParedes();
   animarBonecos(t);
-  if (plumbob.visible) { plumbob.rotation.y = t * 1.5; plumbob.position.y = 1.72 + 0.04 * Math.sin(t * 2.5); }
+  atualizarPessoas(Math.min(bruto, 1), t);   // com a tela travando, quem anda não fica para trás
+  if (plumbob.visible) { plumbob.rotation.y = t * 1.5; plumbob.position.y = (selecionado?.userData.topo ?? 1.465) + 0.255 + 0.04 * Math.sin(t * 2.5); }
   // rótulos crescem um pouco com a distância para continuarem legíveis na visão geral; em primeira pessoa
   // ficam menores e respeitam as paredes (de cima atravessam tudo)
   const fp = firma.modo === "fp";
   const f = fp ? 0.75 : THREE.MathUtils.clamp(camera.position.distanceTo(controles.target) / 11, 1, 2.4);
-  for (const s of rotulos) { s.scale.set(s.userData.base * f, s.userData.base * f * 150 / 512, 1); s.material.depthTest = fp; }
+  for (const s of rotulos) { s.scale.set(s.userData.base * f, s.userData.base * f * (s.userData.aspecto ?? 150 / 512), 1); s.material.depthTest = fp; }
   if (!fp && ponteiroMudou && ultimoEvento) { ponteiroMudou = false; marcarSobre(alvoSob(ultimoEvento)); }
   renderer.render(cena, camera);
   if (!window.firmaPronta) {
