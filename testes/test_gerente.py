@@ -479,9 +479,6 @@ class TestMotorParaOGerente(unittest.TestCase):
         self.assertEqual(cfg["ativos"]["BTCUSDT"]["fonte"], "binance")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestCli(unittest.TestCase):
     def test_opcoes_aparece_como_sem_tarefa(self):
@@ -489,9 +486,16 @@ class TestCli(unittest.TestCase):
                             "OPCOES": gerente._opcoes()}, "pendencias": []}
         saida = io.StringIO()
         saida.reconfigure = lambda **k: None
-        with mock.patch.object(gerente, "ciclo", return_value=estado),                 mock.patch.object(gerente.motor, "carregar_config", return_value=CFG),                 mock.patch.object(gerente.sys, "argv", ["gerente.py", "--dia", "2026-10-24"]),                 mock.patch.object(gerente.sys, "stdout", saida):
+        with mock.patch.object(gerente, "ciclo", return_value=estado), \
+                mock.patch.object(gerente.motor, "carregar_config", return_value=CFG), \
+                mock.patch.object(gerente.sys, "argv", ["gerente.py", "--dia", "2026-10-24"]), \
+                mock.patch.object(gerente.sys, "stdout", saida):
             gerente.main()
         texto = saida.getvalue()
         self.assertIn("WDO: sem dados — o MT5 não respondeu", texto)
         self.assertIn("OPCOES: sem tarefa (aguardando o Diretor)", texto)
         self.assertNotIn("OPCOES: sem dados", texto)
+
+
+if __name__ == "__main__":
+    unittest.main()

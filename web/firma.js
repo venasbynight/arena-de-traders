@@ -2181,7 +2181,7 @@ function linkRelatorio(nome, texto) {
 function abrirPainel(alvo) {
   const corpo = $("#painel-corpo");
   corpo.innerHTML = alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado)
-    : alvo.quadro ? htmlQuadro(alvo.quadro) : htmlTrader(alvo);
+    : alvo.quadro ? htmlQuadro(alvo.quadro) : alvo.sala === "OPCOES" ? htmlQuadro("OPCOES") : htmlTrader(alvo);  // OPCOES ainda sem operacional: a ficha é o quadro
   // o V (câmera) e o ESC (fechar) continuam valendo com o foco dentro do relatório embutido (mesma origem)
   corpo.querySelector("iframe")?.addEventListener("load", e => {
     try { for (const f of [teclaModo, teclaEsc]) e.target.contentWindow.addEventListener("keydown", f); } catch {}
