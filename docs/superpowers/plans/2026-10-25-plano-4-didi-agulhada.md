@@ -44,3 +44,22 @@
 - Página inicial (`/`): ao abrir, sem clicar em nada: (1) faixa de cartões de mercado por ativo — último preço, variação do dia verde/vermelha, mini gráfico de candles (Lightweight Charts) do último pregão, selo de tendência do 60; clicar seleciona o ativo do replay; (2) placar: linha por trader (TODOS), coluna por ativo; célula com status (chip), resultado da prova, sparkline da curva, "N de M requisitos"; clicar mostra os itens que faltam; (3) abaixo, o replay atual (período, Rodar, play); depois de Rodar, a área de gráficos e o placar do backtest aparecem como hoje (os cartões podem recolher para dar espaço).
 - Tema escuro existente; sem dependências novas; responsivo até 1280 px.
 - [ ] Teste do `/api/painel` (cache falso, estado falso, ativo sem cache). [ ] Implementar. [ ] Captura `mockups/inicio-1.png` (≤ 600 KB) com os dados reais. [ ] Commit `feat: home page with market cards and trader scoreboard`.
+
+## Task 4: Didi do jeito do Diretor (ajuste das regras)
+**Decisões do usuário (2026-10-25, depois de ver os prints dele):** "a entrada do jeito padrão do Didi é quando o Bollinger abriu e o candle que ocasionou isso fechou"; stop além do candle de entrada; saída com o Bollinger fechando (ou MA3 cruzando a MA8 de volta, o que vier primeiro); "TRIX precisa estar em uma extremidade"; ADX fica como está (subindo, DI a favor); sem filtro de compressão.
+**Files:** estudos.py (TRIX), traders/didi_agulhada.py, testes/test_estudos.py, testes/test_didi.py. Web fica para a Task 5.
+- Agulhada como antes (MA3 e MA20 cruzam a MA8 em sentidos opostos no mesmo candle).
+- Gatilho: o primeiro candle, do candle da agulhada até 3 candles depois, que fecha com a largura do Bollinger (8, 2) maior que no candle anterior → entrada a mercado na abertura seguinte (substitui a ordem stop). Se as bandas não abrirem nessa janela, a agulhada expira.
+- Confirmações no candle do gatilho: ADX(8) subindo com DI a favor (como hoje); TRIX(9) (EMA tripla do fechamento, variação % de um candle) numa extremidade a favor: compra com o TRIX no ou abaixo do percentil 20 dos últimos 120 valores e subindo; venda no ou acima do percentil 80 e caindo. Ruling do controlador (o usuário não deu número): percentil 20/80 sobre 120 candles, `PARAMS["trix_extremo"] = 0.2`, GRADE `[0.1, 0.2, 0.3]`.
+- Stop: 1 tick além da mínima (compra) / máxima (venda) do candle do gatilho.
+- Saída por sinal (Decisao.sair): no fechamento em que a largura do Bollinger diminui em relação ao candle anterior, ou MA3 cruza a MA8 contra a posição — o que vier primeiro. Alvo de proteção continua `alvo_x` × risco.
+- O desenho `indicadores` ganha `trix` (para a Task 5 desenhar).
+- [ ] TDD. [ ] Suite verde. [ ] Commit `feat: Didi enters on Bollinger opening, exits on bands closing, TRIX at extreme`.
+
+## Task 5: Tela principal — replay embaixo, gráfico padrão, robustez (web)
+**Decisões do usuário (2026-10-25):** barra de play/pausa (período, Rodar, ⏮ ▶ ⏭, velocidade, linha do tempo) fixa na parte de baixo da tela; a sala de replay já abre com um gráfico grande de candles de 5 min do ativo selecionado (últimos pregões do cache), trocando com o ativo; ao Rodar, dá lugar aos cards dos traders.
+**Files:** web/index.html, web/sala.js, web/inicio.js, web/estilo.css, servidor.py (SALAS por sala no backtest), testes/test_servidor.py.
+- Robustez da página inicial (review T3 re-graduado): falha do CDN não derruba o placar; `r.ok` checado; uma célula ruim do estado vira "aguardando" sem 500; `painel()` tolera `prova: null`, item sem `valor`, `traders: null`; atualiza a cada 5 min.
+- `/api/backtest` usa `traders.SALAS.get(ativo, traders.TODOS)` (Caio só em WDO e WIN).
+- Card do Didi ganha o TRIX (painel próprio ou junto do ADX, legível).
+- [ ] Implementar. [ ] Capturas `mockups/inicio-2.png` (página aberta, gráfico padrão, barra embaixo) e `mockups/didi-2.png`. [ ] Commit `feat: replay bar at the bottom and a default chart in the replay room`.
