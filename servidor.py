@@ -15,7 +15,9 @@ import dados
 import motor
 import traders
 
-WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+RAIZ = os.path.dirname(os.path.abspath(__file__))
+WEB = os.path.join(RAIZ, "web")
+ESTADO_FIRMA = os.path.join(RAIZ, "estado", "firma.json")  # escrito pelo gerente
 
 
 class Arena(BaseHTTPRequestHandler):
@@ -45,13 +47,27 @@ class Arena(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/":
             return self._arquivo("index.html")
+        if url.path == "/firma":
+            return self._arquivo("firma.html")
         if url.path.startswith("/web/"):
             return self._arquivo(url.path[len("/web/"):])
         if url.path == "/api/traders":
             return self._enviar(200, [{"nome": m.NOME, "estilo": m.ESTILO} for m in traders.TODOS])
+        if url.path == "/api/firma":
+            return self._firma()
         if url.path == "/api/backtest":
             return self._backtest(parse_qs(url.query))
         self._enviar(404, {"erro": "não encontrado"})
+
+    def _firma(self):
+        # sem estado do gerente, a firma mostra o exemplo versionado (marcado como exemplo)
+        if os.path.isfile(ESTADO_FIRMA):
+            with open(ESTADO_FIRMA, encoding="utf-8") as f:
+                return self._enviar(200, json.load(f))
+        with open(os.path.join(WEB, "firma.exemplo.json"), encoding="utf-8") as f:
+            estado = json.load(f)
+        estado["exemplo"] = True
+        self._enviar(200, estado)
 
     def _backtest(self, q):
         ativo = q.get("ativo", [""])[0]

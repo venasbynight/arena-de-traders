@@ -1,0 +1,48 @@
+/* Firma 3D: mesmo tema escuro da sala de operações (variáveis de estilo.css) sobre a cena em tela cheia */
+:root{--bg:#0b0f14;--panel:#121821;--line:#1f2a36;--txt:#e6edf3;--mut:#8b98a5;--up:#26a69a;--dn:#ef5350;--acc:#4c8dff;--warn:#f0b429}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif}
+#cena{position:fixed;inset:0}
+#cena canvas{display:block}
+#cena.mao{cursor:pointer}
+
+.hud{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:14px;padding:0 18px;
+  background:rgba(18,24,33,.88);border-bottom:1px solid var(--line);backdrop-filter:blur(6px);z-index:5}
+.logo{font-weight:700;font-size:17px}.logo span{color:var(--acc)}.logo em{font-style:normal;color:var(--mut);font-weight:500}
+.pill{padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mut);font-size:12px}
+.pill.warn{border-color:var(--warn);color:var(--warn)}
+.btn{margin-left:auto;height:32px;display:inline-flex;align-items:center;border-radius:16px;background:#1a2431;color:var(--txt);
+  text-decoration:none;padding:0 14px;border:1px solid var(--line)}
+.btn:hover{border-color:var(--acc)}
+
+#aviso{position:fixed;top:68px;left:50%;transform:translateX(-50%);padding:12px 18px;border:1px solid var(--warn);border-radius:10px;
+  background:rgba(18,24,33,.95);color:var(--warn);z-index:6}
+
+#dica{position:fixed;left:16px;bottom:14px;padding:7px 12px;border-radius:999px;background:rgba(18,24,33,.85);
+  border:1px solid var(--line);color:var(--mut);font-size:12px;z-index:5}
+#dica b{color:var(--txt);font-weight:600}
+
+#painel{position:fixed;top:64px;right:12px;bottom:12px;width:380px;max-width:calc(100vw - 24px);overflow:auto;z-index:6;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 16px 18px;box-shadow:0 12px 32px rgba(0,0,0,.45);
+  transform:translateX(calc(100% + 24px));transition:transform .25s ease}
+#painel.aberto{transform:none}
+.fechar{position:absolute;top:10px;right:12px;width:28px;height:28px;border-radius:50%;border:0;background:#1a2431;color:var(--txt);font-size:18px;cursor:pointer}
+.ficha{display:flex;align-items:center;gap:10px;margin:0 30px 10px 0}
+.av{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;font-weight:700;font-size:14px;color:#fff;flex:none}
+.ficha .n{font-weight:700;font-size:16px}.ficha .s{color:var(--mut);font-size:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{padding:2px 9px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--mut)}
+.chip.up{border-color:var(--up);color:var(--up)}.chip.dn{border-color:var(--dn);color:var(--dn)}.chip.warn{border-color:var(--warn);color:var(--warn)}
+h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin:14px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{color:var(--mut);font-weight:500;text-align:right;padding:4px;border-bottom:1px solid var(--line)}
+td{padding:5px 4px;text-align:right;border-bottom:1px solid #18212c}th:first-child,td:first-child{text-align:left}
+.decisao{padding:9px 11px;border-radius:8px;background:#0f141b;border:1px solid var(--line)}
+.diario div{padding:6px 0;border-bottom:1px solid #18212c;font-size:12px}
+.lista{padding-left:16px}.lista li{margin:4px 0}
+.links{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.links a{color:var(--acc);text-decoration:none}.links a:hover{text-decoration:underline}
+.links .off{color:var(--mut)}
+.up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.warn{color:var(--warn)}
+@media (max-width:700px){#dica{display:none}.hud .pill{display:none}}

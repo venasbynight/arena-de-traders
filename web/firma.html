@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firma · Arena de Traders</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/web/firma.css">
+<script type="importmap">
+{"imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<header class="hud">
+  <div class="logo">Arena <span>de Traders</span> <em>· Firma</em></div>
+  <span class="pill" id="ciclo">carregando a firma…</span>
+  <span class="pill warn" id="exemplo" hidden>dados de exemplo · o gerente ainda não rodou</span>
+  <a class="btn" href="/">Sala de operações</a>
+</header>
+
+<div id="aviso" hidden></div>
+<div id="cena"></div>
+
+<aside id="painel" aria-live="polite">
+  <button class="fechar" id="fechar" title="Fechar (Esc)">×</button>
+  <div id="painel-corpo"></div>
+</aside>
+
+<div id="dica">
+  <b>Botão direito</b> ou <b>Q/E</b> gira · <b>scroll</b> aproxima · <b>WASD</b> ou <b>botão do meio</b> move · <b>clique</b> num trader abre a ficha
+</div>
+
+<script type="module" src="/web/firma.js"></script>
+</body>
+</html>

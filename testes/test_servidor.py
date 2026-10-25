@@ -3,6 +3,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from unittest import mock
 
 import servidor
 from testes.test_motor import CFG, dias_sinteticos
@@ -74,6 +75,19 @@ class TestServidor(unittest.TestCase):
         finally:
             srv.shutdown()
             srv.server_close()
+
+    def test_firma_exemplo(self):
+        with mock.patch.object(servidor, "ESTADO_FIRMA", "nao-existe/firma.json"):
+            status, corpo = self.get("/api/firma")
+        self.assertEqual(status, 200)
+        estado = json.loads(corpo)
+        self.assertTrue(estado["exemplo"])
+        self.assertEqual(sorted(estado["salas"]), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
+
+    def test_firma_html(self):
+        status, corpo = self.get("/firma")
+        self.assertEqual(status, 200)
+        self.assertIn("<html", corpo)
 
     def test_nao_sai_da_pasta_web(self):
         status, _ = self.get("/web/..%2Fmotor.py")

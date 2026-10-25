@@ -23,6 +23,9 @@ $("#ativos").addEventListener("click", e => {
   ativo = b.dataset.ativo;
   document.querySelectorAll("#ativos button").forEach(x => x.classList.toggle("sel", x === b));
 });
+// /?ativo=EURUSD (link vindo da firma) já abre com o ativo escolhido
+const ativoPedido = new URLSearchParams(location.search).get("ativo");
+[...document.querySelectorAll("#ativos button")].find(b => b.dataset.ativo === ativoPedido)?.click();
 
 $("#rodar").onclick = async () => {
   pausar();
