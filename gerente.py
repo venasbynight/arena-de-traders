@@ -104,6 +104,11 @@ def _por_pregao(treino, prova, n_treino, n_prova):
     return t_dia, p_dia, treino["resultado"] > 0 and prova["trades"] > 0 and p_dia < 0.5 * t_dia
 
 
+def _rs(v):
+    """−R$ 77,14 / R$ 50,00: o sinal antes do R$, como no brl, com centavos."""
+    return ("−" if round(v, 2) < 0 else "") + "R$ " + num(abs(v))
+
+
 def requisitos(treino, prova, equity, n_treino, n_prova):
     """Os 8 critérios de promoção/pausa, na ordem do quadro da firma: [{"item", "ok", "valor"}].
 
@@ -122,11 +127,11 @@ def requisitos(treino, prova, equity, n_treino, n_prova):
         {"item": f"fator ≥ {num(FATOR_MIN, 1)} na prova", "ok": prova["trades"] > 0 and _fator(prova) >= FATOR_MIN,
          "valor": fator},
         {"item": "sem overfit", "ok": not overfit,
-         "valor": f"R$ {num(p_dia)} por pregão na prova, R$ {num(t_dia)} no treino"},
+         "valor": f"{_rs(p_dia)} por pregão na prova, {_rs(t_dia)} no treino"},
         {"item": f"drawdown da prova acima de {brl(DRAWDOWN_PAUSA)}", "ok": prova["drawdown"] >= DRAWDOWN_PAUSA,
          "valor": brl(prova["drawdown"])},
         {"item": f"sem {DIAS_NEGATIVOS_PAUSA} dias seguidos negativos", "ok": seguidos < DIAS_NEGATIVOS_PAUSA,
-         "valor": f"{seguidos} seguidos"},
+         "valor": f"{seguidos} dia seguido" if seguidos == 1 else f"{seguidos} dias seguidos"},
     ]
 
 
@@ -139,7 +144,7 @@ def decidir(treino, prova, equity, n_treino, n_prova):
     t50, p50, treino_pos, prova_pos, fator_ok, sem_overfit, drawdown_ok, dias_ok = (
         r["ok"] for r in requisitos(treino, prova, equity, n_treino, n_prova))
     t_dia, p_dia, overfit = _por_pregao(treino, prova, n_treino, n_prova)
-    nota = f"overfit: prova rende R$ {num(p_dia)} por pregão, menos de 50% dos R$ {num(t_dia)} do treino"
+    nota = f"overfit: prova rende {_rs(p_dia)} por pregão, menos de 50% dos {_rs(t_dia)} do treino"
     pausa = []
     if not drawdown_ok:
         pausa.append(f"drawdown da prova {brl(prova['drawdown'])}, pior que {brl(DRAWDOWN_PAUSA)}")
@@ -252,8 +257,10 @@ def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log, ao_progresso
     return sala
 
 
-def _baixar(ativos, historico_fn, de, ate, cfg):
+def _baixar(ativos, historico_fn, de, ate, cfg, ao_progresso=lambda sala, trader: None):
     """Baixa as salas uma a uma numa thread e entrega (ativo, candles, erro) assim que cada uma chega.
+
+    `ao_progresso(ativo, None)` sai quando o ciclo passa a esperar por aquela sala (a anterior já terminou).
 
     O cálculo de uma sala corre enquanto a próxima baixa (a Genial sem feed leva 90 s para desistir).
     Uma tentativa por sala; erro vira texto para a pendência, nunca repetição.
@@ -270,7 +277,8 @@ def _baixar(ativos, historico_fn, de, ate, cfg):
                 fila.put((ativo, None, f"erro inesperado ao baixar {ativo}: {e!r}"))
 
     threading.Thread(target=baixar, daemon=True, name="gerente-downloads").start()
-    for _ in ativos:
+    for ativo in ativos:
+        ao_progresso(ativo, None)
         yield fila.get()
 
 
@@ -283,7 +291,8 @@ def _opcoes():
 def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz=".", log=None, ao_progresso=None):
     """Um ciclo do gerente para o dia `hoje` (histórico até ontem). Grava estado e relatórios; devolve o estado.
 
-    `ao_progresso(sala, trader)` é chamado antes de cada trader e, ao fim (mesmo com erro), como (None, None).
+    `ao_progresso(sala, trader)` é chamado como (sala, None) ao começar cada sala (antes de baixar os candles), antes
+    de cada trader e, ao fim (mesmo com erro), como (None, None).
     A sala OPCOES entra no estado de todo ciclo, sem backtest.
     """
     log = log or (lambda msg: None)
@@ -296,7 +305,7 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
             # quem respondeu no ciclo anterior baixa primeiro; a espera de quem falhou corre junto com o cálculo
             ordem = sorted(salas, key=lambda a: anterior.get(a, {}).get("status") != "ok")
             feitas, operacoes, avisos = {}, {}, {}
-            for ativo, candles, erro in _baixar(ordem, historico_fn, de, ate, cfg):
+            for ativo, candles, erro in _baixar(ordem, historico_fn, de, ate, cfg, ao_progresso):
                 sala = None
                 if candles:
                     try:
@@ -355,6 +364,9 @@ def main():
     estado = ciclo(motor.carregar_config(), hoje, log=lambda msg: print(msg, flush=True))
     print()
     for ativo, sala in estado["salas"].items():
+        if sala["status"] == "sem_tarefa":
+            print(f"{ativo}: sem tarefa (aguardando o Diretor)")
+            continue
         if sala["status"] != "ok":
             print(f"{ativo}: sem dados — {sala['motivo']}")
             continue
