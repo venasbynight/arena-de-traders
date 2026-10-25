@@ -2,8 +2,9 @@
 
     python servidor.py                  # abre http://localhost:8765 no navegador
     python servidor.py --sem-navegador  # só o servidor
-    python servidor.py --sem-gerente    # sem o ciclo do gerente (arranque e 19:30)
+    python servidor.py --sem-gerente    # sem o ciclo do gerente (arranque, 00:30 e repescagem às 19:30)
 """
+import functools
 import json
 import mimetypes
 import os
@@ -22,6 +23,7 @@ import traders
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(RAIZ, "web")
+CONFIG = os.path.join(RAIZ, "trader", "config.json")
 ESTADO_FIRMA = os.path.join(RAIZ, "estado", "firma.json")  # escrito pelo gerente
 PARAMETROS = os.path.join(RAIZ, "estado", "parametros.json")  # parâmetros escolhidos pelo gerente
 EXEMPLO_FIRMA = os.path.join(WEB, "firma.exemplo.json")
@@ -91,7 +93,7 @@ class Arena(BaseHTTPRequestHandler):
 
     def _backtest(self, q):
         try:
-            cfg = self.server.cfg or motor.carregar_config()
+            cfg = self.server.cfg or motor.carregar_config(CONFIG)
         except (OSError, ValueError) as e:
             return self._enviar(500, {"erro": f"não consegui ler trader/config.json: {e}"})
         ativo = q.get("ativo", [""])[0]
@@ -136,15 +138,20 @@ def relatorios_do_dia(dia=None):
     return None
 
 
-def precisa_ciclo(caminho, hoje, refazer_sem_dados=False):
-    """Roda um ciclo se não há estado do gerente ou se ele é de um dia anterior.
+def historico(ativo, de, ate, cfg, raiz=RAIZ):
+    """dados.historico com o cache em <raiz>/dados, não na pasta de onde o servidor foi aberto."""
+    return dados.historico(ativo, de, ate, cfg, pasta=os.path.join(raiz, "dados"))
 
-    Com `refazer_sem_dados` (o horário das 19:30), também quando alguma sala do estado de hoje ficou sem dados.
+
+def precisa_ciclo(caminho, hoje, refazer_sem_dados=False):
+    """Roda um ciclo se não há estado do gerente ou se ele não é de hoje.
+
+    Com `refazer_sem_dados` (a volta das 19h), também quando alguma sala do estado de hoje ficou sem dados.
     """
     try:
         with open(caminho, encoding="utf-8") as f:
             estado = json.load(f)
-        if estado.get("dia", "") < hoje.isoformat():
+        if estado.get("dia") != hoje.isoformat():
             return True
         return refazer_sem_dados and any(s.get("status") != "ok" for s in estado.get("salas", {}).values())
     except (OSError, ValueError, AttributeError, TypeError):
@@ -158,49 +165,56 @@ def _log(msg):
         pass
 
 
-def gerente_diario():
-    """Thread do gerente: ciclo no arranque se ainda não houve o de hoje, depois todo dia às 19:30 (Brasília).
+def ciclo_do_servidor(hoje, raiz=RAIZ):
+    """Ciclo do gerente com os caminhos da raiz do projeto: o servidor funciona aberto de qualquer pasta."""
+    cfg = motor.carregar_config(os.path.join(raiz, "trader", "config.json"))
+    return gerente.ciclo(cfg, hoje, historico_fn=functools.partial(historico, raiz=raiz), raiz=raiz)
 
-    O ciclo roda nesta thread e grava o estado de uma vez, então nenhuma requisição espera por ele.
+
+def laco_do_gerente(rodar, relogio, dormir=time.sleep):
+    """Confere no arranque e a cada meia hora cheia (xx:30): roda `rodar(hoje)` se o estado não é de hoje.
+
+    O dia novo roda às 00:30, com o anterior completo em todos os ativos; a volta das 19h (19:30) também
+    repete quando alguma sala do ciclo de hoje ficou sem dados. Nunca retorna.
     """
+    while True:
+        agora = relogio()
+        if precisa_ciclo(ESTADO_FIRMA, agora.date(), refazer_sem_dados=agora.hour == 19):
+            rodar(agora.date())
+        alvo = agora.replace(minute=30, second=0, microsecond=0)
+        if alvo <= agora:
+            alvo += timedelta(hours=1)
+        dormir((alvo - agora).total_seconds())  # sono de no máximo 1 h: PC suspenso só atrasa até a próxima volta
+
+
+def gerente_diario():
+    """Thread do gerente (horário de Brasília). O ciclo roda nesta thread e grava o estado de uma vez,
+    então nenhuma requisição espera por ele."""
     brt = motor.size.BRT
 
-    def rodar():
-        hoje = datetime.now(brt).date()
+    def rodar(hoje):
         _log(f"gerente: ciclo de {hoje} começou")
         try:
-            estado = gerente.ciclo(motor.carregar_config(), hoje, raiz=RAIZ)
+            estado = ciclo_do_servidor(hoje)
             _log(f"gerente: ciclo de {hoje} pronto; pendências: {len(estado['pendencias'])}")
-        except Exception as e:  # a thread segue viva para o ciclo de amanhã
+        except Exception as e:  # a thread segue viva para a próxima volta
             _log(f"gerente: o ciclo de {hoje} falhou: {e!r}")
 
-    def laco():
-        if precisa_ciclo(ESTADO_FIRMA, datetime.now(brt).date()):
-            rodar()
-        while True:
-            agora = datetime.now(brt)
-            alvo = agora.replace(hour=19, minute=30, second=0, microsecond=0)
-            if alvo <= agora:
-                alvo += timedelta(days=1)
-            # ponytail: um sleep longo; com o PC suspenso o ciclo sai atrasado, no acordar
-            time.sleep((alvo - agora).total_seconds())
-            # às 19:30 só repete se ainda não houve o ciclo de hoje ou se alguma sala ficou sem dados
-            if precisa_ciclo(ESTADO_FIRMA, datetime.now(brt).date(), refazer_sem_dados=True):
-                rodar()
-
-    threading.Thread(target=laco, daemon=True, name="gerente").start()
+    threading.Thread(target=laco_do_gerente, args=(rodar, lambda: datetime.now(brt)), daemon=True,
+                     name="gerente").start()
 
 
 def criar_servidor(porta=8765, historico_fn=None, cfg=None):
     srv = ThreadingHTTPServer(("127.0.0.1", porta), Arena)
-    srv.historico_fn = historico_fn or dados.historico
+    srv.historico_fn = historico_fn or historico
     srv.cfg = cfg
     return srv
 
 
 if __name__ == "__main__":
     import sys
-    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    if sys.stdout:  # pythonw não tem console
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     srv = criar_servidor()
     print("Arena de Traders em http://localhost:8765  (Ctrl+C para parar)", flush=True)
     if "--sem-gerente" not in sys.argv:

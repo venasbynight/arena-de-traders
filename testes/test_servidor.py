@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 import unittest
-from datetime import date
+from datetime import date, datetime
 import urllib.error
 import urllib.request
 from unittest import mock
@@ -197,7 +197,7 @@ class TestServidor(unittest.TestCase):
         with tempfile.TemporaryDirectory() as pasta:
             caminho = os.path.join(pasta, "firma.json")
             self.assertTrue(servidor.precisa_ciclo(caminho, hoje))
-            for dia, precisa in (("2026-10-24", True), ("2026-10-25", False)):
+            for dia, precisa in (("2026-10-24", True), ("2026-10-25", False), ("2026-10-26", True)):  # dia diferente, não só anterior
                 with open(caminho, "w", encoding="utf-8") as f:
                     json.dump({"dia": dia}, f)
                 self.assertEqual(servidor.precisa_ciclo(caminho, hoje), precisa, dia)
@@ -210,6 +210,52 @@ class TestServidor(unittest.TestCase):
             with open(caminho, "w", encoding="utf-8") as f:
                 f.write("{corrompido")
             self.assertTrue(servidor.precisa_ciclo(caminho, hoje))
+
+    def test_laco_do_gerente_roda_apos_a_meia_noite_e_repesca_as_19h(self):
+        brt = motor.size.BRT
+        horas = [datetime(2026, 10, 24, 23, 10, tzinfo=brt), datetime(2026, 10, 24, 23, 30, tzinfo=brt),
+                 datetime(2026, 10, 25, 0, 30, tzinfo=brt), datetime(2026, 10, 25, 1, 30, tzinfo=brt),
+                 datetime(2026, 10, 25, 19, 30, tzinfo=brt), datetime(2026, 10, 25, 20, 30, tzinfo=brt)]
+        relogio, sonos, ciclos = iter(horas), [], []
+
+        class Fim(Exception):
+            pass
+
+        def dormir(segundos):
+            sonos.append(segundos)
+            if len(sonos) == len(horas):
+                raise Fim
+
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "firma.json")
+
+            def gravar(dia, wdo):
+                with open(caminho, "w", encoding="utf-8") as f:
+                    json.dump({"dia": dia, "salas": {"WDO": {"status": wdo}, "EURUSD": {"status": "ok"}}}, f)
+
+            def rodar(hoje):
+                ciclos.append(hoje)
+                gravar(hoje.isoformat(), "sem_dados")  # o WDO segue sem dados: só a volta das 19h repesca
+
+            gravar("2026-10-24", "ok")
+            with mock.patch.object(servidor, "ESTADO_FIRMA", caminho), self.assertRaises(Fim):
+                servidor.laco_do_gerente(rodar, lambda: next(relogio), dormir)
+        self.assertEqual(ciclos, [date(2026, 10, 25)] * 2)  # 00:30 (dia novo) e 19:30 (repescagem)
+        self.assertEqual(sonos, [1200, 3600, 3600, 3600, 3600, 3600])  # acorda nas meias horas cheias
+
+    def test_ciclo_do_servidor_usa_caminhos_da_raiz(self):
+        chamadas = []
+
+        def historico(ativo, de, ate, cfg, **kw):
+            chamadas.append(kw)
+            return []
+
+        with tempfile.TemporaryDirectory() as raiz, mock.patch.object(servidor.dados, "historico", historico):
+            estado = servidor.ciclo_do_servidor(date(2026, 10, 25), raiz)
+            self.assertTrue(os.path.isfile(os.path.join(raiz, "trader", "config.json")))
+            self.assertTrue(os.path.isfile(os.path.join(raiz, "estado", "firma.json")))
+        self.assertEqual(chamadas, [{"pasta": os.path.join(raiz, "dados")}] * 4)
+        self.assertEqual({s["status"] for s in estado["salas"].values()}, {"sem_dados"})
 
     def test_firma_html(self):
         status, corpo = self.get("/firma")

@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import threading
+import time
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SKILLS = os.path.join(AQUI, ".claude", "skills")
@@ -19,6 +20,11 @@ def _skill(caminho, nome):
 
 size = _skill("trader-budget/size.py", "skill_size")    # especificacao(), dimensionar(), Recusa
 check = _skill("trader-risk/check.py", "skill_check")  # checar()
+
+
+def preco(v, tick):
+    """Preço com as casas do tick (WDO 5432.5, WIN 128500, EURUSD 1.08612, BTCUSDT 111856.93); sem tick, como veio."""
+    return f"{v:.{size.decimais_do_tick(tick)}f}" if tick else f"{v:g}"
 
 
 def carregar_config(caminho="trader/config.json"):
@@ -50,7 +56,16 @@ def carregar_config(caminho="trader/config.json"):
         tmp = f"{caminho}.{os.getpid()}.{threading.get_ident()}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, caminho)  # inteiro ou nada: o config do usuário nunca fica pela metade
+        for tentativa in range(5):  # inteiro ou nada: o config do usuário nunca fica pela metade
+            try:
+                os.replace(tmp, caminho)
+                break
+            except PermissionError:  # Windows: quem lê está com o arquivo aberto neste instante
+                if tentativa == 4:
+                    # não deu em 1 s: o disco fica com o config anterior e o completo vale nesta leitura
+                    os.remove(tmp)
+                    break
+                time.sleep(0.25)
     return cfg
 
 
@@ -137,15 +152,15 @@ class Conta:
         if p["lado"] == "compra":
             if not candle_da_entrada and c.o <= p["stop"]:
                 return self._sair(c.o - tick, c.t, "stop")
-            if c.l <= p["stop"]:
-                return self._sair(p["stop"] - tick, c.t, "stop")
+            if c.l <= p["stop"]:  # a mercado que abriu abaixo do stop sai 1 tick abaixo da entrada, nunca no lucro
+                return self._sair(min(p["stop"], p["entrada"]) - tick, c.t, "stop")
             if not candle_da_entrada and c.h >= p["alvo"] + tick:
                 return self._sair(p["alvo"], c.t, "alvo")
         else:
             if not candle_da_entrada and c.o >= p["stop"]:
                 return self._sair(c.o + tick, c.t, "stop")
             if c.h >= p["stop"]:
-                return self._sair(p["stop"] + tick, c.t, "stop")
+                return self._sair(max(p["stop"], p["entrada"]) + tick, c.t, "stop")
             if not candle_da_entrada and c.l <= p["alvo"] - tick:
                 return self._sair(p["alvo"], c.t, "alvo")
         return []

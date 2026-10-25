@@ -11,6 +11,8 @@ import unicodedata
 from datetime import datetime
 from html import escape
 
+from motor import preco, size
+
 STATUS = {"promovido": "promovido", "pausado": "pausado", "experiencia": "em experiência"}
 CSS = """<link rel="stylesheet" href="/web/estilo.css">
 <style>
@@ -61,6 +63,14 @@ def _cls(v):
     return "up" if (v or 0) > 0 else "dn" if (v or 0) < 0 else "mut"
 
 
+def _cambio(premissas):
+    """A premissa de câmbio como ela entra na conta: o ponto_rs fixo no config dos ativos cotados fora da B3."""
+    ativos = premissas.get("ativos") or {}
+    extras = [f"{a} {format(e['ponto_rs'], 'g').replace('.', ',')} R$/1,0" for a, e in ativos.items()
+              if a not in size.ATIVOS and e.get("ponto_rs") is not None]
+    return f"ponto_rs fixo no config: {' · '.join(extras)} (câmbio de referência {num(premissas.get('usd_brl'))})"
+
+
 def _params(p):
     return " · ".join(f"{k} = {v}" for k, v in (p or {}).items()) or "padrão"
 
@@ -98,11 +108,13 @@ def _segundos(iso):
 
 
 def _trader(ativo, sala, t, operacoes, estado):
+    premissas = estado.get("premissas") or {}
+    tick = ((premissas.get("ativos") or {}).get(ativo) or {}).get("tick")
     pontos = [{"time": _segundos(iso), "value": saldo} for iso, saldo in t.get("equity", [])]
     dados_js = json.dumps(pontos).replace("<", "\\u003c")
     ops = "".join(
         f'<tr><td>{escape(o["entrada_t"].replace("T", " ")[:16])}</td><td>{escape(o["saida_t"][11:16])}</td>'
-        f'<td>{escape(o["lado"])}</td><td>{o["contratos"]}</td><td>{o["entrada"]:g}</td><td>{o["saida"]:g}</td>'
+        f'<td>{escape(o["lado"])}</td><td>{o["contratos"]}</td><td>{preco(o["entrada"], tick)}</td><td>{preco(o["saida"], tick)}</td>'
         f'<td class="{_cls(o["resultado_rs"])}">{num(o["resultado_rs"])}</td><td>{escape(o["motivo_saida"])}</td>'
         f'<td>{escape(str(o.get("setup", "")))}</td></tr>' for o in operacoes)
     nome = t["nome"]
@@ -117,7 +129,7 @@ def _trader(ativo, sala, t, operacoes, estado):
 <h3>Operações da prova ({len(operacoes)})</h3>
 <table><tr><th>Entrada</th><th>Saída</th><th>Lado</th><th>Contratos</th><th>Preço entrada</th><th>Preço saída</th><th>R$</th><th>Motivo</th><th>Setup</th></tr>{ops}</table>
 <h3>Diário do último dia da prova</h3><ul>{"".join(f"<li>{escape(l)}</li>" for l in t.get("diario", [])) or '<li class="mut">sem anotações</li>'}</ul>
-<p class="mut">Premissa: USD/BRL {num((estado.get("premissas") or {}).get("usd_brl"))}. Conta simulada; nenhuma ordem real.</p>
+<p class="mut">Premissa: {escape(_cambio(premissas))}. Conta simulada; nenhuma ordem real.</p>
 <script>
 const pontos = {dados_js};
 if (window.LightweightCharts && pontos.length) {{
@@ -160,7 +172,7 @@ def _gerente(estado):
     pend = "".join(f"<li>{escape(p)}</li>" for p in estado.get("pendencias", [])) or '<li class="mut">nenhuma</li>'
     premissas = estado.get("premissas") or {}
     corpo = f"""<h1>Relatório do gerente · {escape(estado.get("dia", ""))}</h1>
-<p class="mut">gerado em {escape(estado.get("gerado_em", "").replace("T", " "))} · USD/BRL {num(premissas.get("usd_brl"))} ·
+<p class="mut">gerado em {escape(estado.get("gerado_em", "").replace("T", " "))} · {escape(_cambio(premissas))} ·
 treino = tudo menos os últimos 21 pregões; prova = últimos 21 · contas simuladas de R$ 5.000, nenhuma ordem real</p>
 <h3>Pendências</h3><ul>{pend}</ul>
 <h3>Ranking (resultado na prova)</h3>
@@ -174,7 +186,7 @@ def _briefing(estado):
     p = estado.get("premissas") or {}
     linhas = [f"# Briefing do gerente · {dia}", "",
               f"Para a mente de IA: comente as decisões abaixo e grave relatorios/{dia}/gerente-ia.md.",
-              f"Premissas: contas simuladas de R$ 5.000; USD/BRL {num(p.get('usd_brl'))}; treino = tudo menos os "
+              f"Premissas: contas simuladas de R$ 5.000; {_cambio(p)}; treino = tudo menos os "
               "últimos 21 pregões, prova = últimos 21; promoção pede treino e prova positivos, fator ≥ 1,2, ≥ 50 trades "
               "(treino e prova) e sem overfit (ganho por pregão da prova < 50% do treino); pausa com drawdown pior que "
               "−R$ 1.500 ou 5 dias seguidos perdendo R$ 25 ou mais.", "", "## Pendências"]

@@ -28,7 +28,7 @@ DRAWDOWN_PAUSA = -1500.0
 DIAS_NEGATIVOS_PAUSA = 5
 DIA_NEGATIVO = -25.0  # só conta como dia negativo perder R$ 25 ou mais (custos miúdos não pausam ninguém)
 DIARIO_LINHAS = 8
-TRAVA = threading.Lock()  # dois ciclos nunca rodam ao mesmo tempo (servidor: arranque e 19:30 na mesma thread)
+TRAVA = threading.Lock()  # dois ciclos no mesmo processo nunca rodam ao mesmo tempo
 
 
 def ler_json(caminho):
@@ -182,16 +182,21 @@ def _periodo(candles):
 
 
 def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log):
-    """Estado da sala com os traders avaliados; trader com bug vira pendência e a sala segue."""
+    """Estado da sala com os traders avaliados; trader com bug vira pendência e a sala segue.
+
+    Se todos falharam, a sala fica sem_dados (a firma mostra a placa) em vez de "ok" sem ninguém.
+    """
     treino, prova, aviso = dividir(candles)
     periodos = {"treino": _periodo(treino), "prova": _periodo(prova)}
     sala = {"status": "ok", "motivo": aviso, "periodos": periodos, "traders": []}
     log(f"{ativo}: {len(candles)} candles; treino {periodos['treino']['pregoes']} pregões, "
         f"prova {periodos['prova']['pregoes']}")
+    erros = []
     for m in modulos:
         try:
             t, ops, pendencia = _avaliar(m, ativo, treino, prova, cfg, periodos)
         except Exception as e:  # bug num trader não leva a sala junto
+            erros.append(f"{m.NOME}: {type(e).__name__}: {e}")
             pendencias.append(f"{ativo} · {m.NOME}: erro no backtest: {type(e).__name__}: {e}")
             log(f"  {m.NOME}: erro no backtest ({e!r})")
             continue
@@ -200,6 +205,8 @@ def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log):
         if pendencia:
             pendencias.append(pendencia)
         log(f"  {m.NOME}: {t['status']}")
+    if erros and not sala["traders"]:
+        sala.update(status="sem_dados", motivo="todos os traders falharam: " + "; ".join(erros))
     return sala
 
 
@@ -259,7 +266,10 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
         estado = {"gerado_em": datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds"),
                   "dia": hoje.isoformat(),
                   "premissas": {"capital": cfg["capital"], "usd_brl": cfg.get("usd_brl"), "janela_dias": JANELA_DIAS,
-                                "prova_pregoes": PROVA_PREGOES},
+                                "prova_pregoes": PROVA_PREGOES,
+                                # tick (casas dos preços nos relatórios) e ponto_rs fixo de cada ativo do config
+                                "ativos": {a: {"tick": e.get("tick"), "ponto_rs": e.get("ponto_rs")}
+                                           for a, e in cfg.get("ativos", {}).items()}},
                   "salas": salas_estado, "ranking": ranking, "pendencias": pendencias}
 
         caminho_params = os.path.join(pasta_estado, "parametros.json")

@@ -1,6 +1,7 @@
 """Vera VWAP: reversão à VWAP do dia quando o fechamento sai das bandas de desvio-padrão."""
 from statistics import pstdev
 
+from motor import preco
 from tipos import Decisao, Plano
 from traders.sofia_smc import arredondar_tick
 
@@ -51,10 +52,10 @@ class Trader:
         stop = arredondar_tick(sup + dp if lado == "venda" else inf - dp, tick)
         alvo = arredondar_tick(vwap, tick)
         if not (alvo < c < stop if lado == "venda" else stop < c < alvo):
-            d.pensamento.append(f"fechou em {c:g}, além do stop de {stop:g}; não entro")
+            d.pensamento.append(f"fechou em {preco(c, tick)}, além do stop de {preco(stop, tick)}; não entro")
             return d
         # entrada = fechamento do sinal: só referência de tamanho e risco; a mercado enche na abertura seguinte
         d.planos.append(Plano(lado, "mercado", arredondar_tick(c, tick), stop, alvo, "vwap"))
         d.pensamento.append(f"fechou {'acima' if lado == 'venda' else 'abaixo'} da banda: {lado} a mercado; "
-                            f"stop {stop:g}, alvo {alvo:g} (VWAP)")
+                            f"stop {preco(stop, tick)}, alvo {preco(alvo, tick)} (VWAP)")
         return d

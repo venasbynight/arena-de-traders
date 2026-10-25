@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from unittest import mock
 
 import motor
 from tipos import Candle, Plano
@@ -60,6 +61,22 @@ class TestConta(unittest.TestCase):
         self.assertIsNotNone(c.posicao)
         self.assertEqual(c.operacoes, [])
 
+    def test_mercado_que_abre_alem_do_stop_sai_no_prejuizo(self):
+        # venda: sinal fechou em 5000, stop 5004, a abertura seguinte já veio em 5006 → sai 1 tick pior que a entrada
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([Plano("venda", "mercado", 5000.0, 5004.0, 4992.0, "teste")], T, "WDO$")
+        c.executar_candle(vela(1, 5006, 5007, 5005, 5006), False)
+        op = c.operacoes[-1]
+        self.assertEqual((op["entrada"], op["saida"], op["motivo_saida"]), (5006, 5006.5, "stop"))
+        self.assertLess(op["resultado_rs"], 0)
+        # compra espelhada: sinal 5000, stop 4996, abertura 4994 → sai em 4993,5
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([Plano("compra", "mercado", 5000.0, 4996.0, 5008.0, "teste")], T, "WDO$")
+        c.executar_candle(vela(1, 4994, 4995, 4993, 4994), False)
+        op = c.operacoes[-1]
+        self.assertEqual((op["entrada"], op["saida"], op["motivo_saida"]), (4994, 4993.5, "stop"))
+        self.assertLess(op["resultado_rs"], 0)
+
     def test_zeragem_no_ultimo_candle_existente(self):
         c = conta_comprada()
         ultimo = Candle(datetime(2026, 9, 1, 13, 55), 5431, 5432, 5430, 5431.5)
@@ -97,6 +114,44 @@ class TestConta(unittest.TestCase):
             cfg = motor.carregar_config(caminho)
             self.assertTrue(os.path.exists(caminho))
             self.assertEqual(cfg["capital"], CFG["capital"])
+
+
+    def test_config_regravado_com_o_arquivo_em_uso(self):
+        """Windows: quem lê o config segura o arquivo; o os.replace tenta de novo e, se não der, não deixa .tmp."""
+        real, chamadas = os.replace, []
+
+        def ocupado_duas_vezes(a, b):
+            chamadas.append(a)
+            if len(chamadas) <= 2:
+                raise PermissionError("em uso")
+            return real(a, b)
+
+        with tempfile.TemporaryDirectory() as d:
+            caminho = os.path.join(d, "config.json")
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump({"capital": 7000}, f)
+            with mock.patch.object(motor.os, "replace", ocupado_duas_vezes), mock.patch.object(motor.time, "sleep"):
+                cfg = motor.carregar_config(caminho)
+            self.assertEqual(len(chamadas), 3)
+            with open(caminho, encoding="utf-8") as f:
+                self.assertEqual(json.load(f), cfg)
+            # sempre em uso: 5 tentativas; o config em memória serve, o do disco fica como estava e o .tmp some
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump({"capital": 7000}, f)
+            sempre = mock.Mock(side_effect=PermissionError("em uso"))
+            with mock.patch.object(motor.os, "replace", sempre), mock.patch.object(motor.time, "sleep"):
+                self.assertEqual(motor.carregar_config(caminho), cfg)
+            self.assertEqual(sempre.call_count, 5)
+            self.assertEqual(os.listdir(d), ["config.json"])
+            with open(caminho, encoding="utf-8") as f:
+                self.assertEqual(json.load(f), {"capital": 7000})
+
+    def test_preco_com_as_casas_do_tick(self):
+        self.assertEqual([motor.size.decimais_do_tick(t) for t in (0.5, 5.0, 0.00001, 0.01, 0.25)], [1, 0, 5, 2, 2])
+        self.assertEqual([motor.preco(v, t) for v, t in ((5432.5, 0.5), (128500.0, 5.0), (1.0861200000000002, 0.00001),
+                                                         (111856.93, 0.01))],
+                         ["5432.5", "128500", "1.08612", "111856.93"])
+        self.assertEqual(motor.preco(1.1, None), "1.1")  # sem tick (estado antigo): como veio
 
 
 class TestAtivos(unittest.TestCase):

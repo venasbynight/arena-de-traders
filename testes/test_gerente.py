@@ -110,6 +110,8 @@ class TestCiclo(unittest.TestCase):
         self.assertEqual(sorted(parametros["EURUSD"]), ["Rafa Rompimento", "Vera VWAP"])
         self.assertIn(parametros["EURUSD"]["Vera VWAP"]["desvios"], vera_vwap.GRADE["desvios"])
         self.assertEqual(sorted(os.listdir(os.path.join(self.raiz, "estado"))), ["firma.json", "parametros.json"])
+        self.assertEqual(self.estado["premissas"]["ativos"]["BTCUSDT"], {"tick": 0.01, "ponto_rs": 0.0054})
+        self.assertEqual(self.estado["premissas"]["ativos"]["EURUSD"], {"tick": 0.00001, "ponto_rs": 5400})
 
         pasta = os.path.join(self.raiz, "relatorios", HOJE.isoformat())
         feitos = ["briefing.md", "btcusdt-rafa-rompimento.html", "eurusd-rafa-rompimento.html",
@@ -223,6 +225,17 @@ class TestDecisoes(unittest.TestCase):
         self.assertNotEqual(gerente.decidir(*bom, quebra, *DIAS_SALA)[0], "pausado")
 
 
+class Quebra:
+    def __init__(self, *a, **k):
+        pass
+
+    def decidir(self, *a):
+        raise ZeroDivisionError("bug do trader")
+
+
+RUIM = SimpleNamespace(NOME="Ruim", ESTILO="", PARAMS={}, GRADE={}, Trader=Quebra)
+
+
 class TestRobustez(unittest.TestCase):
     """Um trader, uma sala ou o relatório com bug não podem levar o ciclo inteiro junto."""
 
@@ -230,20 +243,20 @@ class TestRobustez(unittest.TestCase):
         return gerente.ciclo(CFG, HOJE, historico_fn=HistoricoFalso(), salas=salas, raiz=raiz)
 
     def test_trader_que_quebra_nao_derruba_o_ciclo(self):
-        class Quebra:
-            def __init__(self, *a, **k):
-                pass
-
-            def decidir(self, *a):
-                raise ZeroDivisionError("bug do trader")
-
-        ruim = SimpleNamespace(NOME="Ruim", ESTILO="", PARAMS={}, GRADE={}, Trader=Quebra)
         with tempfile.TemporaryDirectory() as raiz:
-            estado = self.ciclo({"EURUSD": [ruim, rafa_rompimento], "BTCUSDT": [rafa_rompimento]}, raiz)
+            estado = self.ciclo({"EURUSD": [RUIM, rafa_rompimento], "BTCUSDT": [rafa_rompimento]}, raiz)
             self.assertTrue(os.path.isfile(os.path.join(raiz, "estado", "firma.json")))
         self.assertIn("EURUSD · Ruim: erro no backtest: ZeroDivisionError: bug do trader", estado["pendencias"])
         self.assertEqual([t["nome"] for t in estado["salas"]["EURUSD"]["traders"]], ["Rafa Rompimento"])
         self.assertEqual(estado["salas"]["BTCUSDT"]["status"], "ok")
+
+    def test_sala_em_que_todos_os_traders_quebram_vira_sem_dados(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            estado = self.ciclo({"EURUSD": [RUIM]}, raiz)
+        sala = estado["salas"]["EURUSD"]
+        self.assertEqual((sala["status"], sala["traders"]), ("sem_dados", []))
+        self.assertEqual(sala["motivo"], "todos os traders falharam: Ruim: ZeroDivisionError: bug do trader")
+        self.assertIn("EURUSD: todos os traders falharam: Ruim: ZeroDivisionError: bug do trader", estado["pendencias"])
 
     def test_sala_que_quebra_vira_sem_dados(self):
         with tempfile.TemporaryDirectory() as raiz, \
@@ -291,6 +304,29 @@ class TestRelatorio(unittest.TestCase):
                         self.assertNotIn(cru, texto, a)
         self.assertEqual(relatorio.slug("Vera VWAP"), "vera-vwap")
         self.assertEqual(relatorio.slug("Caio Contrafluxo · ação"), "caio-contrafluxo-acao")
+
+
+    def test_precos_com_as_casas_do_tick_e_premissa_do_cambio(self):
+        t = {"nome": "Rafa Rompimento", "estilo": "", "status": "experiencia", "parametros": {}, "overfit": False,
+             "treino": placar(10.0, 5, 1.1), "prova": placar(-5.0, 3, 0.9), "equity": [], "diario": [], "decisao": "x"}
+        estado = {"gerado_em": "2026-10-25T00:30:00", "dia": "2026-10-25", "premissas": {"usd_brl": 5.4, "ativos": {
+                      "WDO": {"tick": 0.5, "ponto_rs": 10}, "WIN": {"tick": 5, "ponto_rs": 0.2},
+                      "EURUSD": {"tick": 0.00001, "ponto_rs": 5400}, "BTCUSDT": {"tick": 0.01, "ponto_rs": 0.0054}}},
+                  "salas": {"BTCUSDT": {"status": "ok", "motivo": "", "traders": [t]}}, "ranking": [], "pendencias": []}
+        ops = {("BTCUSDT", "Rafa Rompimento"): [{"entrada_t": "2026-10-24T10:00:00", "saida_t": "2026-10-24T10:30:00",
+                                                 "lado": "compra", "contratos": 1, "entrada": 111856.93, "saida": 111900.0,
+                                                 "resultado_rs": 0.2, "motivo_saida": "alvo", "setup": "rompimento"}]}
+        premissa = "ponto_rs fixo no config: EURUSD 5400 R$/1,0 · BTCUSDT 0,0054 R$/1,0 (câmbio de referência 5,40)"
+        with tempfile.TemporaryDirectory() as pasta:
+            relatorio.escrever(estado, ops, pasta)
+            textos = {}
+            for a in ("btcusdt-rafa-rompimento.html", "gerente.html", "briefing.md"):
+                with open(os.path.join(pasta, a), encoding="utf-8") as f:
+                    textos[a] = f.read()
+        self.assertIn("<td>111856.93</td><td>111900.00</td>", textos["btcusdt-rafa-rompimento.html"])  # :g dava 111857
+        for a, texto in textos.items():
+            self.assertIn(premissa, texto, a)
+            self.assertNotIn("USD/BRL", texto, a)
 
 
 class TestMotorParaOGerente(unittest.TestCase):

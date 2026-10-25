@@ -39,6 +39,19 @@
 <div id="acao" hidden></div>
 <div id="voltar" hidden><div>clique para voltar<small>V volta para a câmera de cima</small></div></div>
 
-<script type="module" src="/web/firma.js"></script>
+<script>
+  // sem o primeiro quadro do 3D em 8 s (CDN do Three.js fora de alcance ou WebGL desligado), avisa em vez de
+  // ficar em "carregando a firma…"; a firma.js marca window.firmaPronta no primeiro quadro
+  function semTresD() {
+    if (window.firmaPronta) return;
+    document.getElementById("ciclo").textContent = "3D indisponível";
+    const aviso = document.getElementById("aviso");
+    aviso.innerHTML = 'Não consegui carregar o 3D (sem internet para o CDN ou WebGL desligado). ' +
+      'Recarregue a página ou abra a <a href="/">Sala de operações</a>.';
+    aviso.hidden = false;
+  }
+  setTimeout(semTresD, 8000);
+</script>
+<script type="module" src="/web/firma.js" onerror="semTresD()"></script>
 </body>
 </html>

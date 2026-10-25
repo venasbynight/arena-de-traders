@@ -49,6 +49,11 @@ def no_tick(preco, tick):
     return abs(preco / tick - round(preco / tick)) < 1e-6
 
 
+def decimais_do_tick(tick):
+    """Casas decimais do tick (0,5 → 1; 5 → 0; 0,00001 → 5; 0,01 → 2); cópia do size.decimais_do_tick."""
+    return next((d for d in range(10) if round(tick, d) == tick), 10)
+
+
 def hhmm(texto):
     return datetime.strptime(texto, "%H:%M").time()
 
@@ -139,7 +144,7 @@ def checar(ordens, cfg, dia, agora):
             risco_pts = (o["entrada"] - o["stop"]) * sinal
             ganho_pts = (o["alvo"] - o["entrada"]) * sinal
             perda = o["contratos"] * (risco_pts * spec["ponto_rs"] + 2 * spec["custo_por_contrato"])
-            info = {"risco_pts": risco_pts, "perda_max_rs": round(perda, 2)}
+            info = {"risco_pts": risco_pts, "perda_max_rs": round(perda, 2), "tick": spec["tick"]}
             if risco_pts <= 0:
                 motivos.append("stop do lado errado da entrada")
             elif ganho_pts <= 0:
@@ -192,7 +197,8 @@ def relatorio(resultados, cfg, agora):
         linhas.append(f"{'PASS ' if r['ok'] else 'BLOCK'} #{r['n']} {o.get('lado')} "
                       f"{o.get('contratos')} {o.get('simbolo')}, {tipo}")
         if "perda_max_rs" in i:
-            linhas.append(f"          entrada {o['entrada']:g}, stop {o['stop']:g}, alvo {o['alvo']:g}: "
+            d = decimais_do_tick(i["tick"])
+            linhas.append(f"          entrada {o['entrada']:.{d}f}, stop {o['stop']:.{d}f}, alvo {o['alvo']:.{d}f}: "
                           f"{i['risco_pts']:g} pontos de risco")
             linhas.append(f"          perda máxima R$ {i['perda_max_rs']:.2f} "
                           f"(limite R$ {cfg['max_perda_por_trade']:.2f}), risco:retorno {i.get('rr', '-')} "
@@ -266,6 +272,9 @@ def teste():
     assert r["ok"] and r["info"]["perda_max_rs"] == 3.7, r  # 5 x (100 x 0,0054 + 0,20)
     assert checar([btc], cfg, None, datetime(2026, 11, 20, 10, 15, tzinfo=BRT))[0]["ok"]  # feriado da B3 não vale
     bloqueia([dict(btc, entrada=65000.123)], "fora do tick", agora=domingo)
+    # preços do relatório com as casas do tick (o :g escrevia 65000.1)
+    assert "entrada 65000.12, stop 64900.12, alvo 65200.12" in relatorio([r], cfg, domingo), relatorio([r], cfg, domingo)
+    assert [decimais_do_tick(t) for t in (0.5, 5.0, 0.00001, 0.01)] == [1, 0, 5, 2]
     bloqueia([btc], "antes de 00:05", agora=domingo.replace(hour=0, minute=0))
     bloqueia([btc], "depois de 23:30", agora=domingo.replace(hour=23, minute=45))
     eur = {"simbolo": "EURUSD", "ativo": "EURUSD", "lado": "compra", "contratos": 5, "tipo": "limite",

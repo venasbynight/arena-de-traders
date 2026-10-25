@@ -788,7 +788,7 @@ function rotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
     g.strokeStyle = corBorda; g.lineWidth = 4; g.stroke();
     g.textAlign = "center";
     g.fillStyle = "#e6edf3"; g.font = "600 46px Segoe UI, sans-serif"; g.fillText(titulo, W / 2, 62);
-    g.fillStyle = corSub; g.font = "36px Segoe UI, sans-serif"; g.fillText(sub, W / 2, 108);
+    g.fillStyle = corSub; g.font = "36px Segoe UI, sans-serif"; g.fillText(sub, W / 2, 108, W - 48);  // texto longo encolhe, não corta
   });
   tex.anisotropy = 1;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, toneMapped: false }));
@@ -1069,7 +1069,7 @@ function aplicarEstado(estado) {
       b.userData.alvo = t;
       const [nomeSt, corSt] = STATUS[t.status] || [t.status, "#8b98a5"];
       const dia = resultadoDia(t);
-      const r = dinamico(rotulo(t.nome, `${nomeSt} · hoje ${brl(dia)}`, dia >= 0 ? "#26a69a" : "#ef5350", corSt), est.grupo, true);
+      const r = dinamico(rotulo(t.nome, `${nomeSt} · último pregão ${brl(dia)}`, dia >= 0 ? "#26a69a" : "#ef5350", corSt), est.grupo, true);
       r.position.set(0, 1.98, -0.78);
       Object.assign(r.userData, { alvo: t, boneco: b });
       if (alvoAntes?.nome === t.nome && alvoAntes?.sala === ativo) selecionar(b);
@@ -1117,12 +1117,15 @@ function linkRelatorio(nome, texto) {
 function abrirPainel(alvo) {
   const corpo = $("#painel-corpo");
   corpo.innerHTML = alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado) : htmlTrader(alvo);
-  // o V continua alternando a câmera com o foco dentro do relatório embutido (mesma origem)
-  corpo.querySelector("iframe")?.addEventListener("load", e => { try { e.target.contentWindow.addEventListener("keydown", teclaModo); } catch {} });
+  // o V (câmera) e o ESC (fechar) continuam valendo com o foco dentro do relatório embutido (mesma origem)
+  corpo.querySelector("iframe")?.addEventListener("load", e => {
+    try { for (const f of [teclaModo, teclaEsc]) e.target.contentWindow.addEventListener("keydown", f); } catch {}
+  });
   painelAlvo = alvo;
   $("#painel").classList.add("aberto");
 }
 function fecharPainel() {
+  document.activeElement?.blur?.();   // o foco sai do relatório embutido: senão o WASD continua indo para ele
   $("#painel").classList.remove("aberto");
   painelAlvo = null;
   selecionar(null);
@@ -1152,7 +1155,7 @@ function htmlTrader(t) {
       ${linha("Pior dia", x => din(x.pior_dia))}
     </table>
     <h3>Parâmetros</h3><div class="mut">${params}</div>
-    <h3>Diário do dia</h3><div class="diario">${(t.diario || []).map(l => `<div>${esc(l)}</div>`).join("") || '<div class="mut">sem anotações</div>'}</div>
+    <h3>Diário do último pregão</h3><div class="diario">${(t.diario || []).map(l => `<div>${esc(l)}</div>`).join("") || '<div class="mut">sem anotações</div>'}</div>
     <div class="links">
       ${linkRelatorio(`${t.sala.toLowerCase()}-${slug(t.nome)}.html`, "Relatório do dia")}
       <a href="/?ativo=${encodeURIComponent(t.sala)}">Abrir na sala de operações (${esc(t.sala)}) →</a>
@@ -1196,7 +1199,8 @@ function htmlRelatorios(estado) {
 
 $("#fechar").onclick = fecharPainel;
 // em primeira pessoa o ESC só solta o mouse (o painel continua aberto e usável); lá ele fecha no ×
-addEventListener("keydown", e => { if (e.key === "Escape" && firma.modo !== "fp") fecharPainel(); });
+function teclaEsc(e) { if (e.key === "Escape" && firma.modo !== "fp") fecharPainel(); }
+addEventListener("keydown", teclaEsc);
 
 // ---------------------------------------------------------------- câmera de cima
 export const controles = new OrbitControls(camera, renderer.domElement);
@@ -1502,4 +1506,5 @@ renderer.setAnimationLoop(() => {
   for (const s of rotulos) { s.scale.set(s.userData.base * f, s.userData.base * f * 150 / 512, 1); s.material.depthTest = fp; }
   if (!fp && ponteiroMudou && ultimoEvento) { ponteiroMudou = false; marcarSobre(alvoSob(ultimoEvento)); }
   renderer.render(cena, camera);
+  window.firmaPronta = true;   // o aviso de "não consegui carregar o 3D" da firma.html não aparece mais
 });

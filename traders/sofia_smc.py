@@ -1,5 +1,6 @@
 """Sofia SMC: tendência no 60 minutos, entrada no meio de order block ou FVG do 5 minutos."""
 import estudos
+from motor import preco
 from tipos import Decisao, Plano
 
 NOME = "Sofia SMC"
@@ -53,9 +54,10 @@ class Trader:
                 abaixo = [p.preco for p in pivos if p.tipo == "fundo" and p.preco < entrada]
                 alvo = max(abaixo) if abaixo else None
             if alvo is None:
-                d.pensamento.append(f"{rotulo} {z.fundo:g}–{z.topo:g}: sem alvo à frente; não entro")
+                d.pensamento.append(f"{rotulo} {preco(z.fundo, tick)}–{preco(z.topo, tick)}: sem alvo à frente; não entro")
                 continue
             d.planos.append(Plano(lado, "limite", entrada, stop, alvo, f"smc-{z.tipo}"))
             d.desenhos.append({"tipo": "linha", "preco": alvo, "rotulo": "liquidez · alvo"})
-            d.pensamento.append(f"{lado} limitada em {entrada:g} no meio do {rotulo}; stop {stop:g}, alvo {alvo:g}")
+            d.pensamento.append(f"{lado} limitada em {preco(entrada, tick)} no meio do {rotulo}; "
+                                f"stop {preco(stop, tick)}, alvo {preco(alvo, tick)}")
         return d

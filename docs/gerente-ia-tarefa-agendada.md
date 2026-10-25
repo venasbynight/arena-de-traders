@@ -7,7 +7,8 @@ arquivo docs/gerente-ia-tarefa-agendada.md" — ou crie em Configurações >
 Tarefas agendadas com o texto abaixo.
 
 - **Quando:** todo dia às 20:00 (horário de Brasília), depois do ciclo do
-  gerente em código, que roda às 19:30 enquanto `servidor.py` estiver aberto.
+  gerente em código, que roda logo após a meia-noite (e às 19h30, se faltou
+  dado) enquanto `servidor.py` estiver aberto.
 - **Custo:** uma rodada curta por dia (ler um briefing e escrever ≤ 40 linhas).
 
 ## Prompt

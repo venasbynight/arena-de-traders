@@ -47,6 +47,11 @@ def no_tick(preco, tick):
     return abs(preco / tick - round(preco / tick)) < 1e-6
 
 
+def decimais_do_tick(tick):
+    """Casas decimais do tick (0,5 → 1; 5 → 0; 0,00001 → 5; 0,01 → 2): o preço escrito sem ruído nem corte."""
+    return next((d for d in range(10) if round(tick, d) == tick), 10)
+
+
 def especificacao(ativo, cfg):
     """Especificação do ativo: ponto_rs, tick, margem, custo e sessão. WDO/WIN têm padrão em ATIVOS;
     o config sobrescreve. Recusa o ativo que o config não traz."""
@@ -206,6 +211,8 @@ def teste():
     assert all(no_tick(round(p / 0.01) * 0.01, 0.01) for p in range(60000, 120000, 7))
     assert no_tick(111856.93, 0.01)  # erro de 1,9e-9 em tick: reprovava com a tolerância antiga de 1e-9
     assert not no_tick(111856.935, 0.01)  # meio tick continua fora
+    # preços escritos com as casas do tick (o :g cortava o BTC em 6 algarismos: 111856.93 virava 111857)
+    assert [decimais_do_tick(t) for t in (0.5, 5.0, 0.00001, 0.01)] == [1, 0, 5, 2]
     print("trader-budget: autoteste ok")
 
 
@@ -227,7 +234,8 @@ def main(argv=None):
 
     hoje = agora_brt(a.now).date().isoformat()
     try:
-        ordem, limites, decide = dimensionar(ler_json(a.plan), ler_json(a.config), hoje, a.limite)
+        cfg = ler_json(a.config)
+        ordem, limites, decide = dimensionar(ler_json(a.plan), cfg, hoje, a.limite)
     except (Recusa, KeyError, ValueError) as e:
         print(f"SEM ORDEM: {e}")
         return 1
@@ -240,9 +248,9 @@ def main(argv=None):
         return 0
     for nome, n in limites.items():
         print(f"  {nome:<24} {n:>3} contrato(s){'  <- decide' if nome == decide else ''}")
-    p = ordem["plano"]
+    p, d = ordem["plano"], decimais_do_tick(especificacao(ordem["ativo"], cfg)["tick"])
     print(f"{ordem['lado']} {ordem['contratos']} {ordem['simbolo']} ({ordem['tipo']}) "
-          f"entrada {ordem['entrada']:g}, stop {ordem['stop']:g}, alvo {ordem['alvo']:g}")
+          f"entrada {ordem['entrada']:.{d}f}, stop {ordem['stop']:.{d}f}, alvo {ordem['alvo']:.{d}f}")
     print(f"perda máxima no stop: R$ {p['perda_max_rs']:.2f}, risco:retorno {p['rr']}")
     print("Stop é uma ordem, não uma promessa: em mercado rápido pode executar pior.")
     if a.write:

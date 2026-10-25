@@ -73,6 +73,11 @@ class TestRafa(unittest.TestCase):
         self.assertEqual(d.planos, [Plano("compra", "mercado", 102.5, 100.0, 105.5, "rompimento")])
         self.assertEqual(self.rafa().decidir(dia(101.5), [], []).planos, [])  # 3 ticks
 
+    def test_pensamento_com_as_casas_do_tick(self):
+        faixa = velas([(111850.0, 111856.93, 111840.1, 111850.0)] * 3)
+        d = rafa_rompimento.Trader("BTCUSDT", 0.01).decidir(faixa, [], [])
+        self.assertEqual(d.pensamento[0], "faixa dos 15 primeiros minutos: 111840.10 a 111856.93")  # :g dava 111857
+
     def test_sem_faixa_antes_de_15_min(self):
         d = self.rafa().decidir(FAIXA[:2], [], [])
         self.assertEqual((d.planos, d.desenhos), ([], []))

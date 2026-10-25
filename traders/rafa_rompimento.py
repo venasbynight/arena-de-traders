@@ -1,4 +1,5 @@
 """Rafa Rompimento: faixa dos primeiros 15 minutos do dia; entra a mercado no fechamento além dela."""
+from motor import preco
 from tipos import Decisao, Plano
 from traders.sofia_smc import arredondar_tick
 
@@ -26,7 +27,7 @@ class Trader:
         altura = topo - fundo
         d = Decisao(desenhos=[{"tipo": "zona", "topo": topo, "fundo": fundo, "de": faixa[0].t.isoformat(),
                                "rotulo": f"faixa {minutos} min", "lado": "neutro"}],
-                    pensamento=[f"faixa dos {minutos} primeiros minutos: {fundo:g} a {topo:g}"])
+                    pensamento=[f"faixa dos {minutos} primeiros minutos: {preco(fundo, tick)} a {preco(topo, tick)}"])
         ticks = round(altura / tick)
         if ticks < self.p["faixa_min_ticks"]:
             d.pensamento.append(f"faixa de {ticks} ticks é estreita (mínimo {self.p['faixa_min_ticks']}); não opero hoje")
@@ -49,5 +50,6 @@ class Trader:
             alvo = arredondar_tick(c + sinal * self.p["alvo_x"] * altura, tick)
             # entrada = fechamento do sinal: só referência de tamanho e risco; a mercado enche na abertura seguinte
             d.planos.append(Plano(lado, "mercado", arredondar_tick(c, tick), stop, alvo, "rompimento"))
-            d.pensamento.append(f"fechou além da {nome} da faixa ({borda:g}): {lado} a mercado; stop {stop:g}, alvo {alvo:g}")
+            d.pensamento.append(f"fechou além da {nome} da faixa ({preco(borda, tick)}): {lado} a mercado; "
+                                f"stop {preco(stop, tick)}, alvo {preco(alvo, tick)}")
         return d
