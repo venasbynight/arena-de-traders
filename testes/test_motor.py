@@ -137,6 +137,15 @@ class TestConta(unittest.TestCase):
         c.executar_candle(vela(2, 5425, 5426, 5424, 5425), False)
         self.assertEqual((c.operacoes[-1]["saida"], c.operacoes[-1]["motivo_saida"]), (5424.5, "stop"))
 
+    def test_saida_por_sinal_com_lado_so_vale_para_esse_lado(self):
+        c = conta_comprada()
+        c.colocar([], vela(2, 0, 0, 0, 0).t, "WDO$", sair="venda")  # sinal para quem está vendido: fico
+        c.executar_candle(vela(2, 5433, 5434, 5432, 5433), False)
+        self.assertIsNotNone(c.posicao)
+        c.colocar([], vela(3, 0, 0, 0, 0).t, "WDO$", sair="compra")
+        c.executar_candle(vela(3, 5433, 5434, 5432, 5433), False)
+        self.assertEqual(c.operacoes[-1]["motivo_saida"], "sinal")
+
     def test_sinal_de_saida_sem_posicao_nao_faz_nada(self):
         c = motor.Conta("Teste", "WDO", CFG)
         c.colocar([], T, "WDO$", sair=True)

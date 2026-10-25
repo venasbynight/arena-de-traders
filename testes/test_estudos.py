@@ -122,6 +122,18 @@ class TestIndicadores(unittest.TestCase):
         adx, mais, menos = estudos.adx(hlc(*[(10, 10, 10)] * 6), 2)
         self.assertEqual((adx[-1], mais[-1], menos[-1]), (0.0, 0.0, 0.0))
 
+    def test_trix_ema_tripla_variacao_percentual(self):
+        # n = 2 (α = 2/3), cada EMA começa na média dos 2 primeiros valores da anterior; contas à mão:
+        # EMA1 2, 2, 14/3, 38/9, 182/27; EMA2 2, 34/9, 110/27, 158/27; EMA3 26/9, 298/81, 1246/243
+        trix = estudos.trix([1, 3, 2, 6, 4, 8], 2)
+        self.assertEqual(trix[:4], [None] * 4)
+        self.assertAlmostEqual(trix[4], 100 * 64 / 234)  # 298/81 contra 26/9
+        self.assertAlmostEqual(trix[5], 100 * 352 / 894)  # 1246/243 contra 298/81
+
+    def test_trix_9_comeca_no_candle_25(self):
+        trix = estudos.trix([10.0] * 30)
+        self.assertEqual((trix[24], trix[25], trix[-1]), (None, 0.0, 0.0))
+
 
 if __name__ == "__main__":
     unittest.main()

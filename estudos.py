@@ -124,3 +124,18 @@ def adx(candles, n=8):
         elif len(dxs) > n:
             adx_[i] = (adx_[i - 1] * (n - 1) + dxs[-1]) / n
     return adx_, mais, menos
+
+
+def ema(valores, n):
+    """Média exponencial (α = 2/(n+1)) que começa na média dos n primeiros valores; None antes e nos None."""
+    out, ini = [None] * len(valores), next((i for i, v in enumerate(valores) if v is not None), len(valores))
+    for i in range(ini + n - 1, len(valores)):
+        out[i] = (sum(valores[ini:i + 1]) / n if i == ini + n - 1
+                  else out[i - 1] + 2 / (n + 1) * (valores[i] - out[i - 1]))
+    return out
+
+
+def trix(fechamentos, n=9):
+    """TRIX: variação % de um candle da EMA tripla do fechamento. Vale a partir do candle 3(n − 1) + 1."""
+    e3 = ema(ema(ema(fechamentos, n), n), n)
+    return [None if a is None or b is None else 100 * (b - a) / a for a, b in zip([None] + e3, e3)]

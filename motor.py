@@ -91,13 +91,13 @@ class Conta:
         """Troca as ordens pendentes pelos planos que passarem no trader-budget e no trader-risk.
 
         Ordem stop ainda na validade fica (vence sozinha em executar_candle). `sair` com posição aberta = sai a
-        mercado na abertura do próximo candle.
+        mercado na abertura do próximo candle; "compra" ou "venda" = só se a posição for desse lado.
         """
         self._novo_dia(agora.date())
-        self.sair = bool(sair and self.posicao)
+        self.sair = self.posicao is not None and sair in (True, self.posicao["lado"])
         if self.posicao:
             return []
-        # ponytail: stops vivos somam aos planos novos; o Didi nunca manda outro antes de o anterior vencer
+        # ponytail: stops vivos somam aos planos novos; quem usar ordem stop não manda outra antes de a anterior vencer
         self.pendentes, eventos = [o for o in self.pendentes if o["tipo"] == "stop"], []
         cfg = {**self.cfg, "capital": self.saldo}  # margem e tamanho pelo saldo atual, não pelo inicial
         for p in planos:

@@ -47,4 +47,4 @@ class Decisao:
     planos: list = field(default_factory=list)
     desenhos: list = field(default_factory=list)
     pensamento: list = field(default_factory=list)
-    sair: bool = False  # fecha a posição aberta na abertura do candle seguinte
+    sair: bool | str = False  # True fecha a posição aberta na abertura seguinte; "compra"/"venda": só se for dela
