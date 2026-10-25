@@ -118,18 +118,21 @@ class TestSofia(unittest.TestCase):
 
 
 class TestSalas(unittest.TestCase):
-    def test_sofia_e_didi_negociam(self):
-        self.assertEqual(traders.TODOS, [sofia_smc, didi_agulhada])
+    def test_sofia_e_didi_negociam_em_todas_as_salas(self):
         self.assertEqual(set(traders.SALAS), {"WDO", "WIN", "EURUSD", "BTCUSDT"})
         for sala in traders.SALAS.values():
-            self.assertEqual(sala, traders.TODOS)
+            self.assertEqual(sala[:2], [sofia_smc, didi_agulhada])
 
     def test_contrato_dos_traders(self):
         for m in traders.TODOS + [ALFA, BETA]:  # os robôs de teste seguem o mesmo contrato dos reais
             self.assertTrue(m.NOME and m.ESTILO and m.PARAMS and m.GRADE)
             self.assertTrue(set(m.GRADE) <= set(m.PARAMS))
             for chave, valores in m.GRADE.items():
-                self.assertIn(m.PARAMS[chave], valores)  # o padrão faz parte do que o gerente testa
+                if isinstance(valores, dict):  # um valor por ativo (limite de delta do Caio)
+                    for ativo, v in valores.items():
+                        self.assertIn(m.PARAMS[chave][ativo], v)
+                else:
+                    self.assertIn(m.PARAMS[chave], valores)  # o padrão faz parte do que o gerente testa
             m.Trader("WDO", 0.5, None, {"inicio": "09:05"})  # sessao opcional
 
 

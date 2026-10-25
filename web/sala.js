@@ -88,7 +88,7 @@ function criarCard(nome, t, k) {
   const tr = {nome, t, el, chart, serie, canvas: box.querySelector("canvas"), linhas: [], mostrados: 0};
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => desenharZonas(tr));
   new ResizeObserver(() => desenharZonas(tr)).observe(box);
-  if (t.indicadores) montarDidi(tr, precisao);
+  if (t.indicadores?.delta) montarDelta(tr); else if (t.indicadores) montarDidi(tr, precisao);
   return tr;
 }
 
@@ -108,6 +108,7 @@ function irPara(i) {
     tr.serie.setData(arena.candles.slice(0, arena.cursor).map(({iso, ...c}) => c));
     tr.mostrados = arena.cursor;
     if (tr.didi) revelarDidi(tr, 0);
+    if (tr.delta) revelarDidi(tr, 0, tr.delta);
     if (arena.cursor) tr.chart.timeScale().scrollToRealTime();
   }
   atualizar();
@@ -121,6 +122,7 @@ function avancar(n) {
   arena.traders.forEach(tr => tr.mostrados = alvo);
   arena.cursor = alvo;
   arena.traders.forEach(tr => tr.didi && revelarDidi(tr, antes));
+  arena.traders.forEach(tr => tr.delta && revelarDidi(tr, antes, tr.delta));
   atualizar();
   if (arena.cursor >= arena.candles.length) { pausar(); arena.mostrarResultado(); }
 }
@@ -160,6 +162,7 @@ function atualizar() {
     marcadores(tr, s);
     tr.desenhos = s.desenhos; desenharZonas(tr);
     if (tr.didi) atualizarDidi(tr, s);
+    if (tr.delta) legendaDelta(tr);
     linhasPlacar.push(`<tr><td>${tr.nome}</td><td class="${s.resultado >= 0 ? "up" : "dn"}">${brl(s.resultado)}</td><td>${s.saidas.length}</td><td>${s.saidas.length ? Math.round(100 * s.ganhos / s.saidas.length) + "%" : "–"}</td><td class="${s.posicao ? "acc" : s.stopsHoje >= 3 ? "warn" : "mut"}">${agora}</td></tr>`);
     const vistos = new Set();  // o mesmo bloqueio se repete a cada candle: mostra só o primeiro do dia
     for (const e of s.ev) {
@@ -308,9 +311,11 @@ function legendasDidi(tr, time) {
 }
 
 // revela os indicadores até o cursor do replay; `inicio` é o primeiro candle novo (0 = refaz tudo)
-function revelarDidi(tr, inicio) {
-  const ind = tr.t.indicadores, D = tr.didi, n = arena.cursor;
-  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: seg(ind.t[j]), value: ind[chave][j]};
+// D: os painéis do Didi ou o do delta do Caio (mesma forma: series, vazios, j)
+function revelarDidi(tr, inicio, D = tr.didi) {
+  const ind = tr.t.indicadores, n = arena.cursor;
+  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: seg(ind.t[j]), value: ind[chave][j],
+    ...(chave === "delta" && {color: ind[chave][j] >= 0 ? COR.mais : COR.menos})};
   if (inicio === 0) {
     const vazio = arena.candles.slice(0, n).map(c => ({time: c.time}));
     D.vazios.forEach(s => s.setData(vazio));
@@ -329,6 +334,40 @@ function atualizarDidi(tr, s) {
     color: a.lado === "compra" ? "#26a69a" : "#ef5350", shape: a.lado === "compra" ? "arrowUp" : "arrowDown", text: "agulhada"}));
   tr.didi.curta.setMarkers(m.sort((a, b) => a.time - b.time));
   legendasDidi(tr, null);
+}
+
+// Caio: histograma do delta de cada candle num painel embaixo (verde comprador, vermelho vendedor) com as linhas
+// ±limite; mesmo eixo de tempo do gráfico principal. Os valores vêm do Python (t.indicadores.delta e .limite).
+function montarDelta(tr) {
+  tr.el.classList.add("didi");  // o card alto com painéis embaixo é o mesmo do Didi
+  const box = document.createElement("div"); box.className = "painel"; tr.el.appendChild(box);
+  const chart = LightweightCharts.createChart(box, OPCOES);
+  chart.priceScale("right").applyOptions({scaleMargins: {top: 0.2, bottom: 0.05}});  // espaço para a legenda
+  const charts = [tr.chart, chart];
+  charts.forEach((c, i) => c.applyOptions({rightPriceScale: {minimumWidth: 72}, timeScale: {visible: i === 1},
+    layout: {attributionLogo: i === 0}}));
+  const lim = tr.t.indicadores.limite.find(v => v != null);
+  const hist = chart.addHistogramSeries({priceFormat: {type: "volume"}, priceLineVisible: false, lastValueVisible: false,
+    // a escala sempre mostra as linhas do limite, mesmo quando o delta da tela não chega nelas
+    autoscaleInfoProvider: base => { const r = base(); if (r && lim != null) {
+      r.priceRange.maxValue = Math.max(r.priceRange.maxValue, lim); r.priceRange.minValue = Math.min(r.priceRange.minValue, -lim); }
+      return r; }});
+  if (lim != null) for (const p of [lim, -lim])
+    hist.createPriceLine({price: p, color: "#f0b429", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: p > 0 ? "+limite" : "−limite"});
+  const legenda = document.createElement("div"); legenda.className = "legenda"; box.appendChild(legenda);
+  tr.delta = {series: [["delta", hist]], vazios: [chart.addLineSeries({visible: false})], j: 0, legenda, lim};
+  let sinc = false;
+  charts.forEach((c, i) => c.timeScale().subscribeVisibleLogicalRangeChange(r => {
+    if (sinc || !r) return;
+    sinc = true; charts[1 - i].timeScale().setVisibleLogicalRange(r); sinc = false;
+  }));
+}
+
+function legendaDelta(tr) {
+  const D = tr.delta, v = D.j ? tr.t.indicadores.delta[D.j - 1] : null;
+  const fmt = x => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toLocaleString("pt-BR");
+  D.legenda.innerHTML = `<span class="mut">Delta 5 min · limite ±${D.lim == null ? "–" : D.lim.toLocaleString("pt-BR")}</span>`
+    + (v == null ? `<span class="mut">sem delta neste dia</span>` : `<span style="color:${v >= 0 ? COR.mais : COR.menos}">último <b>${fmt(v)}</b></span>`);
 }
 
 // reprodução

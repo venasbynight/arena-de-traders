@@ -11,7 +11,7 @@ class Candle:
     l: float
     c: float
     v: float = 0.0
-    delta: float = 0.0
+    delta: float | None = None  # agressão de compra − venda (ticks do MT5); None = sem ticks, não é zero
 
 
 @dataclass
