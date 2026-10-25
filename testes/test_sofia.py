@@ -87,6 +87,26 @@ class TestSofia(unittest.TestCase):
         d = self.wdo().decidir(hoje, ontem, tendencia_60("baixa"))
         self.assertEqual(d.planos, [])
 
+    def test_btc_fvg_de_25_usd_opera_e_de_10_nao(self):
+        # ontem deslocado para o nível do BTC: fundo em 64900 (alvo da venda)
+        ontem = [Candle(k.t, k.o + 59480, k.h + 59480, k.l + 59480, k.c + 59480) for k in ONTEM_WDO]
+
+        def hoje(maxima_do_3o):  # FVG de baixa entre a mínima do 1º candle (65030) e a máxima do 3º
+            return velas(HOJE, [(65040, 65045, 65030, 65035), (65035, 65035, 65010, 65012),
+                                (maxima_do_3o - 2, maxima_do_3o, 64990, 64995)])
+
+        btc = sofia_smc.Trader("BTCUSDT", 0.01)
+        d = btc.decidir(hoje(65005), ontem, tendencia_60("baixa"))
+        self.assertEqual(len(d.planos), 1)
+        self.assertEqual((d.planos[0].lado, d.planos[0].alvo), ("venda", 64900.0))
+        self.assertAlmostEqual(d.planos[0].entrada, 65017.5)
+        self.assertEqual(btc.decidir(hoje(65020), ontem, tendencia_60("baixa")).planos, [])
+
+    def test_ativo_sem_fvg_minimo_usa_dois_ticks(self):
+        # o FVG de 3 pontos do WDO passa de 2 ticks de 0,5 = 1 ponto; um ativo desconhecido não levanta erro
+        d = sofia_smc.Trader("XYZ", 0.5).decidir(HOJE_FVG_BAIXA, ONTEM_WDO, tendencia_60("baixa"))
+        self.assertEqual(len(d.planos), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

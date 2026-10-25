@@ -30,17 +30,22 @@ class TestRafa(unittest.TestCase):
 
     def test_rompe_maxima_compra_a_mercado(self):
         d = self.rafa().decidir(FAIXA + velas([FECHA_ACIMA], HOJE + timedelta(minutes=15)), [], [])
-        self.assertEqual(d.planos, [Plano("compra", "mercado", 104.5, 100.0, 108.5, "rompimento")])
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 104.5, 100.0, 110.5, "rompimento")])
         self.assertEqual(d.desenhos, [{"tipo": "zona", "topo": 104, "fundo": 100, "de": HOJE.isoformat(),
                                        "rotulo": "faixa 15 min", "lado": "neutro"}])
 
     def test_rompe_minima_vende_a_mercado(self):
         d = self.rafa().decidir(FAIXA + velas([FECHA_ABAIXO], HOJE + timedelta(minutes=15)), [], [])
-        self.assertEqual(d.planos, [Plano("venda", "mercado", 99.5, 104.0, 95.5, "rompimento")])
+        self.assertEqual(d.planos, [Plano("venda", "mercado", 99.5, 104.0, 93.5, "rompimento")])
 
     def test_alvo_x_dos_params(self):
         d = self.rafa(alvo_x=2.0).decidir(FAIXA + velas([FECHA_ACIMA], HOJE + timedelta(minutes=15)), [], [])
         self.assertEqual(d.planos[0].alvo, 112.5)
+
+    def test_padrao_e_grade_evitam_alvo_x_1(self):
+        # com alvo_x 1.0 o R:R é sempre < 1 (risco passa da altura da faixa), e o rr_minimo de 1.0 recusa tudo
+        self.assertEqual(rafa_rompimento.PARAMS["alvo_x"], 1.5)
+        self.assertNotIn(1.0, rafa_rompimento.GRADE["alvo_x"])
 
     def test_um_por_lado_por_dia(self):
         hoje = FAIXA + velas([FECHA_ACIMA], HOJE + timedelta(minutes=15))
@@ -50,7 +55,7 @@ class TestRafa(unittest.TestCase):
         # o lado da venda continua livre
         hoje += velas([FECHA_ABAIXO], HOJE + timedelta(minutes=25))
         d = self.rafa().decidir(hoje, [], [])
-        self.assertEqual(d.planos, [Plano("venda", "mercado", 99.5, 104.0, 95.5, "rompimento")])
+        self.assertEqual(d.planos, [Plano("venda", "mercado", 99.5, 104.0, 93.5, "rompimento")])
         hoje += velas([(99.5, 99.5, 97, 98)], HOJE + timedelta(minutes=30))
         self.assertEqual(self.rafa().decidir(hoje, [], []).planos, [])
 
@@ -128,6 +133,8 @@ class TestSalas(unittest.TestCase):
         for m in traders.TODOS:
             self.assertTrue(m.NOME and m.ESTILO and m.PARAMS and m.GRADE)
             self.assertTrue(set(m.GRADE) <= set(m.PARAMS))
+            for chave, valores in m.GRADE.items():
+                self.assertIn(m.PARAMS[chave], valores)  # o padrão faz parte do que o gerente testa
             m.Trader("WDO", 0.5, None, {"inicio": "09:05"})  # sessao opcional
 
 

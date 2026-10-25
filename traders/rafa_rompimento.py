@@ -4,8 +4,10 @@ from traders.sofia_smc import arredondar_tick
 
 NOME = "Rafa Rompimento"
 ESTILO = "rompimento da faixa de abertura"
-PARAMS = {"minutos_faixa": 15, "alvo_x": 1.0, "faixa_min_ticks": 4}
-GRADE = {"alvo_x": [1.0, 1.5, 2.0]}
+# alvo_x 1.0 fica de fora: o alvo parte do fechamento, que já está além da borda, então o risco (até o outro
+# lado da faixa) passa da altura e o R:R fica abaixo de 1; com rr_minimo = 1.0 o size.dimensionar recusa sempre
+PARAMS = {"minutos_faixa": 15, "alvo_x": 1.5, "faixa_min_ticks": 4}
+GRADE = {"alvo_x": [1.5, 2.0, 2.5]}
 
 
 class Trader:

@@ -4,7 +4,7 @@ from tipos import Decisao, Plano
 
 NOME = "Sofia SMC"
 ESTILO = "OB/FVG · tendência 60→5"
-PARAMS = {"n": 2, "fvg_min": {"WDO": 1.0, "WIN": 50.0}, "folga_ticks": 2}
+PARAMS = {"n": 2, "fvg_min": {"WDO": 1.0, "WIN": 50.0, "EURUSD": 0.0002, "BTCUSDT": 20.0}, "folga_ticks": 2}
 GRADE = {"folga_ticks": [1, 2, 3]}
 
 
@@ -35,7 +35,7 @@ class Trader:
         d = Decisao(pensamento=[f"tendência do 60: {tend}; só {lado}"])
 
         # zonas só de hoje: vencem no fim do dia
-        zonas = estudos.fvgs(hoje5, self.p["fvg_min"][self.ativo]) + estudos.order_blocks(hoje5, n)
+        zonas = estudos.fvgs(hoje5, self.p["fvg_min"].get(self.ativo, 2 * self.tick)) + estudos.order_blocks(hoje5, n)
         pivos = estudos.pivos(ontem5 + hoje5, n)
         for z in (z for z in zonas if z.lado == tend):
             entrada = arredondar_tick((z.topo + z.fundo) / 2, tick)
