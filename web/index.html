@@ -16,6 +16,15 @@
   <a class="btn prim" href="/firma">Firma</a>
 </header>
 
+<section id="painel">
+  <div id="mercado" class="mercado"></div>
+  <div class="quadro card">
+    <h3><span>Placar da firma · prova do gerente <span id="ciclo"></span></span><a class="lnk" href="/firma">abrir a firma →</a></h3>
+    <table id="quadro"></table>
+    <div id="faltam"></div>
+  </div>
+</section>
+
 <div class="ctrl">
   <label>De <input type="date" id="de"></label>
   <label>até <input type="date" id="ate"></label>
@@ -28,7 +37,7 @@
   <div id="relogio" class="mut">escolha o período e clique em Rodar</div>
 </div>
 
-<main id="grid"></main>
+<main id="grid"><div class="espera"><b>Sala de replay</b><span>escolha o ativo e o período e clique em <b>Rodar</b> para ver os traders operando candle a candle</span><a class="lnk atrib" href="https://www.tradingview.com/" target="_blank" rel="noopener">gráficos: TradingView Lightweight Charts</a></div></main>
 
 <aside>
   <section class="card" style="flex:none">
@@ -44,5 +53,6 @@
 <section id="resultado"></section>
 <script src="/web/sala.js"></script>
 <script src="/web/resultado.js"></script>
+<script src="/web/inicio.js"></script>
 </body>
 </html>

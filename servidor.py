@@ -17,6 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
 import dados
+import estudos
 import gerente
 import motor
 import traders
@@ -28,6 +29,8 @@ ESTADO_FIRMA = os.path.join(RAIZ, "estado", "firma.json")  # escrito pelo gerent
 PARAMETROS = os.path.join(RAIZ, "estado", "parametros.json")  # parâmetros escolhidos pelo gerente
 EXEMPLO_FIRMA = os.path.join(WEB, "firma.exemplo.json")
 RELATORIOS = os.path.join(RAIZ, "relatorios")
+DADOS = os.path.join(RAIZ, "dados")  # cache de candles; a página inicial só lê daqui
+NOMES_ATIVOS = {"WDO": "Mini-dólar", "WIN": "Mini-índice", "EURUSD": "Euro / Dólar", "BTCUSDT": "Bitcoin"}
 LOCK_ATIVIDADE = threading.Lock()
 # o que o gerente faz agora; escrito pela thread do ciclo, lido pelas requisições (sempre com o lock)
 ATIVIDADE = {"estado": "ocioso", "sala": None, "trader": None, "desde": ""}
@@ -90,6 +93,11 @@ class Arena(BaseHTTPRequestHandler):
             return self._enviar(200, [{"nome": m.NOME, "estilo": m.ESTILO} for m in traders.TODOS])
         if url.path == "/api/firma":
             return self._firma()
+        if url.path == "/api/painel":
+            try:
+                return self._enviar(200, painel())
+            except Exception as e:  # nunca deixar a página inicial esperando sem resposta
+                return self._enviar(500, {"erro": f"erro inesperado no painel: {e!r}"})
         if url.path == "/api/atividade":
             return self._enviar(200, atividade())
         if url.path == "/api/backtest":
@@ -142,6 +150,55 @@ class Arena(BaseHTTPRequestHandler):
         except Exception as e:  # nunca deixar a tela esperando sem resposta
             return self._enviar(500, {"erro": f"erro inesperado no backtest: {e!r}"})
         self._enviar(200, resultado)
+
+
+@functools.lru_cache(maxsize=8)
+def _mercado_do_cache(caminho, versao):
+    """Cartão de mercado de um ativo a partir do cache; `versao` (mtime, tamanho) renova a memória quando o cache muda."""
+    candles = dados.ler_csv(caminho)
+    if not candles:
+        raise dados.ErroDados(f"cache vazio em {caminho}")
+    dias = list(dados.por_dia(candles).values())
+    ultimo, anterior = dias[-1], (dias[-2] if len(dias) > 1 else None)
+    # tendência do 60 pela regra da Sofia, com os mesmos 200 candles de 60 que o motor entrega a ela
+    tend = estudos.tendencia(dados.agrupar(candles, 60)[-200:], traders.sofia_smc.PARAMS["n"])
+    return {"ultimo": ultimo[-1].c, "dia": ultimo[0].t.date().isoformat(), "tendencia60": tend or "indefinida",
+            "variacao_pct": round((ultimo[-1].c / anterior[-1].c - 1) * 100, 2) if anterior else None,
+            "fechamento_anterior": anterior[-1].c if anterior else None,
+            "candles": [{"t": k.t.isoformat(), "o": k.o, "h": k.h, "l": k.l, "c": k.c} for k in ultimo]}
+
+
+def _celula(sala, nome):
+    """Placar de um trader numa sala do estado do gerente; quem o gerente ainda não avaliou fica "aguardando"."""
+    sala = sala or {}
+    t = next((t for t in sala.get("traders", []) if t.get("nome") == nome), {})
+    reqs = t.get("requisitos", [])
+    return {"status": t.get("status") or ("sem_dados" if sala.get("status") == "sem_dados" else "aguardando"),
+            "prova_resultado": t.get("prova", {}).get("resultado"),
+            "requisitos_ok": sum(1 for r in reqs if r.get("ok")), "requisitos_total": len(reqs),
+            "curva": [p[1] for p in t.get("equity", [])],
+            "faltam": [f"{r['item']}: {r['valor']}" for r in reqs if not r.get("ok")]}
+
+
+def painel():
+    """Página inicial: mercado do cache em DADOS e placar do estado do gerente. Nunca baixa nada."""
+    mercado = []
+    for ativo in traders.SALAS:
+        cartao = {"ativo": ativo, "nome": NOMES_ATIVOS.get(ativo, ativo)}
+        caminho = os.path.join(DADOS, f"{ativo}_M5.csv")
+        try:
+            st = os.stat(caminho)
+            cartao.update(_mercado_do_cache(caminho, (st.st_mtime_ns, st.st_size)))
+        except (OSError, dados.ErroDados):  # sem cache ou cache corrompido: o cartão diz que não há dados
+            cartao["sem_dados"] = True
+        mercado.append(cartao)
+    estado = gerente.ler_json(ESTADO_FIRMA)  # {} sem arquivo ou com JSON pela metade
+    salas = estado.get("salas", {}) if isinstance(estado, dict) else {}
+    return {"mercado": mercado,
+            "traders": [{"nome": m.NOME, "estilo": m.ESTILO,
+                         "por_ativo": {a: _celula(salas.get(a), m.NOME) for a in traders.SALAS}}
+                        for m in traders.TODOS],
+            "ciclo": estado.get("dia") if isinstance(estado, dict) else None}
 
 
 def relatorios_do_dia(dia=None):
