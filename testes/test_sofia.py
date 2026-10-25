@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import traders
 from tipos import Candle, Plano
 from testes.robos_teste import ALFA, BETA
-from traders import sofia_smc
+from traders import didi_agulhada, sofia_smc
 
 ONTEM = datetime(2026, 9, 1, 9, 0)
 HOJE = datetime(2026, 9, 2, 9, 0)
@@ -118,8 +118,8 @@ class TestSofia(unittest.TestCase):
 
 
 class TestSalas(unittest.TestCase):
-    def test_so_a_sofia_negocia(self):
-        self.assertEqual(traders.TODOS, [sofia_smc])
+    def test_sofia_e_didi_negociam(self):
+        self.assertEqual(traders.TODOS, [sofia_smc, didi_agulhada])
         self.assertEqual(set(traders.SALAS), {"WDO", "WIN", "EURUSD", "BTCUSDT"})
         for sala in traders.SALAS.values():
             self.assertEqual(sala, traders.TODOS)

@@ -77,6 +77,74 @@ class TestConta(unittest.TestCase):
         self.assertEqual((op["entrada"], op["saida"], op["motivo_saida"]), (4994, 4993.5, "stop"))
         self.assertLess(op["resultado_rs"], 0)
 
+    STOP_COMPRA = Plano("compra", "stop", 5432.0, 5428.0, 5444.0, "teste")  # 4 pts de risco, alvo 3×
+
+    def test_stop_so_executa_1_tick_alem_e_cancela_depois_do_candle_seguinte(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        ev = c.colocar([self.STOP_COMPRA], T, "WDO$")
+        self.assertEqual([(e["tipo"], e["tipo_ordem"]) for e in ev], [("ordem", "stop")])
+        ev = c.executar_candle(vela(1, 5430, 5432, 5429, 5431), False)  # tocou o gatilho, não passou
+        self.assertIsNone(c.posicao)
+        self.assertEqual([(e["tipo"], e["lado"], e["entrada"]) for e in ev], [("cancelada", "compra", 5432.0)])
+        self.assertEqual(c.pendentes, [])
+        c.executar_candle(vela(2, 5431, 5440, 5430, 5439), False)
+        self.assertIsNone(c.posicao)
+
+    def test_stop_executa_no_gatilho(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([self.STOP_COMPRA], T, "WDO$")
+        ev = c.executar_candle(vela(1, 5430, 5432.5, 5429, 5432), False)
+        self.assertEqual((c.posicao["entrada"], c.posicao["contratos"]), (5432.0, 2))
+        self.assertNotIn("cancelada", [e["tipo"] for e in ev])
+
+    def test_stop_com_gap_abre_pior(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([self.STOP_COMPRA], T, "WDO$")
+        c.executar_candle(vela(1, 5434, 5436, 5433.5, 5435), False)
+        self.assertEqual(c.posicao["entrada"], 5434.0)
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([Plano("venda", "stop", 5428.0, 5432.0, 5416.0, "teste")], T, "WDO$")
+        c.executar_candle(vela(1, 5426, 5427, 5424, 5425), False)
+        self.assertEqual(c.posicao["entrada"], 5426.0)
+
+    def test_stop_com_validade_de_3_candles_sobrevive_as_decisoes(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([Plano("compra", "stop", 5432.0, 5428.0, 5444.0, "teste", 3)], T, "WDO$")
+        for k in (1, 2):
+            self.assertEqual(c.executar_candle(vela(k, 5430, 5431, 5429, 5430), False), [])
+            c.colocar([], vela(k + 1, 0, 0, 0, 0).t, "WDO$")  # decisão sem plano não tira a ordem stop
+        ev = c.executar_candle(vela(3, 5430, 5431, 5429, 5430), False)
+        self.assertEqual([e["tipo"] for e in ev], ["cancelada"])
+
+    def test_stop_vivo_no_fim_do_dia_cancela(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([Plano("compra", "stop", 5432.0, 5428.0, 5444.0, "teste", 3)], T, "WDO$")
+        ev = c.executar_candle(vela(1, 5430, 5431, 5429, 5430), True)
+        self.assertEqual([e["tipo"] for e in ev], ["cancelada"])
+        self.assertEqual(c.pendentes, [])
+
+    def test_saida_por_sinal_na_abertura_seguinte_paga_1_tick(self):
+        c = conta_comprada()
+        self.assertEqual(c.colocar([], vela(2, 0, 0, 0, 0).t, "WDO$", sair=True), [])
+        c.executar_candle(vela(2, 5433, 5441, 5432, 5440), False)  # passaria do alvo, mas sai na abertura
+        op = c.operacoes[-1]
+        self.assertEqual((op["saida"], op["motivo_saida"]), (5432.5, "sinal"))
+        self.assertIsNone(c.posicao)
+
+    def test_saida_por_sinal_que_abre_alem_do_stop_conta_stop(self):
+        c = conta_comprada()
+        c.colocar([], vela(2, 0, 0, 0, 0).t, "WDO$", sair=True)
+        c.executar_candle(vela(2, 5425, 5426, 5424, 5425), False)
+        self.assertEqual((c.operacoes[-1]["saida"], c.operacoes[-1]["motivo_saida"]), (5424.5, "stop"))
+
+    def test_sinal_de_saida_sem_posicao_nao_faz_nada(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        c.colocar([], T, "WDO$", sair=True)
+        c.colocar([COMPRA], T + timedelta(minutes=5), "WDO$")
+        c.executar_candle(vela(2, 5432, 5433, 5429.5, 5431), False)
+        c.executar_candle(vela(3, 5431, 5432, 5430.5, 5431), False)
+        self.assertIsNotNone(c.posicao)
+
     def test_zeragem_no_ultimo_candle_existente(self):
         c = conta_comprada()
         ultimo = Candle(datetime(2026, 9, 1, 13, 55), 5431, 5432, 5430, 5431.5)

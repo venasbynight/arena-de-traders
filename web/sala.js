@@ -90,7 +90,7 @@ function criarCard(nome, t, k) {
 
 // Execuções (entrada/saída) levam a hora de abertura do candle em que aconteceram: aparecem com esse candle.
 // Decisões (ordem, bloqueio, estudo) levam a hora do fechamento do candle que as gerou: aparecem com ele.
-const EXECUCOES = new Set(["entrada", "saida"]);
+const EXECUCOES = new Set(["entrada", "saida", "cancelada"]);
 const ate = (eventos) => {
   if (!arena.cursor) return [];
   const abertura = seg(arena.candles[arena.cursor - 1].iso);
@@ -170,6 +170,8 @@ function textoDiario(e) {
   if (e.tipo === "entrada") return `${e.lado === "compra" ? "comprou" : "vendeu"} ${e.contratos} a ${num(e.preco)}. Stop ${num(e.stop)}, alvo ${num(e.alvo)}.`;
   if (e.tipo === "saida") return `saiu (${e.motivo}) a ${num(e.preco)}: <span class="${e.resultado_rs >= 0 ? "up" : "dn"}">${brl(e.resultado_rs)}</span>.`;
   if (e.tipo === "block") return `ordem bloqueada: ${e.motivos[0]}.`;
+  if (e.tipo === "cancelada") return `ordem stop de ${e.lado} em ${num(e.entrada)} cancelada: não executou a tempo.`;
+  if (e.tipo === "ordem" && e.tipo_ordem === "stop") return `ordem stop de ${e.lado} (${e.contratos}) em ${num(e.entrada)}.`;
   if (e.tipo === "ordem") return e.tipo_ordem === "mercado"
     ? `ordem a mercado de ${e.lado} (${e.contratos}).`
     : `ordem limitada de ${e.lado} (${e.contratos}) em ${num(e.entrada)}.`;
