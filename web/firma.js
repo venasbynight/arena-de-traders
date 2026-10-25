@@ -1186,11 +1186,12 @@ function htmlRelatorios(estado) {
   if (!rel?.dia) return htmlGerente(estado) +
     `<h3>Relatórios do dia</h3><p class="warn">O gerente ainda não rodou: os relatórios aparecem aqui depois do primeiro ciclo (<b>python gerente.py</b>).</p>`;
   const arquivos = Array.isArray(rel.arquivos) ? rel.arquivos : [];
-  const gerente = urlRelatorio("gerente.html");
+  const urlGerente = urlRelatorio("gerente.html");
+  // relatórios não têm script próprio: sandbox sem allow-scripts (o V repassado é ouvinte desta página)
   return htmlGerente(estado) + `
     <h3>Relatórios de ${esc(rel.dia)}</h3>
     <ul class="lista">${arquivos.map(a => `<li>${linkRelatorio(String(a), esc(a))}</li>`).join("") || "<li class='mut'>nenhum arquivo listado</li>"}</ul>
-    ${gerente ? `<iframe class="relatorio" src="${gerente}" title="Relatório do gerente"></iframe>` : ""}`;
+    ${urlGerente ? `<iframe class="relatorio" src="${urlGerente}" sandbox="allow-same-origin allow-popups" title="Relatório do gerente"></iframe>` : ""}`;
 }
 
 $("#fechar").onclick = fecharPainel;
@@ -1320,14 +1321,24 @@ const olhar = new PointerLockControls(camera, renderer.domElement), giro = new T
 olhar.minPolarAngle = 10 * GRAU;
 olhar.maxPolarAngle = 170 * GRAU;
 const voltar = $("#voltar");
-const travar = () => renderer.domElement.requestPointerLock()?.catch?.(() => {});  // recusa → "pointerlockerror"
-olhar.addEventListener("lock", () => (voltar.hidden = true));
+const travar = () => renderer.domElement.requestPointerLock?.()?.catch?.(() => {});  // recusa → "pointerlockerror"
+let recusas = 0;   // recusas seguidas da trava, zeradas quando ela pega
+olhar.addEventListener("lock", () => {
+  recusas = 0;
+  if (firma.modo !== "fp") olhar.unlock();   // V duplo: a trava chegou depois de voltar para cima
+  else voltar.hidden = true;
+});
 olhar.addEventListener("unlock", () => (voltar.hidden = firma.modo !== "fp"));
 voltar.onclick = travar;
-// Trava recusada (navegador sem pointer lock, como o painel embutido do app, ou o intervalo do Chrome logo após
-// o ESC): sem o console.error do PointerLockControls (three 0.160), sem o aviso e com "arrastar para olhar".
+// Trava recusada, sem o console.error do PointerLockControls (three 0.160). A 1ª recusa costuma ser o intervalo
+// de ~1 s do Chrome/Opera logo após o ESC: o aviso fica e tenta de novo em 1,1 s. Recusou de novo = o navegador
+// não dá pointer lock (como o painel embutido do app): some o aviso e fica o "arrastar para olhar".
 document.removeEventListener("pointerlockerror", olhar._onPointerlockError);
-document.addEventListener("pointerlockerror", () => (voltar.hidden = true));
+document.addEventListener("pointerlockerror", () => {
+  if (firma.modo !== "fp") return;
+  voltar.hidden = ++recusas > 1;
+  if (recusas === 1) setTimeout(() => firma.modo === "fp" && !olhar.isLocked && travar(), 1100);
+});
 renderer.domElement.addEventListener("pointermove", e => {
   if (firma.modo !== "fp" || olhar.isLocked || !(e.buttons & 1)) return;
   giro.setFromQuaternion(camera.quaternion);
@@ -1349,6 +1360,7 @@ function trocarModo(m) {
   camera.fov = fp ? 60 : 40;
   camera.updateProjectionMatrix();
   if (fp) {
+    document.activeElement?.blur?.();   // tira o foco do relatório embutido, senão o WASD vai para ele
     camCima.pos.copy(camera.position);
     camCima.alvo.copy(controles.target);
     if (poseFp) { camera.position.copy(poseFp.pos); camera.quaternion.copy(poseFp.quat); }
@@ -1370,7 +1382,7 @@ function teleportar(x, z, yaw = 0, pitch = 0) {   // graus; yaw 0 = norte (−z)
   camera.rotation.set(pitch * GRAU, yaw * GRAU, 0, "YXZ");
 }
 
-const bate = (x, z) => COLISORES.some(c => c.min[1] < OLHO &&
+const bate = (x, z) => COLISORES.some(c =>   // todos os colisores começam no chão ou no peitoril (as vergas não entram)
   x + RAIO > c.min[0] && x - RAIO < c.max[0] && z + RAIO > c.min[2] && z - RAIO < c.max[2]);
 function andar(dx, dz) {
   // passos de até 5 cm: nunca atravessa (a peça mais fina, o vidro, vira 0,63 m com o raio) e para a < 5 cm da parede
@@ -1414,7 +1426,7 @@ modos.fp = dt => {
 };
 
 function teclaModo(e) {
-  if (e.repeat || e.target.closest?.("input,textarea")) return;
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input,textarea")) return;
   const k = e.key.toLowerCase();
   if (k === "v") {
     firma.modo = firma.modo === "fp" ? "cima" : "fp";
