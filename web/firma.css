@@ -63,5 +63,9 @@ td{padding:5px 4px;text-align:right;border-bottom:1px solid #18212c}th:first-chi
 .links{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .links a{color:var(--acc);text-decoration:none}.links a:hover{text-decoration:underline}
 .links .off{color:var(--mut)}
+/* quadro de status da equipe */
+.membro{display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-weight:600;font-size:14px}
+table.req td:last-child{white-space:nowrap}
+.pend{list-style:none;padding-left:2px}
 .up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.warn{color:var(--warn)}
 @media (max-width:700px){#dica{display:none}.hud .pill{display:none}}
