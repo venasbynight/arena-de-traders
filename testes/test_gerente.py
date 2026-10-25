@@ -1,0 +1,242 @@
+import json
+import os
+import shutil
+import tempfile
+import unittest
+from datetime import timedelta
+from types import SimpleNamespace
+from unittest import mock
+
+import dados
+import gerente
+import motor
+import relatorio
+from testes.test_motor import CFG, dias_sinteticos
+from tipos import Candle
+from traders import TODOS, rafa_rompimento, vera_vwap
+
+
+def escalar(candles, fator, casas):
+    """Os dias sintéticos de WDO no nível de preço de outro ativo (o passo de 0,5 vira múltiplo do tick)."""
+    return [Candle(k.t, round(k.o * fator, casas), round(k.h * fator, casas), round(k.l * fator, casas),
+                   round(k.c * fator, casas)) for k in candles]
+
+
+DIAS = dias_sinteticos(60)
+SINTETICOS = {"EURUSD": escalar(DIAS, 0.0002, 5), "BTCUSDT": escalar(DIAS, 12, 2)}
+HOJE = DIAS[-1].t.date() + timedelta(days=1)
+DATAS = sorted({k.t.date() for k in DIAS})
+# Sofia fica de fora só pelo tempo da suíte (o backtest dela já é coberto em test_motor e test_sofia)
+SALAS = {"WDO": TODOS, "WIN": TODOS, "EURUSD": [rafa_rompimento, vera_vwap], "BTCUSDT": [rafa_rompimento]}
+
+
+class HistoricoFalso:
+    """WDO/WIN como a Genial hoje (ErroDados); EURUSD e BTCUSDT com 60 dias sintéticos."""
+
+    def __init__(self):
+        self.chamadas = []
+
+    def __call__(self, ativo, de, ate, cfg):
+        self.chamadas.append(ativo)
+        if ativo in ("WDO", "WIN"):
+            raise dados.ErroDados(f"o MT5 (Genial) não respondeu em 90 s ({ativo}$)")
+        return [k for k in SINTETICOS[ativo] if de <= k.t.date() <= ate]
+
+
+def placar(resultado, trades, fator, drawdown=-100.0):
+    return {"resultado": resultado, "trades": trades, "acerto": 0.5, "fator_lucro": fator, "drawdown": drawdown,
+            "pior_dia": drawdown, "confianca": "média"}
+
+
+def curva(*saldos):
+    return [[f"2026-10-{i + 1:02d}T23:55:00", s] for i, s in enumerate(saldos)]
+
+
+SOBE = curva(5000, 5100, 5200, 5150, 5300)
+
+
+class TestCiclo(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.raiz = tempfile.mkdtemp()
+        cls.historico = HistoricoFalso()
+        cls.estado = gerente.ciclo(CFG, HOJE, historico_fn=cls.historico, salas=SALAS, raiz=cls.raiz)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.raiz)
+
+    def test_divide_treino_e_prova_em_21_pregoes(self):
+        sala = self.estado["salas"]["EURUSD"]
+        self.assertEqual(sala["status"], "ok")
+        self.assertEqual(sala["periodos"]["treino"], {"de": DATAS[0].isoformat(), "ate": DATAS[38].isoformat(),
+                                                      "pregoes": 39})
+        self.assertEqual(sala["periodos"]["prova"], {"de": DATAS[39].isoformat(), "ate": DATAS[-1].isoformat(),
+                                                     "pregoes": 21})
+        for t in sala["traders"]:
+            self.assertEqual(len(t["equity"]), 22, t["nome"])  # ponto inicial + um por pregão da prova
+            self.assertEqual(t["equity"][0], [f"{DATAS[39].isoformat()}T09:00:00", 5000.0])
+            self.assertLessEqual(len(t["diario"]), 8)
+
+        curto = [k for k in SINTETICOS["EURUSD"] if k.t.date() <= DATAS[29]]  # 30 pregões: prova = último terço
+        treino, prova, aviso = gerente.dividir(curto)
+        self.assertEqual(len({k.t.date() for k in prova}), 10)
+        self.assertEqual(len({k.t.date() for k in treino}), 20)
+        self.assertIn("último terço", aviso)
+        self.assertEqual(gerente.dividir(SINTETICOS["EURUSD"])[2], "")
+
+    def test_sala_sem_dados_vira_pendencia(self):
+        for ativo in ("WDO", "WIN"):
+            sala = self.estado["salas"][ativo]
+            self.assertEqual((sala["status"], sala["traders"]), ("sem_dados", []))
+            self.assertIn("não respondeu", sala["motivo"])
+            self.assertIn(f"{ativo}: o MT5 (Genial) não respondeu em 90 s ({ativo}$)", self.estado["pendencias"])
+            self.assertEqual(self.historico.chamadas.count(ativo), 1)  # uma tentativa por ciclo, sem repetir
+        self.assertEqual(list(self.estado["salas"]), ["WDO", "WIN", "EURUSD", "BTCUSDT"])
+        self.assertEqual(self.estado["salas"]["BTCUSDT"]["status"], "ok")
+        nomes = [(r["sala"], r["nome"]) for r in self.estado["ranking"]]
+        self.assertEqual(sorted(nomes), [("BTCUSDT", "Rafa Rompimento"), ("EURUSD", "Rafa Rompimento"),
+                                         ("EURUSD", "Vera VWAP")])
+        resultados = [r["prova_resultado"] for r in self.estado["ranking"]]
+        self.assertEqual(resultados, sorted(resultados, reverse=True))
+
+    def test_escreve_estado_e_relatorios(self):
+        with open(os.path.join(self.raiz, "estado", "firma.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), self.estado)
+        with open(os.path.join(self.raiz, "estado", "parametros.json"), encoding="utf-8") as f:
+            parametros = json.load(f)
+        self.assertEqual(sorted(parametros), ["BTCUSDT", "EURUSD"])
+        self.assertEqual(sorted(parametros["EURUSD"]), ["Rafa Rompimento", "Vera VWAP"])
+        self.assertIn(parametros["EURUSD"]["Vera VWAP"]["desvios"], vera_vwap.GRADE["desvios"])
+        self.assertEqual(sorted(os.listdir(os.path.join(self.raiz, "estado"))), ["firma.json", "parametros.json"])
+
+        pasta = os.path.join(self.raiz, "relatorios", HOJE.isoformat())
+        self.assertEqual(sorted(os.listdir(pasta)), ["briefing.md", "btcusdt-rafa-rompimento.html",
+                                                     "eurusd-rafa-rompimento.html", "eurusd-vera-vwap.html",
+                                                     "gerente.html"])
+        with open(os.path.join(pasta, "briefing.md"), encoding="utf-8") as f:
+            briefing = f.read().splitlines()
+        self.assertLessEqual(len(briefing), 60)
+        self.assertTrue(any("WDO" in l and "não respondeu" in l for l in briefing))
+        with open(os.path.join(pasta, "eurusd-vera-vwap.html"), encoding="utf-8") as f:
+            html = f.read()
+        self.assertIn("lightweight-charts", html)
+        self.assertIn("/web/estilo.css", html)
+
+
+class TestDecisoes(unittest.TestCase):
+    def test_grade_escolhe_melhor_fator_lucro(self):
+        modulo = SimpleNamespace(NOME="Teste", PARAMS={"x": 1, "y": 9}, GRADE={"x": [1, 2, 3]})
+        placares = {1: (80, 1.1), 2: (60, 1.6), 3: (20, 3.0)}  # x=3 tem o melhor fator, mas só 20 trades
+        vistos = []
+
+        def rodar(ativo, candles, m, params, cfg):
+            vistos.append(params)
+            trades, fator = placares[params["x"]]
+            return {"placar": placar(100.0, trades, fator)}
+
+        with mock.patch.object(gerente, "_rodar", rodar):
+            params, treino = gerente.ajustar(modulo, "EURUSD", [], CFG)
+        self.assertEqual(params, {"x": 2})
+        self.assertEqual(treino["fator_lucro"], 1.6)
+        self.assertEqual(vistos, [{"x": 1}, {"x": 2}, {"x": 3}])  # o padrão (x=1) só roda uma vez
+
+        placares.update({1: (10, 1.1), 2: (49, 1.6)})  # ninguém com 50 trades: fica no padrão
+        with mock.patch.object(gerente, "_rodar", rodar):
+            params, treino = gerente.ajustar(modulo, "EURUSD", [], CFG)
+        self.assertEqual((params, treino["trades"]), ({"x": 1}, 10))
+
+    def test_nao_promove_com_menos_de_50_trades(self):
+        status, _, decisao = gerente.decidir(placar(3000.0, 40, 2.0), placar(2000.0, 60, 1.8), SOBE)
+        self.assertEqual(status, "experiencia")
+        self.assertIn("40 trades no treino", decisao)
+        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 38, 1.8), SOBE)
+        self.assertEqual(status, "experiencia")
+        self.assertIn("38 trades na prova", decisao)
+        status, overfit, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8), SOBE)
+        self.assertEqual((status, overfit), ("promovido", False))
+        self.assertIn("60 trades", decisao)
+
+    def test_marca_overfit(self):
+        status, overfit, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(1000.0, 60, 1.5), SOBE)
+        self.assertEqual((status, overfit), ("experiencia", True))
+        self.assertIn("overfit", decisao)
+        self.assertFalse(gerente.decidir(placar(3000.0, 200, 2.0), placar(1500.0, 60, 1.5), SOBE)[1])  # 50% exato
+        self.assertFalse(gerente.decidir(placar(-500.0, 200, 0.8), placar(-800.0, 60, 0.7), SOBE)[1])
+
+    def test_pausa_por_drawdown(self):
+        # pausa vence a promoção: mesmo com prova positiva, fator e trades bons
+        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1600.0), SOBE)
+        self.assertEqual(status, "pausado")
+        self.assertIn("1.600", decisao)
+        self.assertNotEqual(gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1500.0), SOBE)[0],
+                            "pausado")
+        cinco = curva(5000, 4990, 4980, 4970, 4960, 4950, 5500)
+        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3), cinco)
+        self.assertEqual(status, "pausado")
+        self.assertIn("5 dias seguidos", decisao)
+        quatro = curva(5000, 4990, 4980, 4970, 4960, 4960, 4950, 5500)  # dia parado quebra a sequência
+        self.assertNotEqual(gerente.decidir(placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3), quatro)[0], "pausado")
+
+
+class TestRelatorio(unittest.TestCase):
+    def test_relatorio_escapa_texto(self):
+        nome = '<img src=x onerror="alert(1)">'
+        t = {"nome": nome, "estilo": "<b>estilo</b>", "status": "experiencia", "parametros": {"x": "<i>1</i>"},
+             "overfit": False, "treino": placar(10.0, 5, 1.1), "prova": placar(-5.0, 3, 0.9),
+             "equity": [["2026-10-01T00:00:00", 5000.0], ["2026-10-01T23:55:00", 4995.0]],
+             "diario": ["00:15 <script>alert(1)</script>"], "decisao": "segue <u>assim</u>"}
+        estado = {"gerado_em": "2026-10-02T19:30:00", "dia": "2026-10-02", "premissas": {"usd_brl": 5.4},
+                  "salas": {"EURUSD": {"status": "ok", "motivo": "<em>x</em>", "traders": [t]},
+                            "WDO": {"status": "sem_dados", "motivo": "<script>x</script>", "traders": []}},
+                  "ranking": [{"sala": "EURUSD", "nome": nome, "prova_resultado": -5.0}],
+                  "pendencias": ["<script>p</script>"]}
+        ops = {("EURUSD", nome): [{"entrada_t": "2026-10-01T10:00:00", "saida_t": "2026-10-01T10:30:00",
+                                   "lado": "compra", "contratos": 1, "entrada": 1.1, "saida": 1.1,
+                                   "resultado_rs": -5.0, "motivo_saida": "stop", "setup": "<s>x</s>"}]}
+        with tempfile.TemporaryDirectory() as pasta:
+            arquivos = relatorio.escrever(estado, ops, pasta)
+            self.assertEqual(sorted(arquivos), sorted(os.listdir(pasta)))
+            for a in arquivos:
+                with open(os.path.join(pasta, a), encoding="utf-8") as f:
+                    texto = f.read()
+                if a.endswith(".html"):
+                    for cru in ("<img", "<b>", "<i>", "<script>alert", "<script>x", "<script>p", "<u>", "<s>", "<em>"):
+                        self.assertNotIn(cru, texto, a)
+        self.assertEqual(relatorio.slug("Vera VWAP"), "vera-vwap")
+        self.assertEqual(relatorio.slug("Caio Contrafluxo · ação"), "caio-contrafluxo-acao")
+
+
+class TestMotorParaOGerente(unittest.TestCase):
+    def test_backtest_aceita_parametros(self):
+        cs = [k for k in SINTETICOS["EURUSD"] if k.t.date() <= DATAS[4]]
+        alvos = lambda r: [e["alvo"] for e in r["traders"]["Rafa Rompimento"]["eventos"] if e["tipo"] == "ordem"]
+        padrao = motor.rodar_backtest("EURUSD", cs, [rafa_rompimento], CFG)
+        mesmo = motor.rodar_backtest("EURUSD", cs, [(rafa_rompimento, None)], CFG)
+        longe = motor.rodar_backtest("EURUSD", cs, [(rafa_rompimento, {"alvo_x": 2.5})], CFG)
+        self.assertTrue(alvos(padrao))
+        self.assertEqual(alvos(padrao), alvos(mesmo))
+        self.assertNotEqual(alvos(padrao), alvos(longe))
+
+    def test_config_antigo_ganha_o_que_falta(self):
+        antigo = {"capital": 7000, "ativos": {
+            "WDO": {"margem_por_contrato": 150, "custo_por_contrato": 0.5, "simbolo_mt5": "WDO$"},
+            "EURUSD": {"ponto_rs": 5400, "tick": 0.00001, "margem_por_contrato": 200, "custo_por_contrato": 0.07}}}
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "config.json")
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump(antigo, f)
+            cfg = motor.carregar_config(caminho)
+            with open(caminho, encoding="utf-8") as f:
+                self.assertEqual(json.load(f), cfg)  # gravado no disco
+            self.assertEqual(motor.carregar_config(caminho), cfg)  # segunda leitura não muda nada
+        self.assertEqual((cfg["capital"], cfg["usd_brl"]), (7000, 5.4))
+        self.assertEqual(sorted(cfg["ativos"]), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
+        self.assertEqual(cfg["ativos"]["WDO"], {"margem_por_contrato": 150, "custo_por_contrato": 0.5,
+                                                "simbolo": "WDO$", "fonte": "mt5"})
+        self.assertEqual(cfg["ativos"]["EURUSD"]["custo_por_contrato"], 0.07)  # valor do usuário fica
+        self.assertEqual(cfg["ativos"]["BTCUSDT"]["fonte"], "binance")
+
+
+if __name__ == "__main__":
+    unittest.main()

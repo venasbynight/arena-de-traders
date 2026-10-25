@@ -210,7 +210,7 @@ class TestBacktest(unittest.TestCase):
         cs, vistos = dias_sinteticos(3), []
 
         class Espiao:
-            def __init__(self, ativo, tick, params=None):
+            def __init__(self, ativo, tick, params=None, sessao=None):
                 pass
 
             def decidir(self, hoje5, ontem5, fechados60):

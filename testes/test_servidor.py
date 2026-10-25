@@ -3,6 +3,7 @@ import os
 import tempfile
 import threading
 import unittest
+from datetime import date
 import urllib.error
 import urllib.request
 from unittest import mock
@@ -100,7 +101,7 @@ class TestServidor(unittest.TestCase):
             caminho = os.path.join(pasta, "firma.json")
             with open(caminho, "w", encoding="utf-8") as f:
                 f.write(conteudo)
-            with mock.patch.object(servidor, "ESTADO_FIRMA", caminho):
+            with mock.patch.multiple(servidor, ESTADO_FIRMA=caminho, RELATORIOS=os.path.join(pasta, "nao-existe")):
                 return self.get("/api/firma")
 
     def test_firma_estado_do_gerente_sem_mexer(self):
@@ -114,6 +115,49 @@ class TestServidor(unittest.TestCase):
         status, corpo = self._get_firma_com_estado('{"gerado_em": "2026-10-24T19:3')  # gravação pela metade
         self.assertEqual(status, 500)
         self.assertIn("firma.json", json.loads(corpo)["erro"])
+
+    def test_api_firma(self):
+        estado = {"gerado_em": "2026-10-25T19:30:00", "dia": "2026-10-25", "salas": {}, "ranking": [], "pendencias": []}
+        with tempfile.TemporaryDirectory() as raiz:
+            caminho = os.path.join(raiz, "estado", "firma.json")
+            os.makedirs(os.path.dirname(caminho))
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump(estado, f)
+            rel = os.path.join(raiz, "relatorios")
+            for dia, arquivos in (("2026-10-24", ["gerente.html"]), ("2026-10-25", ["gerente.html", "eurusd-sofia-smc.html"])):
+                os.makedirs(os.path.join(rel, dia))
+                for a in arquivos:
+                    with open(os.path.join(rel, dia, a), "w", encoding="utf-8") as f:
+                        f.write(f"<html>{dia} {a}</html>")
+            os.makedirs(os.path.join(rel, "rascunho"))  # pasta que não é data fica de fora
+            with mock.patch.multiple(servidor, ESTADO_FIRMA=caminho, RELATORIOS=rel):
+                status, corpo = self.get("/api/firma")
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(corpo), {**estado, "relatorios": {
+                    "dia": "2026-10-25", "arquivos": ["eurusd-sofia-smc.html", "gerente.html"]}})
+                status, corpo = self.get("/relatorios/2026-10-25/gerente.html")
+                self.assertEqual((status, corpo), (200, "<html>2026-10-25 gerente.html</html>"))
+                for fora in ("/relatorios/..%2Festado%2Ffirma.json", "/relatorios/2026-10-25/..%2F..%2Festado%2Ffirma.json",
+                             "/relatorios/2026-10-25/nao-existe.html", "/relatorios/2026-10-25"):
+                    self.assertEqual(self.get(fora)[0], 404, fora)
+            nada = os.path.join(raiz, "nao-existe.json")
+            with mock.patch.multiple(servidor, ESTADO_FIRMA=nada, EXEMPLO_FIRMA=nada, RELATORIOS=rel):
+                status, corpo = self.get("/api/firma")
+            self.assertEqual(status, 404)
+            self.assertEqual(json.loads(corpo), {"erro": "o gerente ainda não rodou; execute python gerente.py"})
+
+    def test_ciclo_no_arranque_so_sem_estado_de_hoje(self):
+        hoje = date(2026, 10, 25)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "firma.json")
+            self.assertTrue(servidor.precisa_ciclo(caminho, hoje))
+            for dia, precisa in (("2026-10-24", True), ("2026-10-25", False)):
+                with open(caminho, "w", encoding="utf-8") as f:
+                    json.dump({"dia": dia}, f)
+                self.assertEqual(servidor.precisa_ciclo(caminho, hoje), precisa, dia)
+            with open(caminho, "w", encoding="utf-8") as f:
+                f.write("{corrompido")
+            self.assertTrue(servidor.precisa_ciclo(caminho, hoje))
 
     def test_firma_html(self):
         status, corpo = self.get("/firma")

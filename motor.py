@@ -21,12 +21,31 @@ check = _skill("trader-risk/check.py", "skill_check")  # checar()
 
 
 def carregar_config(caminho="trader/config.json"):
-    """Lê as regras; na primeira vez copia o modelo da skill trader-budget."""
+    """Lê as regras; na primeira vez copia o modelo da skill trader-budget.
+
+    Config antigo ganha do modelo o que falta (ativos que ele não tem e usd_brl), sem mexer nos valores do
+    usuário, e o simbolo_mt5 do Plano 1 vira simbolo + fonte "mt5"; havendo mudança, o arquivo é regravado.
+    """
     if not os.path.exists(caminho):
         os.makedirs(os.path.dirname(caminho) or ".", exist_ok=True)
         shutil.copy(EXEMPLO_CONFIG, caminho)
     with open(caminho, encoding="utf-8") as f:
-        return json.load(f)
+        cfg = json.load(f)
+    with open(EXEMPLO_CONFIG, encoding="utf-8") as f:
+        exemplo = json.load(f)
+    antes = json.dumps(cfg, sort_keys=True)
+    cfg.setdefault("usd_brl", exemplo["usd_brl"])
+    ativos = cfg.setdefault("ativos", {})
+    for ativo, espec in exemplo["ativos"].items():
+        ativos.setdefault(ativo, espec)
+    for espec in ativos.values():
+        if "simbolo_mt5" in espec and "simbolo" not in espec:
+            espec["simbolo"] = espec.pop("simbolo_mt5")
+            espec.setdefault("fonte", "mt5")
+    if json.dumps(cfg, sort_keys=True) != antes:
+        with open(caminho, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+    return cfg
 
 
 class Conta:
@@ -162,16 +181,21 @@ def placar(operacoes):
 
 
 def rodar_backtest(ativo, candles5, modulos_traders, cfg):
-    """Roda os traders candle a candle; cada um só vê candles já fechados."""
+    """Roda os traders candle a candle; cada um só vê candles já fechados.
+
+    Cada item de `modulos_traders` é o módulo do trader ou `(módulo, params)`; params None = os PARAMS do módulo.
+    """
     from datetime import timedelta
     from dados import agrupar, por_dia
 
-    tick = size.especificacao(ativo, cfg)["tick"]
+    espec = size.especificacao(ativo, cfg)
     simbolo = ativo  # as skills leem o ativo de plano["ativo"]; o símbolo da corretora não importa aqui
     c60 = agrupar(candles5, 60)
-    mesa = [(m, m.Trader(ativo, tick), Conta(m.NOME, ativo, cfg)) for m in modulos_traders]
-    eventos = {m.NOME: [] for m in modulos_traders}
-    ultimo = {m.NOME: {} for m in modulos_traders}  # para não repetir o mesmo estudo/ordem a cada candle
+    pares = [m if isinstance(m, tuple) else (m, None) for m in modulos_traders]
+    mesa = [(m, m.Trader(ativo, espec["tick"], params, espec["sessao"]), Conta(m.NOME, ativo, cfg))
+            for m, params in pares]
+    eventos = {m.NOME: [] for m, _ in pares}
+    ultimo = {m.NOME: {} for m, _ in pares}  # para não repetir o mesmo estudo/ordem a cada candle
 
     def novo(nome, chave, valor):
         if ultimo[nome].get(chave) == valor:
