@@ -1,7 +1,9 @@
 // Sala de operações: reproduz o backtest candle a candle em um gráfico por trader.
 const $ = s => document.querySelector(s);
 const brl = v => (v < 0 ? "−" : v > 0 ? "+" : "") + "R$ " + Math.abs(v).toLocaleString("pt-BR", {minimumFractionDigits: 0, maximumFractionDigits: 2});
-const num = v => v.toLocaleString("pt-BR", {maximumFractionDigits: 2});
+// preço abaixo de 10 (forex, ex.: 1,08612) pede 5 casas; índices, dólar e bitcoin ficam com 2
+const casas = v => Math.abs(v) < 10 ? 5 : 2;
+const num = v => v.toLocaleString("pt-BR", {maximumFractionDigits: casas(v)});
 // horário de Brasília tratado como UTC no gráfico, para o eixo mostrar a hora do pregão
 const seg = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10), +iso.slice(11, 13), +iso.slice(14, 16)) / 1000;
 const hhmm = iso => iso.slice(11, 16);
@@ -77,7 +79,9 @@ function criarCard(nome, t, k) {
     timeScale: {timeVisible: true, secondsVisible: false, borderColor: "#1f2a36", barSpacing: 7},
     rightPriceScale: {borderColor: "#1f2a36"}, crosshair: {mode: 0},
   });
-  const serie = chart.addCandlestickSeries({upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350"});
+  const precisao = casas(arena.candles[0]?.close ?? 0);
+  const serie = chart.addCandlestickSeries({upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350",
+    priceFormat: {type: "price", precision: precisao, minMove: 10 ** -precisao}});
   const tr = {nome, t, el, chart, serie, canvas: box.querySelector("canvas"), linhas: [], mostrados: 0};
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => desenharZonas(tr));
   new ResizeObserver(() => desenharZonas(tr)).observe(box);
@@ -166,7 +170,9 @@ function textoDiario(e) {
   if (e.tipo === "entrada") return `${e.lado === "compra" ? "comprou" : "vendeu"} ${e.contratos} a ${num(e.preco)}. Stop ${num(e.stop)}, alvo ${num(e.alvo)}.`;
   if (e.tipo === "saida") return `saiu (${e.motivo}) a ${num(e.preco)}: <span class="${e.resultado_rs >= 0 ? "up" : "dn"}">${brl(e.resultado_rs)}</span>.`;
   if (e.tipo === "block") return `ordem bloqueada: ${e.motivos[0]}.`;
-  if (e.tipo === "ordem") return `ordem limitada de ${e.lado} (${e.contratos}) em ${num(e.entrada)}.`;
+  if (e.tipo === "ordem") return e.tipo_ordem === "mercado"
+    ? `ordem a mercado de ${e.lado} (${e.contratos}).`
+    : `ordem limitada de ${e.lado} (${e.contratos}) em ${num(e.entrada)}.`;
   return "";
 }
 
@@ -196,15 +202,17 @@ function desenharZonas(tr) {
       let x = tr.chart.timeScale().timeToCoordinate(seg(d.de));
       if (y1 == null || y2 == null) continue;
       if (x == null) x = 0;
-      const cor = d.rotulo === "FVG" ? "76,141,255" : d.lado === "alta" ? "38,166,154" : "239,83,80";
+      // FVG azul; faixa neutra (Rafa) cinza; OB de alta verde, de baixa vermelho
+      const cor = d.rotulo === "FVG" ? "76,141,255" : d.lado === "neutro" ? "139,152,165" : d.lado === "alta" ? "38,166,154" : "239,83,80";
       g.fillStyle = `rgba(${cor},.22)`; g.strokeStyle = `rgba(${cor},.9)`; g.setLineDash([3, 3]);
       g.fillRect(x, y1, largura - x, y2 - y1); g.strokeRect(x, y1, largura - x, y2 - y1);
       g.fillStyle = `rgba(${cor},1)`; g.font = "10px Segoe UI"; g.fillText(d.rotulo, x + 3, y1 + 11);
     }
     if (d.tipo === "linha") {
       const y = tr.serie.priceToCoordinate(d.preco); if (y == null) continue;
-      g.strokeStyle = "#f0b429"; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(largura, y); g.stroke();
-      g.fillStyle = "#f0b429"; g.font = "10px Segoe UI"; g.fillText(d.rotulo, 4, y - 3);
+      const cor = /^(VWAP|banda )/.test(d.rotulo) ? "#a78bfa" : "#f0b429";  // VWAP e bandas (Vera) em roxo; alvos em amarelo
+      g.strokeStyle = cor; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(largura, y); g.stroke();
+      g.fillStyle = cor; g.font = "10px Segoe UI"; g.fillText(d.rotulo, 4, y - 3);
     }
   }
 }
