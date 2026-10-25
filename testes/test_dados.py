@@ -187,8 +187,8 @@ class TestBinance(unittest.TestCase):
         ms_0300_utc = int((datetime(2026, 10, 20, 3) - datetime(1970, 1, 1)).total_seconds() * 1000)
         self.assertEqual(int(falso.pedidos[0]["startTime"]), ms_0300_utc)
         self.assertEqual(int(falso.pedidos[1]["startTime"]), ms_0300_utc + 1000 * 300000)
-        # abertura 03:00 UTC = 00:00 em Brasília; volume base, delta 0
-        self.assertEqual(cs[0], Candle(datetime(2026, 10, 20, 0, 0), 100.5, 102.5, 99.5, 101.5, 3.25, 0.0))
+        # abertura 03:00 UTC = 00:00 em Brasília; volume base, sem delta
+        self.assertEqual(cs[0], Candle(datetime(2026, 10, 20, 0, 0), 100.5, 102.5, 99.5, 101.5, 3.25, None))
         self.assertEqual(cs[-1].t, datetime(2026, 10, 23, 23, 55))
         self.assertEqual([k.t for k in cs], sorted({k.t for k in cs}))
 
@@ -398,7 +398,7 @@ class TestMt5EmProcessoFilho(unittest.TestCase):
 
     def test_filho_devolve_os_candles_convertidos(self):
         cs = self.baixar(timeout_s=60)
-        self.assertEqual(cs, [Candle(datetime(2026, 10, 20, 9, 30), 1.0, 2.0, 0.5, 1.5, 7.0, 0.0)])
+        self.assertEqual(cs, [Candle(datetime(2026, 10, 20, 9, 30), 1.0, 2.0, 0.5, 1.5, 7.0, None)])  # delta vem dos ticks
 
     def test_filho_repassa_erro_amigavel(self):
         with self.assertRaises(dados.ErroDados) as e:
@@ -587,6 +587,151 @@ class TestCsvSeguro(unittest.TestCase):
             with self.assertRaises(dados.ErroDados) as e:
                 dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=Mt5Falso())
         self.assertIn("WDO_M5.cobertura.csv", str(e.exception))
+
+
+COMPRA, VENDA = dados.TICK_FLAG_BUY, dados.TICK_FLAG_SELL
+
+
+def ms(t):
+    return int(epoch(t) * 1000)
+
+
+class Mt5ComTicks(Mt5Falso):
+    """Mt5Falso com negócios: em cada candle das 9:00 às 9:55, uma compra de `compra` contratos, uma venda de 2 e
+    dois negócios sem agressor único (que não contam).
+
+    `ticks` = {símbolo: dias (date) em que ele tem negócios}; o volume do candle (real_volume) é 7.
+    """
+    COPY_TICKS_TRADE = 2
+
+    def __init__(self, ticks, compra=5, **kw):
+        super().__init__(simbolos=tuple(ticks), **kw)
+        self.ticks, self.compra, self.pedidos_ticks = ticks, compra, []
+
+    def copy_ticks_range(self, simbolo, de, ate, flags):
+        dia = de.replace(tzinfo=None)
+        self.pedidos_ticks.append(simbolo)
+        out = {"time_msc": [], "flags": [], "volume": []}
+        if dia.date() in self.ticks.get(simbolo, ()):
+            for k in range(12):
+                for s, fl, v in ((10, COMPRA, self.compra), (20, VENDA, 2), (30, COMPRA | VENDA, 50), (40, 0, 50)):
+                    out["time_msc"].append(ms(dia.replace(hour=9) + timedelta(minutes=5 * k, seconds=s)))
+                    out["flags"].append(fl)
+                    out["volume"].append(v)
+        return out
+
+
+CFG_DELTA = {"ativos": {
+    "WDO": {"fonte": "mt5", "simbolo": "WDO$", "terminal": GENIAL, "delta": True, "sessao": {"dias": [0, 1, 2, 3, 4]}},
+    "WIN": {"fonte": "mt5", "simbolo": "WIN$", "terminal": GENIAL, "delta": True, "sessao": {"dias": [0, 1, 2, 3, 4]}},
+}}
+
+
+def ler(caminho):
+    with open(caminho, encoding="utf-8") as f:
+        return f.read()
+
+
+class TestDelta(unittest.TestCase):
+    def test_somar_delta_por_candle_de_5_min(self):
+        t = datetime(2026, 9, 1, 9, 0)
+        s = lambda **kw: ms(t + timedelta(**kw))
+        acc = {}
+        dados.somar_delta(acc, [s(seconds=1), s(seconds=2), s(minutes=4, seconds=59), s(minutes=5), s(minutes=6),
+                                s(minutes=7)], [COMPRA, VENDA, COMPRA, VENDA, COMPRA | VENDA, 0], [10, 3, 1, 4, 99, 99])
+        # os dois agressores ou nenhum (leilão, direto) não contam
+        self.assertEqual(acc, {ms(t) // 300000: 8, s(minutes=5) // 300000: -4})
+
+    def test_historico_grava_delta_e_nao_baixa_ticks_de_novo(self):
+        mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1), date(2026, 9, 2)}})
+        with tempfile.TemporaryDirectory() as d:
+            a = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG_DELTA, pasta=d, mt5=mt5,
+                                hoje=date(2026, 9, 10))
+            pedidos = len(mt5.pedidos_ticks)
+            b = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG_DELTA, pasta=d, mt5=mt5,
+                                hoje=date(2026, 9, 10))
+            self.assertEqual(ler(os.path.join(d, "WDO_M5.delta.csv")), "2026-09-01,WDO$\n2026-09-02,WDO$\n2026-09-03,\n")
+        self.assertEqual(a, b)
+        self.assertEqual(len(mt5.pedidos_ticks), pedidos)  # o 2º pedido sai do cache, sem baixar ticks
+        por = dados.por_dia(a)
+        self.assertEqual({k.delta for k in por[date(2026, 9, 1)]}, {3.0})  # compra 5 − venda 2
+        self.assertEqual({k.delta for k in por[date(2026, 9, 2)]}, {3.0})
+        self.assertEqual({k.delta for k in por[date(2026, 9, 3)]}, {None})  # sem ticks: ausente, não zero
+
+    def test_dia_de_hoje_nao_ganha_delta(self):
+        mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1)}})
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG_DELTA, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 9, 1))
+        self.assertEqual({k.delta for k in cs}, {None})
+        self.assertEqual(mt5.pedidos_ticks, [])
+
+    def test_sem_delta_no_config_nao_baixa_ticks_e_cache_antigo_fica_ausente(self):
+        mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1)}})
+        with tempfile.TemporaryDirectory() as d:
+            dados.salvar_csv(serie(datetime(2026, 9, 1, 9, 0), 12), os.path.join(d, "WDO_M5.csv"))  # delta 1.0 antigo
+            with open(os.path.join(d, "WDO_M5.cobertura.csv"), "w", encoding="utf-8") as f:
+                f.write("2026-09-01,2026-09-01\n")
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=mt5)
+            self.assertEqual({k.delta for k in cs}, {None})
+            self.assertEqual(mt5.pedidos_ticks, [])
+            # com delta no config, o delta do cache antigo (sem ticks por trás) é refeito dos ticks
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG_DELTA, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 9, 10))
+        self.assertEqual({k.delta for k in cs}, {3.0})
+
+    def test_serie_continua_sem_ticks_usa_o_contrato_vigente(self):
+        # WIN$ sem negócios; WINU26 e WINX26 não existem; WINV26 tem o dia inteiro
+        mt5 = Mt5ComTicks({"WIN$": set(), "WINV26": {date(2026, 9, 1)}}, compra=1)
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("WIN", date(2026, 9, 1), date(2026, 9, 1), CFG_DELTA, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 9, 10))
+            self.assertEqual(ler(os.path.join(d, "WIN_M5.delta.csv")), "2026-09-01,WINV26\n")
+        self.assertEqual({k.delta for k in cs}, {-1.0})
+        self.assertEqual(mt5.pedidos_ticks, ["WIN$", "WINV26"])
+
+    def test_contrato_com_pouco_volume_nao_vale(self):
+        # os negócios somam 107 contratos por candle e os candles 300: menos da metade, é o vencimento de trás
+        class Fino(Mt5ComTicks):
+            def copy_rates_range(self, simbolo, tf, de, ate):
+                return [{**r, "real_volume": 300} for r in super().copy_rates_range(simbolo, tf, de, ate)]
+        mt5 = Fino({"WIN$": set(), "WINV26": {date(2026, 9, 1)}})
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("WIN", date(2026, 9, 1), date(2026, 9, 1), CFG_DELTA, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 9, 10))
+            self.assertEqual(ler(os.path.join(d, "WIN_M5.delta.csv")), "2026-09-01,\n")
+        self.assertEqual({k.delta for k in cs}, {None})
+
+    def test_candidatos(self):
+        self.assertEqual(dados._candidatos("WIN$", date(2026, 11, 3)), ["WIN$", "WINX26", "WINZ26", "WINF27"])
+        self.assertEqual(dados._candidatos("WDOX26", date(2026, 11, 3)), ["WDOX26"])
+
+    def test_csv_guarda_delta_ausente_vazio(self):
+        cs = [Candle(datetime(2026, 9, 1, 9, 0), 1.0, 2.0, 0.5, 1.5, 7.0),
+              Candle(datetime(2026, 9, 1, 9, 5), 1.0, 2.0, 0.5, 1.5, 7.0, -3.0)]
+        with tempfile.TemporaryDirectory() as d:
+            caminho = os.path.join(d, "x.csv")
+            dados.salvar_csv(cs, caminho)
+            self.assertEqual(dados.ler_csv(caminho), cs)
+            self.assertTrue(ler(caminho).splitlines()[1].endswith(",7.0,"))
+
+    def test_agrupar_com_delta_ausente_fica_ausente(self):
+        cs = serie(datetime(2026, 9, 1, 9, 0), 12)
+        cs[3] = Candle(cs[3].t, cs[3].o, cs[3].h, cs[3].l, cs[3].c, cs[3].v)
+        self.assertIsNone(dados.agrupar(cs, 60)[0].delta)
+
+    def test_ticks_no_processo_filho(self):
+        falso = MT5_FALSO_FILHO.format(inicializa=True, dormir=0, hora=0) + (
+            "COPY_TICKS_TRADE = 2\n"
+            "def copy_ticks_range(simbolo, de, ate, flags):\n"
+            f"    return {{'time_msc': [{ms(datetime(2026, 10, 20, 9, 0, 1))}, {ms(datetime(2026, 10, 20, 9, 5, 1))}],"
+            f" 'flags': [{COMPRA}, {VENDA}], 'volume': [4, 6]}}\n")
+        with tempfile.TemporaryDirectory() as pasta:
+            with open(os.path.join(pasta, "MetaTrader5.py"), "w", encoding="utf-8") as f:
+                f.write(falso)
+            with mock.patch.dict(os.environ, {"PYTHONPATH": pasta}):
+                r = dados.baixar_delta_mt5("WDO$", {date(2026, 10, 20): 10.0}, terminal=TERMINAL_FALSO, timeout_s=60)
+        self.assertEqual(r, {"2026-10-20": ["WDO$", {"2026-10-20T09:00:00": 4, "2026-10-20T09:05:00": -6}]})
 
 
 if __name__ == "__main__":

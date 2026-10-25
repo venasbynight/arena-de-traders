@@ -5,13 +5,13 @@
     "WDO": {
       "ponto_rs": 10, "tick": 0.5, "margem_por_contrato": 150, "custo_por_contrato": 0.5,
       "fonte": "mt5", "simbolo": "WDO$", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
-      "fuso_servidor": "brasilia",
+      "fuso_servidor": "brasilia", "delta": true,
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": true}
     },
     "WIN": {
       "ponto_rs": 0.2, "tick": 5, "margem_por_contrato": 100, "custo_por_contrato": 0.25,
       "fonte": "mt5", "simbolo": "WIN$", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
-      "fuso_servidor": "brasilia",
+      "fuso_servidor": "brasilia", "delta": true,
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": true}
     },
     "EURUSD": {

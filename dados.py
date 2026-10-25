@@ -11,6 +11,7 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import replace
 from datetime import date, datetime, time, timedelta, timezone
 
 from tipos import Candle
@@ -29,7 +30,7 @@ def salvar_csv(candles, caminho):
         w = csv.writer(f)
         w.writerow(CAMPOS)
         for k in candles:
-            w.writerow([k.t.isoformat(), k.o, k.h, k.l, k.c, k.v, k.delta])
+            w.writerow([k.t.isoformat(), k.o, k.h, k.l, k.c, k.v, "" if k.delta is None else k.delta])
     os.replace(temporario, caminho)
 
 
@@ -37,7 +38,8 @@ def ler_csv(caminho):
     try:
         with open(caminho, newline="", encoding="utf-8") as f:
             return [Candle(datetime.fromisoformat(r["t"]), float(r["o"]), float(r["h"]), float(r["l"]),
-                           float(r["c"]), float(r["v"]), float(r["delta"])) for r in csv.DictReader(f)]
+                           float(r["c"]), float(r["v"]), None if r["delta"] == "" else float(r["delta"]))
+                    for r in csv.DictReader(f)]
     except (TypeError, ValueError, KeyError):  # linha cortada: campo faltando (None) ou número/data pela metade
         raise ErroDados(f"cache corrompido em {caminho}; apague-o e rode de novo")
 
@@ -60,7 +62,7 @@ def agrupar(candles, minutos):
             blocos.setdefault(n, []).append(k)
         for b in blocos.values():
             out.append(Candle(b[0].t, b[0].o, max(k.h for k in b), min(k.l for k in b), b[-1].c,
-                              sum(k.v for k in b), sum(k.delta for k in b)))
+                              sum(k.v for k in b), None if any(k.delta is None for k in b) else sum(k.delta for k in b)))
     return out
 
 
@@ -94,7 +96,7 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
             raise ErroDados(f"Binance indisponível agora ({getattr(e, 'reason', e)}); tente de novo em alguns minutos")
         for k in klines:
             out.append(Candle(datetime.fromtimestamp(k[0] / 1000, timezone.utc).replace(tzinfo=None) - brasilia,
-                              float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5]), 0.0))
+                              float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
         if len(klines) < 1000:
             break
         inicio = klines[-1][0] + 300000  # próxima página começa depois do último candle recebido
@@ -165,13 +167,96 @@ def _importar_mt5():
     return MetaTrader5
 
 
+TICK_FLAG_BUY, TICK_FLAG_SELL = 32, 64  # marcas de agressor do pacote MetaTrader5
+MESES_B3 = "FGHJKMNQUVXZ"  # letra do mês de vencimento: WINZ26 = dezembro de 2026
+BLOCO_TICKS = 500_000      # o WIN tem ~3 milhões de negócios por dia: lista Python em pedaços, não de uma vez
+
+
+def somar_delta(acc, tempos_ms, flags, volumes):
+    """Soma em `acc` {candle de 5 min (ms // 300000): agressão de compra − venda} dos negócios do MT5.
+
+    Negócio com os dois agressores marcados ou com nenhum (leilão, direto) não conta.
+    """
+    for t, f, v in zip(tempos_ms, flags, volumes):
+        compra = f & TICK_FLAG_BUY
+        if bool(compra) != bool(f & TICK_FLAG_SELL):
+            acc[t // 300000] = acc.get(t // 300000, 0) + (v if compra else -v)
+    return acc
+
+
+def _candidatos(simbolo, dia):
+    """Série contínua (WIN$) e os vencimentos do mês e dos 2 seguintes: na Genial a WIN$ só tem ticks recentes."""
+    if not simbolo.endswith("$"):
+        return [simbolo]
+    meses = [dia.month - 1 + k for k in range(3)]
+    return [simbolo] + [f"{simbolo[:-1]}{MESES_B3[m % 12]}{(dia.year + m // 12) % 100:02d}" for m in meses]
+
+
+def _lista(coluna):
+    return coluna.tolist() if hasattr(coluna, "tolist") else list(coluna)  # numpy do MT5 ou lista do teste
+
+
+def _consultar_delta(mt5, simbolo, volumes, terminal, fuso_servidor, deslocamento_h):
+    """{dia: [símbolo, {candle (Brasília, iso): delta}]} dos dias de `volumes` ({dia iso: volume dos candles}).
+
+    Vale o primeiro candidato cujos negócios do dia somam pelo menos metade do volume dos candles (um vencimento de
+    trás tem poucos negócios e daria um delta falso); sem nenhum, o dia fica de fora.
+    """
+    para_servidor, para_brasilia = _conversores(fuso_servidor, deslocamento_h)
+    if not (mt5.initialize(path=terminal) if terminal else mt5.initialize()):
+        raise ErroDados(f"não consegui falar com o MetaTrader 5: abra o MT5 e faça login ({mt5.last_error()})")
+    try:
+        ligados, out = {}, {}
+        for dia_iso, vol_candles in volumes.items():
+            dia = date.fromisoformat(dia_iso)
+            ini = para_servidor(datetime(dia.year, dia.month, dia.day))  # o pacote lê o relógio do servidor como UTC
+            de, ate = (x.replace(tzinfo=timezone.utc) for x in (ini, ini + timedelta(days=1, seconds=-1)))
+            for s in _candidatos(simbolo, dia):
+                if s not in ligados:
+                    ligados[s] = mt5.symbol_select(s, True)
+                ticks = mt5.copy_ticks_range(s, de, ate, mt5.COPY_TICKS_TRADE) if ligados[s] else None
+                if ticks is None:
+                    continue
+                acc, vol = {}, 0
+                for i in range(0, len(ticks["time_msc"]), BLOCO_TICKS):
+                    t, f, v = (_lista(ticks[c][i:i + BLOCO_TICKS]) for c in ("time_msc", "flags", "volume"))
+                    somar_delta(acc, t, f, v)
+                    vol += sum(v)
+                if vol and 2 * vol >= vol_candles:
+                    out[dia_iso] = [s, {para_brasilia(datetime(1970, 1, 1) + timedelta(seconds=300 * b)).isoformat(): d
+                                        for b, d in sorted(acc.items())}]
+                    break
+        return out
+    finally:
+        mt5.shutdown()
+
+
+def baixar_delta_mt5(simbolo, volumes, mt5=None, terminal=None, deslocamento_h=None, fuso_servidor="brasilia",
+                     timeout_s=600):
+    """Delta por candle de 5 min dos dias de `volumes` ({date: volume dos candles do dia}), dos ticks de negócio.
+
+    Os ticks são somados no processo filho e nunca vão para o disco. Com `mt5` (falso dos testes), aqui mesmo.
+    """
+    vols = {d.isoformat(): v for d, v in volumes.items()}
+    if mt5 is not None:
+        return _consultar_delta(mt5, simbolo, vols, terminal, fuso_servidor, deslocamento_h)
+    return _consultar_mt5_isolado({"tipo": "delta", "simbolo": simbolo, "volumes": vols, "terminal": terminal,
+                                   "fuso_servidor": fuso_servidor, "deslocamento_h": deslocamento_h}, timeout_s)
+
+
 def _filho_mt5(pasta):
     """Corpo do processo filho: lê pedido.json, consulta o MT5 e grava saida.json (resultado ou erro)."""
     with open(os.path.join(pasta, "pedido.json"), encoding="utf-8") as f:
         p = json.load(f)
     try:
-        saida = {"taxas": _consultar_mt5(_importar_mt5(), p["simbolo"], datetime.fromisoformat(p["inicio"]),
-                                         datetime.fromisoformat(p["fim"]), p["terminal"])}
+        mt5 = _importar_mt5()
+        if p.get("tipo") == "delta":
+            r = _consultar_delta(mt5, p["simbolo"], p["volumes"], p["terminal"], p["fuso_servidor"],
+                                 p["deslocamento_h"])
+        else:
+            r = _consultar_mt5(mt5, p["simbolo"], datetime.fromisoformat(p["inicio"]),
+                               datetime.fromisoformat(p["fim"]), p["terminal"])
+        saida = {"resultado": r}
     except ErroDados as e:
         saida = {"erro": str(e)}
     except Exception as e:
@@ -180,16 +265,16 @@ def _filho_mt5(pasta):
         json.dump(saida, f)
 
 
-def _consultar_mt5_isolado(simbolo, inicio, fim, terminal, timeout_s):
-    """Como _consultar_mt5, mas num processo filho: um terminal que pendura (a Genial sem o feed liberado
+def _consultar_mt5_isolado(pedido, timeout_s):
+    """`pedido` (candles ou delta) num processo filho: um terminal que pendura (a Genial sem o feed liberado
     bloqueia `initialize` e `copy_rates_range` por minutos) é morto em vez de travar o programa.
 
     O filho não usa pipes (o terminal pode herdá-los e segurar a espera depois do kill); fala por arquivos.
     """
     with tempfile.TemporaryDirectory() as pasta:
         with open(os.path.join(pasta, "pedido.json"), "w", encoding="utf-8") as f:
-            json.dump({"simbolo": simbolo, "inicio": inicio.isoformat(), "fim": fim.isoformat(),
-                       "terminal": terminal}, f)
+            json.dump(pedido, f)
+        terminal = pedido["terminal"]
         filho = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--mt5-filho", pasta],
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))  # sem janela de console
@@ -208,7 +293,7 @@ def _consultar_mt5_isolado(simbolo, inicio, fim, terminal, timeout_s):
                             "abra o terminal, confira o login e tente de novo")
     if "erro" in saida:
         raise ErroDados(saida["erro"])
-    return saida["taxas"]
+    return saida["resultado"]
 
 
 def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, fuso_servidor="brasilia",
@@ -228,7 +313,8 @@ def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, f
     inicio = para_servidor(brasilia).replace(tzinfo=timezone.utc)
     fim = para_servidor(brasilia + timedelta(days=(ate - de).days + 1) - timedelta(seconds=1)).replace(tzinfo=timezone.utc)
     if mt5 is None:
-        taxas = _consultar_mt5_isolado(simbolo, inicio, fim, terminal, timeout_s)
+        taxas = _consultar_mt5_isolado({"simbolo": simbolo, "inicio": inicio.isoformat(), "fim": fim.isoformat(),
+                                        "terminal": terminal}, timeout_s)
     else:
         taxas = _consultar_mt5(mt5, simbolo, inicio, fim, terminal)
     # O MT5 grava o horário do servidor como se fosse UTC. Medido em 25/10/2026: o MetaQuotes-Demo é UTC+3 no
@@ -322,8 +408,50 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
             if fim >= ini:
                 with open(arq_cob, "a", encoding="utf-8") as f:
                     f.write(f"{ini.isoformat()},{fim.isoformat()}\n")
+    candles = _completar_delta(ativo, espec, candles, de, ate, pasta, arq, mt5, hoje)
     # o cache de antes do arredondamento também sai no tick (no tick, no_tick não muda nada)
     return no_tick([k for k in candles if de <= k.t.date() <= ate and k.t.weekday() in dias], espec.get("tick"))
+
+
+DIAS_POR_PROCESSO = 10  # dias de ticks por processo filho: um prazo que estoura perde só esse bloco
+
+
+def _completar_delta(ativo, espec, candles, de, ate, pasta, arq_csv, mt5, hoje):
+    """Candles com o delta dos dias que já têm ticks somados; com `"delta": true` no ativo, baixa os que faltam.
+
+    `<ativo>_M5.delta.csv` guarda, por dia, o símbolo de onde veio o delta (vazio = o MT5 não tem os negócios
+    daquele dia). Dia fora dele fica com delta ausente, inclusive o 0.0 do cache de antes do delta existir.
+    """
+    arq = os.path.join(pasta, f"{ativo}_M5.delta.csv")
+    feitos = {}
+    if os.path.exists(arq):
+        try:
+            with open(arq, encoding="utf-8") as f:
+                for linha in f:
+                    d, s = linha.rstrip("\n").split(",")
+                    feitos[date.fromisoformat(d)] = s
+        except ValueError:
+            raise ErroDados(f"cache corrompido em {arq}; apague-o e rode de novo")
+    dias = {d: [k if feitos.get(d) else replace(k, delta=None) for k in ks] for d, ks in por_dia(candles).items()}
+    hoje = hoje or _hoje_brasilia()
+    faltam = sorted(d for d in dias if de <= d <= ate and d < hoje and d not in feitos) if espec.get("delta") else []
+    for i in range(0, len(faltam), DIAS_POR_PROCESSO):
+        bloco = faltam[i:i + DIAS_POR_PROCESSO]
+        try:
+            achados = baixar_delta_mt5(espec.get("simbolo") or f"{ativo}$", {d: sum(k.v for k in dias[d]) for d in bloco},
+                                       mt5, espec.get("terminal"), espec.get("deslocamento_h"),
+                                       espec.get("fuso_servidor", "brasilia"))
+        except ErroDados:
+            break  # ponytail: MT5 fora do ar não derruba os candles; o delta desses dias fica para a próxima chamada
+        for d in bloco:
+            simbolo, deltas = achados.get(d.isoformat(), ["", {}])
+            dias[d] = [replace(k, delta=float(deltas.get(k.t.isoformat(), 0)) if simbolo else None) for k in dias[d]]
+            feitos[d] = simbolo
+        candles = [k for ks in dias.values() for k in ks]
+        salvar_csv(candles, arq_csv)
+        with open(arq, "a", encoding="utf-8") as f:
+            f.writelines(f"{d.isoformat()},{feitos[d]}\n" for d in bloco)
+    return [k for ks in dias.values() for k in ks]
 
 
 if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--mt5-filho":
