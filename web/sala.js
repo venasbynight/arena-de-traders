@@ -32,6 +32,7 @@ const ativoPedido = new URLSearchParams(location.search).get("ativo");
 $("#rodar").onclick = async () => {
   pausar();
   $("#relogio").textContent = "calculando o backtest…";
+  descartar();
   $("#grid").innerHTML = "";
   $("#rodar").disabled = true;
   try {
@@ -51,6 +52,12 @@ function aviso(msg) {
   $("#grid .aviso").textContent = msg;
   $("#relogio").textContent = "";
   ["#inicio", "#play", "#fim", "#barra"].forEach(s => $(s).disabled = true);
+}
+
+// solta os gráficos do backtest anterior: só remove() libera os listeners e os dados que o Lightweight Charts segura
+function descartar() {
+  for (const tr of arena.traders) { tr.obs.disconnect(); (tr.didi ? tr.didi.charts : [tr.chart]).forEach(c => c.remove()); }
+  arena.traders = [];
 }
 
 function montar(dados) {
@@ -87,11 +94,10 @@ function criarCard(nome, t, k) {
     priceFormat: {type: "price", precision: precisao, minMove: 10 ** -precisao}});
   const tr = {nome, t, el, chart, serie, canvas: box.querySelector("canvas"), linhas: [], mostrados: 0};
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => desenharZonas(tr));
-  new ResizeObserver(() => desenharZonas(tr)).observe(box);
+  tr.obs = new ResizeObserver(() => desenharZonas(tr)); tr.obs.observe(box);
   if (t.indicadores) montarDidi(tr, precisao);
   return tr;
 }
-
 
 // Execuções (entrada/saída) levam a hora de abertura do candle em que aconteceram: aparecem com esse candle.
 // Decisões (ordem, bloqueio, estudo) levam a hora do fechamento do candle que as gerou: aparecem com ele.
@@ -109,6 +115,7 @@ function irPara(i) {
     tr.mostrados = arena.cursor;
     if (tr.didi) revelarDidi(tr, 0);
     if (arena.cursor) tr.chart.timeScale().scrollToRealTime();
+    if (tr.didi) { tr.didi.lider = 0; alinhar(tr); }
   }
   atualizar();
 }
@@ -120,7 +127,11 @@ function avancar(n) {
   const antes = arena.cursor;
   arena.traders.forEach(tr => tr.mostrados = alvo);
   arena.cursor = alvo;
-  arena.traders.forEach(tr => tr.didi && revelarDidi(tr, antes));
+  arena.traders.forEach(tr => {
+    if (!tr.didi) return;
+    revelarDidi(tr, antes); alinhar(tr, tr.didi.lider);
+    if (!tr.didi.preso) tr.didi.lider = 0;  // passada a roda do mouse, o principal volta a mandar
+  });
   atualizar();
   if (arena.cursor >= arena.candles.length) { pausar(); arena.mostrarResultado(); }
 }
@@ -262,37 +273,63 @@ function montarDidi(tr, precisao) {
   curta.createPriceLine({price: 0, color: COR.zero, lineWidth: 1, lineStyle: 0, axisLabelVisible: false, title: "MA8"});
   // série invisível com a hora de cada candle: os painéis têm os mesmos pontos de tempo do principal (índices iguais)
   const vazios = [didi.chart, adx.chart].map(c => c.addLineSeries({visible: false}));
-  tr.didi = {series, curta, vazios, charts, j: 0,
+  // ts: hora de cada linha em segundos (busca binária do cursor); lider: gráfico que o usuário mexeu por último;
+  // sobre: gráfico sob o mouse; hover: hora apontada pelo mouse (a legenda fica nela)
+  tr.didi = {series, curta, vazios, charts, j: 0, ts: tr.t.indicadores.t.map(seg), lider: 0, preso: false, sobre: -1, hover: null, largura: 72,
     legendas: [legenda(tr.el.querySelector(".grafico")), legenda(didi.box), legenda(adx.box)]};
 
-  let sinc = false;
-  const alvos = [tr.serie, curta, series[5][1]];
+  // Faixa visível e cursor vão num sentido só, do gráfico que o usuário está mexendo para os outros: o Lightweight
+  // Charts repete os avisos depois (no desenho e a cada candle novo), e o aviso velho de outro gráfico, se voltasse,
+  // desfazia o replay (faixa) ou arrastava o cursor para longe do mouse.
+  const D = tr.didi, alvos = [tr.serie, curta, series[5][1]];
+  const boxes = [tr.el.querySelector(".grafico"), didi.box, adx.box];
   charts.forEach((c, i) => {
-    c.timeScale().subscribeVisibleLogicalRangeChange(r => {
-      if (sinc || !r) return;
-      sinc = true; charts.forEach((o, j) => j !== i && o.timeScale().setVisibleLogicalRange(r)); sinc = false;
+    boxes[i].addEventListener("pointerdown", () => { D.lider = i; D.preso = true; }, true);
+    boxes[i].addEventListener("wheel", () => D.lider = i, {capture: true, passive: true});
+    boxes[i].addEventListener("pointerenter", () => D.sobre = i);
+    boxes[i].addEventListener("pointerleave", () => {
+      if (D.sobre !== i) return;
+      D.sobre = -1; D.hover = null; charts.forEach(o => o.clearCrosshairPosition()); legendasDidi(tr, null);
     });
+    c.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && i === D.lider) alinhar(tr, i, r); });
     c.subscribeCrosshairMove(p => {
-      if (sinc) return;
-      sinc = true;
+      if (i !== D.sobre) return;
       charts.forEach((o, j) => {
         if (j === i) return;
         const v = p.time == null ? null
           : j === 0 ? arena.candles[arena.porTempo.get(p.time)]?.close : valorEm(tr, j === 1 ? "didi_curta" : "adx", p.time);
         if (v != null) o.setCrosshairPosition(v, p.time, alvos[j]); else o.clearCrosshairPosition();
       });
-      sinc = false;
-      legendasDidi(tr, p.time);
+      D.hover = p.time ?? null;
+      legendasDidi(tr, D.hover);
     });
   });
 }
 
-// índice da última linha já revelada com t <= time (sem time: a última revelada)
+// fim do arraste: o gráfico arrastado passa a faixa para os outros e o principal volta a mandar
+const soltar = () => arena.traders.forEach(tr => {
+  if (!tr.didi?.preso) return;
+  tr.didi.preso = false; alinhar(tr, tr.didi.lider); tr.didi.lider = 0;
+});
+addEventListener("pointerup", soltar, true); addEventListener("pointercancel", soltar, true);
+
+// copia a faixa visível do gráfico `de` (o principal, por padrão) para os outros do card. Sem comparar antes: a faixa
+// pedida só vale no próximo desenho (e um setData no painel a descarta), então a leitura do painel engana.
+// Também iguala a largura das escalas de preço (o rótulo do WIN, 208.240,00, passa dos 72 px): com larguras
+// diferentes a mesma faixa dá barras fora de prumo.
+function alinhar(tr, de = 0, r = tr.didi.charts[de].timeScale().getVisibleLogicalRange()) {
+  const D = tr.didi, w = Math.max(...D.charts.map(c => c.priceScale("right").width()));
+  if (w > D.largura) { D.largura = w; D.charts.forEach(c => c.applyOptions({rightPriceScale: {minimumWidth: w}})); }
+  if (r) D.charts.forEach((c, i) => i !== de && c.timeScale().setVisibleLogicalRange(r));
+}
+
+// índice da última linha já revelada com t <= time (sem time: a última revelada); busca binária
 function linhaEm(tr, time) {
-  const t = tr.t.indicadores.t;
-  let j = tr.didi.j - 1;
-  if (time != null) while (j >= 0 && seg(t[j]) > time) j--;
-  return j;
+  const {ts, j} = tr.didi;
+  if (time == null) return j - 1;
+  let lo = 0, hi = j;  // primeira linha com ts > time, entre as reveladas
+  while (lo < hi) { const m = (lo + hi) >> 1; if (ts[m] > time) hi = m; else lo = m + 1; }
+  return lo - 1;
 }
 function valorEm(tr, chave, time) { const j = linhaEm(tr, time); return j < 0 ? null : tr.t.indicadores[chave][j]; }
 
@@ -310,7 +347,7 @@ function legendasDidi(tr, time) {
 // revela os indicadores até o cursor do replay; `inicio` é o primeiro candle novo (0 = refaz tudo)
 function revelarDidi(tr, inicio) {
   const ind = tr.t.indicadores, D = tr.didi, n = arena.cursor;
-  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: seg(ind.t[j]), value: ind[chave][j]};
+  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: D.ts[j], value: ind[chave][j]};
   if (inicio === 0) {
     const vazio = arena.candles.slice(0, n).map(c => ({time: c.time}));
     D.vazios.forEach(s => s.setData(vazio));
@@ -328,7 +365,7 @@ function atualizarDidi(tr, s) {
   const m = s.agulhadas.map(a => ({time: seg(a.t), position: a.lado === "compra" ? "belowBar" : "aboveBar",
     color: a.lado === "compra" ? "#26a69a" : "#ef5350", shape: a.lado === "compra" ? "arrowUp" : "arrowDown", text: "agulhada"}));
   tr.didi.curta.setMarkers(m.sort((a, b) => a.time - b.time));
-  legendasDidi(tr, null);
+  legendasDidi(tr, tr.didi.hover);  // com o mouse em cima, a legenda fica no candle apontado
 }
 
 // reprodução
