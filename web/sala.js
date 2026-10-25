@@ -57,6 +57,7 @@ function montar(dados) {
   arena.dados = dados;
   const candles = dados.candles.map(([t, o, h, l, c]) => ({iso: t, time: seg(t), open: o, high: h, low: l, close: c}));
   arena.candles = candles;
+  arena.porTempo = new Map(candles.map((c, i) => [c.time, i]));
   arena.dias = [...new Set(candles.map(c => c.iso.slice(0, 10)))];
   $("#grid").innerHTML = "";
   arena.traders = Object.entries(dados.traders).map(([nome, t], k) => criarCard(nome, t, k));
@@ -66,6 +67,13 @@ function montar(dados) {
   irPara(0);
 }
 
+const OPCOES = {
+  autoSize: true, layout: {background: {color: "transparent"}, textColor: "#8b98a5"},
+  grid: {vertLines: {color: "#18212c"}, horzLines: {color: "#18212c"}},
+  timeScale: {timeVisible: true, secondsVisible: false, borderColor: "#1f2a36", barSpacing: 7},
+  rightPriceScale: {borderColor: "#1f2a36"}, crosshair: {mode: 0},
+};
+
 function criarCard(nome, t, k) {
   const el = document.createElement("section");
   el.className = "card";
@@ -73,20 +81,17 @@ function criarCard(nome, t, k) {
     <div class="sub"><span class="tend"></span><span class="status"></span></div><div class="grafico"><canvas class="zonas"></canvas></div>`;
   $("#grid").appendChild(el);
   const box = el.querySelector(".grafico");
-  const chart = LightweightCharts.createChart(box, {
-    autoSize: true, layout: {background: {color: "transparent"}, textColor: "#8b98a5"},
-    grid: {vertLines: {color: "#18212c"}, horzLines: {color: "#18212c"}},
-    timeScale: {timeVisible: true, secondsVisible: false, borderColor: "#1f2a36", barSpacing: 7},
-    rightPriceScale: {borderColor: "#1f2a36"}, crosshair: {mode: 0},
-  });
+  const chart = LightweightCharts.createChart(box, OPCOES);
   const precisao = casas(arena.candles[0]?.close ?? 0);
   const serie = chart.addCandlestickSeries({upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350",
     priceFormat: {type: "price", precision: precisao, minMove: 10 ** -precisao}});
   const tr = {nome, t, el, chart, serie, canvas: box.querySelector("canvas"), linhas: [], mostrados: 0};
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => desenharZonas(tr));
   new ResizeObserver(() => desenharZonas(tr)).observe(box);
+  if (t.indicadores) montarDidi(tr, precisao);
   return tr;
 }
+
 
 // Execuções (entrada/saída) levam a hora de abertura do candle em que aconteceram: aparecem com esse candle.
 // Decisões (ordem, bloqueio, estudo) levam a hora do fechamento do candle que as gerou: aparecem com ele.
@@ -102,6 +107,7 @@ function irPara(i) {
   for (const tr of arena.traders) {
     tr.serie.setData(arena.candles.slice(0, arena.cursor).map(({iso, ...c}) => c));
     tr.mostrados = arena.cursor;
+    if (tr.didi) revelarDidi(tr, 0);
     if (arena.cursor) tr.chart.timeScale().scrollToRealTime();
   }
   atualizar();
@@ -111,8 +117,10 @@ function avancar(n) {
   const alvo = Math.min(arena.cursor + n, arena.candles.length);
   for (const tr of arena.traders)
     for (let k = tr.mostrados; k < alvo; k++) { const {iso, ...c} = arena.candles[k]; tr.serie.update(c); }
+  const antes = arena.cursor;
   arena.traders.forEach(tr => tr.mostrados = alvo);
   arena.cursor = alvo;
+  arena.traders.forEach(tr => tr.didi && revelarDidi(tr, antes));
   atualizar();
   if (arena.cursor >= arena.candles.length) { pausar(); arena.mostrarResultado(); }
 }
@@ -123,15 +131,16 @@ function estado(tr) {
   const resultado = saidas.reduce((s, e) => s + e.resultado_rs, 0);
   const ganhos = saidas.filter(e => e.resultado_rs > 0).length;
   let posicao = null, desenhos = [], tend = "";
+  const agulhadas = [];  // marcadores do Didi: acumulam (cada desenho traz só a agulhada daquele candle)
   for (const e of ev) {
     if (e.tipo === "entrada") posicao = e;
     if (e.tipo === "saida") posicao = null;
-    if (e.tipo === "desenho") desenhos = e.desenhos;
+    if (e.tipo === "desenho") { desenhos = e.desenhos; agulhadas.push(...desenhos.filter(d => d.tipo === "agulhada")); }
     if (e.tipo === "pensamento") tend = e.linhas[0] || "";
   }
   const dia = arena.cursor ? arena.candles[arena.cursor - 1].iso.slice(0, 10) : "";
   const stopsHoje = saidas.filter(e => e.motivo === "stop" && e.t.startsWith(dia)).length;
-  return {ev, saidas, resultado, ganhos, posicao, desenhos, tend, stopsHoje, dia};
+  return {ev, saidas, resultado, ganhos, posicao, desenhos, agulhadas, tend, stopsHoje, dia};
 }
 
 function atualizar() {
@@ -150,6 +159,7 @@ function atualizar() {
     tr.el.querySelector(".status").textContent = s.posicao ? `${agora} · stop ${num(s.posicao.stop)} · alvo ${num(s.posicao.alvo)}` : agora;
     marcadores(tr, s);
     tr.desenhos = s.desenhos; desenharZonas(tr);
+    if (tr.didi) atualizarDidi(tr, s);
     linhasPlacar.push(`<tr><td>${tr.nome}</td><td class="${s.resultado >= 0 ? "up" : "dn"}">${brl(s.resultado)}</td><td>${s.saidas.length}</td><td>${s.saidas.length ? Math.round(100 * s.ganhos / s.saidas.length) + "%" : "–"}</td><td class="${s.posicao ? "acc" : s.stopsHoje >= 3 ? "warn" : "mut"}">${agora}</td></tr>`);
     const vistos = new Set();  // o mesmo bloqueio se repete a cada candle: mostra só o primeiro do dia
     for (const e of s.ev) {
@@ -217,6 +227,108 @@ function desenharZonas(tr) {
       g.fillStyle = cor; g.font = "10px Segoe UI"; g.fillText(d.rotulo, 4, y - 3);
     }
   }
+}
+
+// Didi: Bollinger sobre os candles e dois painéis embaixo (Didi Index, ADX/DI), cada um um gráfico com o mesmo
+// eixo de tempo do principal (rolagem, zoom e cursor juntos). Os valores vêm prontos do Python (t.indicadores).
+const COR = {bb: "#b39ddb", curta: "#4c8dff", longa: "#ff9800", zero: "#5d6b7a", adx: "#e6edf3", mais: "#26a69a", menos: "#ef5350"};
+
+function montarDidi(tr, precisao) {
+  tr.el.classList.add("didi");
+  const fmt = {type: "price", precision: precisao, minMove: 10 ** -precisao};
+  const fmt1 = {type: "price", precision: 1, minMove: 0.1};
+  const linha = (chart, color, extra = {}) => chart.addLineSeries({color, lineWidth: 1, priceLineVisible: false,
+    lastValueVisible: false, crosshairMarkerRadius: 3, priceFormat: fmt, ...extra});
+  const legenda = box => { const d = document.createElement("div"); d.className = "legenda"; box.appendChild(d); return d; };
+  const painel = () => {
+    const box = document.createElement("div"); box.className = "painel"; tr.el.appendChild(box);
+    const chart = LightweightCharts.createChart(box, OPCOES);
+    chart.priceScale("right").applyOptions({scaleMargins: {top: 0.2, bottom: 0.08}});  // espaço para a legenda
+    return {box, chart};
+  };
+  const didi = painel(), adx = painel();
+  // a mesma largura de escala nos três: as barras ficam uma embaixo da outra; só o último mostra as horas
+  const charts = [tr.chart, didi.chart, adx.chart];
+  // o logo do TradingView (atribuição da licença) fica só no gráfico principal
+  charts.forEach((c, i) => c.applyOptions({rightPriceScale: {minimumWidth: 72}, timeScale: {visible: i === 2},
+    layout: {attributionLogo: i === 0}}));
+  const series = [
+    ["bb_sup", linha(tr.chart, COR.bb)], ["bb_meio", linha(tr.chart, COR.bb, {lineStyle: 2})], ["bb_inf", linha(tr.chart, COR.bb)],
+    ["didi_curta", linha(didi.chart, COR.curta, {lineWidth: 2})], ["didi_longa", linha(didi.chart, COR.longa, {lineWidth: 2})],
+    ["adx", linha(adx.chart, COR.adx, {lineWidth: 2, priceFormat: fmt1})],
+    ["di_mais", linha(adx.chart, COR.mais, {priceFormat: fmt1})], ["di_menos", linha(adx.chart, COR.menos, {priceFormat: fmt1})],
+  ];
+  const curta = series[3][1];
+  curta.createPriceLine({price: 0, color: COR.zero, lineWidth: 1, lineStyle: 0, axisLabelVisible: false, title: "MA8"});
+  // série invisível com a hora de cada candle: os painéis têm os mesmos pontos de tempo do principal (índices iguais)
+  const vazios = [didi.chart, adx.chart].map(c => c.addLineSeries({visible: false}));
+  tr.didi = {series, curta, vazios, charts, j: 0,
+    legendas: [legenda(tr.el.querySelector(".grafico")), legenda(didi.box), legenda(adx.box)]};
+
+  let sinc = false;
+  const alvos = [tr.serie, curta, series[5][1]];
+  charts.forEach((c, i) => {
+    c.timeScale().subscribeVisibleLogicalRangeChange(r => {
+      if (sinc || !r) return;
+      sinc = true; charts.forEach((o, j) => j !== i && o.timeScale().setVisibleLogicalRange(r)); sinc = false;
+    });
+    c.subscribeCrosshairMove(p => {
+      if (sinc) return;
+      sinc = true;
+      charts.forEach((o, j) => {
+        if (j === i) return;
+        const v = p.time == null ? null
+          : j === 0 ? arena.candles[arena.porTempo.get(p.time)]?.close : valorEm(tr, j === 1 ? "didi_curta" : "adx", p.time);
+        if (v != null) o.setCrosshairPosition(v, p.time, alvos[j]); else o.clearCrosshairPosition();
+      });
+      sinc = false;
+      legendasDidi(tr, p.time);
+    });
+  });
+}
+
+// índice da última linha já revelada com t <= time (sem time: a última revelada)
+function linhaEm(tr, time) {
+  const t = tr.t.indicadores.t;
+  let j = tr.didi.j - 1;
+  if (time != null) while (j >= 0 && seg(t[j]) > time) j--;
+  return j;
+}
+function valorEm(tr, chave, time) { const j = linhaEm(tr, time); return j < 0 ? null : tr.t.indicadores[chave][j]; }
+
+function legendasDidi(tr, time) {
+  const ind = tr.t.indicadores, j = linhaEm(tr, time), p = casas(arena.candles[0].close);
+  const v = (chave, d) => j < 0 || ind[chave][j] == null ? "–"
+    : ind[chave][j].toLocaleString("pt-BR", {minimumFractionDigits: d, maximumFractionDigits: d});
+  const it = (cor, nome, valor) => `<span style="color:${cor}">${nome} <b>${valor}</b></span>`;
+  const [bb, didi, adx] = tr.didi.legendas;
+  bb.innerHTML = `<span class="mut">BB 8 · 2</span>` + it(COR.bb, "sup", v("bb_sup", p)) + it(COR.bb, "meio", v("bb_meio", p)) + it(COR.bb, "inf", v("bb_inf", p));
+  didi.innerHTML = `<span class="mut">Didi Index 3 · 8 · 20</span>` + it(COR.curta, "MA3", v("didi_curta", p)) + it(COR.longa, "MA20", v("didi_longa", p)) + it(COR.zero, "MA8", "0");
+  adx.innerHTML = `<span class="mut">ADX 8</span>` + it(COR.adx, "ADX", v("adx", 1)) + it(COR.mais, "DI+", v("di_mais", 1)) + it(COR.menos, "DI−", v("di_menos", 1));
+}
+
+// revela os indicadores até o cursor do replay; `inicio` é o primeiro candle novo (0 = refaz tudo)
+function revelarDidi(tr, inicio) {
+  const ind = tr.t.indicadores, D = tr.didi, n = arena.cursor;
+  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: seg(ind.t[j]), value: ind[chave][j]};
+  if (inicio === 0) {
+    const vazio = arena.candles.slice(0, n).map(c => ({time: c.time}));
+    D.vazios.forEach(s => s.setData(vazio));
+    let j = 0; while (j < ind.k.length && ind.k[j] < n) j++;
+    D.j = j;
+    for (const [chave, s] of D.series) s.setData([...Array(j).keys()].map(i => ponto(chave, i)).filter(Boolean));
+    return;
+  }
+  for (let k = inicio; k < n; k++) D.vazios.forEach(s => s.update({time: arena.candles[k].time}));
+  for (; D.j < ind.k.length && ind.k[D.j] < n; D.j++)
+    for (const [chave, s] of D.series) { const pt = ponto(chave, D.j); if (pt) s.update(pt); }
+}
+
+function atualizarDidi(tr, s) {
+  const m = s.agulhadas.map(a => ({time: seg(a.t), position: a.lado === "compra" ? "belowBar" : "aboveBar",
+    color: a.lado === "compra" ? "#26a69a" : "#ef5350", shape: a.lado === "compra" ? "arrowUp" : "arrowDown", text: "agulhada"}));
+  tr.didi.curta.setMarkers(m.sort((a, b) => a.time - b.time));
+  legendasDidi(tr, null);
 }
 
 // reprodução

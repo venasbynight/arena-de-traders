@@ -263,9 +263,12 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
         ultimo[nome][chave] = valor
         return True
 
-    ontem5, k60 = [], 0
+    # desenhos "indicadores" (um por candle) viram colunas: k = índice do candle em cujo fechamento ficou conhecido
+    series = {m.NOME: {} for m, _ in pares}
+    ontem5, k60, n = [], 0, -1
     for hoje in por_dia(candles5).values():
         for i, c in enumerate(hoje):
+            n += 1
             fim_do_dia = i == len(hoje) - 1
             for m, _, conta in mesa:
                 eventos[m.NOME] += conta.executar_candle(c, fim_do_dia)
@@ -279,8 +282,16 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
             for m, trader, conta in mesa:
                 d = trader.decidir(hoje[:i + 1], ontem5, fechados60)
                 evs = conta.colocar(d.planos, agora, simbolo, d.sair)
-                if novo(m.NOME, "estudo", d.desenhos):
-                    eventos[m.NOME].append(conta._ev(agora, "desenho", desenhos=d.desenhos))
+                desenhos = []
+                for x in d.desenhos:
+                    if x.get("tipo") != "indicadores":
+                        desenhos.append(x)
+                    elif novo(m.NOME, "indicadores", x):
+                        for chave, v in {"k": n, **x}.items():
+                            if chave != "tipo":
+                                series[m.NOME].setdefault(chave, []).append(v)
+                if novo(m.NOME, "estudo", desenhos):
+                    eventos[m.NOME].append(conta._ev(agora, "desenho", desenhos=desenhos))
                 if novo(m.NOME, "pensamento", d.pensamento):
                     eventos[m.NOME].append(conta._ev(agora, "pensamento", linhas=d.pensamento))
                 if novo(m.NOME, "ordens", [{k: v for k, v in e.items() if k != "t"} for e in evs]):
@@ -291,5 +302,6 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
             "candles": [[k.t.isoformat(), k.o, k.h, k.l, k.c] for k in candles5],
             "traders": {m.NOME: {"estilo": m.ESTILO, "eventos": eventos[m.NOME], "placar": placar(conta.operacoes),
                                  "equity": [[t.isoformat(), s] for t, s in conta.equity],
-                                 "operacoes": conta.operacoes}
+                                 "operacoes": conta.operacoes,
+                                 **({"indicadores": series[m.NOME]} if series[m.NOME] else {})}
                         for m, _, conta in mesa}}

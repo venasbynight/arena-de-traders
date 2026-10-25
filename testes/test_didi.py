@@ -7,7 +7,7 @@ from unittest import mock
 import motor
 from testes.test_motor import dias_sinteticos
 from tipos import Candle, Plano
-from traders import didi_agulhada
+from traders import didi_agulhada, sofia_smc
 
 EXEMPLO = os.path.join(os.path.dirname(__file__), "..", ".claude", "skills", "trader-budget", "config.example.json")
 CFG = json.load(open(EXEMPLO, encoding="utf-8"))
@@ -139,20 +139,52 @@ class TestDidi(unittest.TestCase):
         self.assertIn(params["tf"], didi_agulhada.GRADE["tf"])
         self.assertIn("tf = ", relatorio._params(params))
 
+    def test_indicadores_viram_serie_por_trader(self):
+        """Os indicadores saem dos eventos: uma série por trader, em colunas, sem repetir o mesmo candle."""
+        cs = dias_sinteticos(3, 12)
+        for params, tf in (({}, 5), ({"tf": 15}, 15)):
+            r = motor.rodar_backtest("WDO", cs, [(didi_agulhada, params)], CFG)
+            didi = r["traders"]["Didi Agulhada"]
+            self.assertFalse(any(x["tipo"] == "indicadores" for e in didi["eventos"] if e["tipo"] == "desenho"
+                                 for x in e["desenhos"]))
+            s = didi["indicadores"]
+            self.assertEqual(set(s), {"k", "t", "bb_sup", "bb_meio", "bb_inf", "didi_curta", "didi_longa", "adx",
+                                      "di_mais", "di_menos"})
+            self.assertEqual({len(v) for v in s.values()}, {len(s["k"])})
+            self.assertEqual(len(set(s["t"])), len(s["t"]), tf)  # o meio do candle de 15 não repete o anterior
+            self.assertEqual(s["k"], sorted(s["k"]))
+            for k, t in zip(s["k"], s["t"]):  # k = o candle de 5 em cujo fechamento o valor ficou conhecido
+                fecha = datetime.fromisoformat(r["candles"][k][0]) + timedelta(minutes=5)
+                fim = datetime.fromisoformat(t) + timedelta(minutes=tf)
+                # em 15, o último candle de 15 do dia só aparece na 1ª decisão do dia seguinte (nunca antes)
+                self.assertTrue(fim == fecha if tf == 5 else fim <= fecha, (tf, t, k))
+            # o valor da série é o que o trader calculou naquela decisão
+            k = s["k"][-1]  # dias de 114 candles: o último é do dia 3, com o dia 2 de ontem
+            d = didi_agulhada.Trader("WDO", 0.5, params).decidir(cs[228:k + 1], cs[114:228], [])
+            ind = d.desenhos[0]
+            self.assertEqual([s[c][-1] for c in ("t", "bb_sup", "didi_curta", "adx", "di_menos")],
+                             [ind[c] for c in ("t", "bb_sup", "didi_curta", "adx", "di_menos")])
+        sofia = motor.rodar_backtest("WDO", cs, [sofia_smc], CFG)["traders"]["Sofia SMC"]
+        self.assertNotIn("indicadores", sofia)
+
     def test_nao_ve_o_futuro(self):
         """Cortar os dados no meio do dia 2 não muda nada do que o Didi fez antes do corte, em 5 e em 15."""
         for params, semente in (({}, 12), ({"tf": 15}, 22)):  # sementes com ordem do Didi no dia 2
             cs = dias_sinteticos(3, semente)
             dia2 = cs[114].t.date().isoformat()
             rodar = lambda dados: motor.rodar_backtest("WDO", dados, [(didi_agulhada, params)],
-                                                       CFG)["traders"]["Didi Agulhada"]["eventos"]
+                                                       CFG)["traders"]["Didi Agulhada"]
             longo = rodar(cs)
-            self.assertTrue(any(e["tipo"] == "ordem" and e["t"].startswith(dia2) for e in longo), params)
+            self.assertTrue(any(e["tipo"] == "ordem" and e["t"].startswith(dia2) for e in longo["eventos"]), params)
             for k in range(10, 113, 9):
                 corte = cs[114 + k].t.isoformat()
                 antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"
                                      and not (e["tipo"] == "cancelada" and e["t"] == corte)]
-                self.assertEqual(antes(rodar(cs[:114 + k + 1])), antes(longo), f"{params} corte no candle {k}")
+                curto = rodar(cs[:114 + k + 1])
+                self.assertEqual(antes(curto["eventos"]), antes(longo["eventos"]), f"{params} corte no candle {k}")
+                # a série dos indicadores até o corte é a mesma (o último candle do corte vira fim do dia)
+                ate = lambda s: {c: [v for j, v in zip(s["k"], s[c]) if j < 114 + k] for c in s}
+                self.assertEqual(ate(curto["indicadores"]), ate(longo["indicadores"]), f"{params} corte {k}")
 
 
 if __name__ == "__main__":
