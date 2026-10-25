@@ -1,11 +1,15 @@
 """Candles: arquivo CSV, agrupamento por tempo gráfico e histórico do MT5 e da Binance."""
 import csv
+import functools
 import json
 import os
+import subprocess
+import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from tipos import Candle
 
@@ -89,36 +93,137 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
     return out
 
 
-def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=0):
-    """Candles de 5 min de `de` até `ate` (inclusive) do MT5 aberto e logado pelo usuário.
+@functools.lru_cache(maxsize=None)
+def _verao_europeu(ano):
+    """Início e fim (UTC) do horário de verão europeu: último domingo de março e de outubro, 01:00 UTC."""
+    def ultimo_domingo(mes):  # março e outubro têm 31 dias
+        d = date(ano, mes, 31)
+        return datetime.combine(d - timedelta(days=(d.weekday() + 1) % 7), time(1))
+    return ultimo_domingo(3), ultimo_domingo(10)
 
-    `terminal` é o terminal64.exe a usar (vários MT5 podem estar abertos); `deslocamento_h` é quantas horas
-    o relógio do servidor da corretora está à frente de Brasília (0 na Genial).
+
+def _conversores(fuso_servidor, deslocamento_h):
+    """(Brasília -> servidor, servidor -> Brasília) sobre datetimes sem fuso; Brasília é UTC-3 fixo.
+
+    "brasilia": o servidor já marca Brasília (Genial). "europa": o servidor MetaQuotes marca UTC+2 e, no verão
+    europeu, UTC+3; a regra vale para o relógio do próprio candle, então a história inteira sai certa.
+    `deslocamento_h` (config antigo), quando informado, vale no lugar: horas fixas do servidor à frente de Brasília.
     """
-    if mt5 is None:
-        try:
-            import MetaTrader5 as mt5
-        except ImportError:
-            raise ErroDados("pacote MetaTrader5 não instalado: rode  python -m pip install MetaTrader5")
+    if deslocamento_h is not None:
+        d = timedelta(hours=deslocamento_h)
+        return (lambda b: b + d), (lambda s: s - d)
+    if fuso_servidor == "brasilia":
+        return (lambda b: b), (lambda s: s)
+    if fuso_servidor == "europa":
+        def verao(utc):
+            ini, fim = _verao_europeu(utc.year)
+            return ini <= utc < fim
+
+        def para_servidor(brasilia):
+            utc = brasilia + timedelta(hours=3)
+            return utc + timedelta(hours=3 if verao(utc) else 2)
+
+        def para_brasilia(servidor):
+            utc = servidor - timedelta(hours=2)  # supõe inverno; se cair no verão, o servidor estava 1 h mais à frente
+            if verao(utc):
+                utc -= timedelta(hours=1)
+            return utc - timedelta(hours=3)
+        # na virada de outono o relógio repete 03:00-03:59 (domingo, sem pregão): vale a leitura de inverno
+        return para_servidor, para_brasilia
+    raise ErroDados(f"fuso_servidor '{fuso_servidor}' desconhecido; use 'brasilia' ou 'europa' em trader/config.json")
+
+
+def _consultar_mt5(mt5, simbolo, inicio, fim, terminal):
+    """Fala com o MT5 (`mt5` é o módulo MetaTrader5 ou um falso) e devolve as taxas como lista de dicts."""
     if not (mt5.initialize(path=terminal) if terminal else mt5.initialize()):
         raise ErroDados(f"não consegui falar com o MetaTrader 5: abra o MT5 e faça login ({mt5.last_error()})")
     try:
         if not mt5.symbol_select(simbolo, True):
             raise ErroDados(f"símbolo {simbolo} não encontrado no MT5; ajuste 'simbolo' em trader/config.json")
-        desloc = timedelta(hours=deslocamento_h)
-        # o pedido também é feito no relógio do servidor; o pacote lê datetime sem fuso como horário do PC
-        # (UTC-3 aqui, o que cortava as 3 primeiras horas do dia), então vai com tzinfo=UTC; o fim é inclusivo
-        inicio = datetime(de.year, de.month, de.day, tzinfo=timezone.utc) + desloc
-        fim = inicio + timedelta(days=(ate - de).days + 1) - timedelta(seconds=1)
         taxas = mt5.copy_rates_range(simbolo, mt5.TIMEFRAME_M5, inicio, fim)
         if taxas is None:
             raise ErroDados(f"o MT5 não devolveu candles de {simbolo}: {mt5.last_error()}")
+        return [{c: float(r[c]) for c in ("time", "open", "high", "low", "close", "real_volume")} for r in taxas]
     finally:
         mt5.shutdown()  # solta este terminal; o próximo ativo pode usar outro
-    # O MT5 grava o horário do servidor como se fosse UTC; tira o deslocamento para chegar em Brasília.
-    # Medido em 25/10/2026: o servidor MetaQuotes-Demo é UTC+3 no horário de verão da Europa (6 h à frente de
-    # Brasília: NFP de 02/10 às 15:30 do servidor = 09:30 em Brasília) e UTC+2 no inverno (5 h). A Genial é 0.
-    return [Candle(datetime.fromtimestamp(int(r["time"]), timezone.utc).replace(tzinfo=None) - desloc,
+
+
+def _importar_mt5():
+    try:
+        import MetaTrader5
+    except ImportError:
+        raise ErroDados("pacote MetaTrader5 não instalado: rode  python -m pip install MetaTrader5")
+    return MetaTrader5
+
+
+def _filho_mt5(pasta):
+    """Corpo do processo filho: lê pedido.json, consulta o MT5 e grava saida.json (resultado ou erro)."""
+    with open(os.path.join(pasta, "pedido.json"), encoding="utf-8") as f:
+        p = json.load(f)
+    try:
+        saida = {"taxas": _consultar_mt5(_importar_mt5(), p["simbolo"], datetime.fromisoformat(p["inicio"]),
+                                         datetime.fromisoformat(p["fim"]), p["terminal"])}
+    except ErroDados as e:
+        saida = {"erro": str(e)}
+    except Exception as e:
+        saida = {"erro": f"falha ao falar com o MetaTrader 5: {type(e).__name__}: {e}"}
+    with open(os.path.join(pasta, "saida.json"), "w", encoding="utf-8") as f:
+        json.dump(saida, f)
+
+
+def _consultar_mt5_isolado(simbolo, inicio, fim, terminal, timeout_s):
+    """Como _consultar_mt5, mas num processo filho: um terminal que pendura (a Genial sem o feed liberado
+    bloqueia `initialize` e `copy_rates_range` por minutos) é morto em vez de travar o programa.
+
+    O filho não usa pipes (o terminal pode herdá-los e segurar a espera depois do kill); fala por arquivos.
+    """
+    with tempfile.TemporaryDirectory() as pasta:
+        with open(os.path.join(pasta, "pedido.json"), "w", encoding="utf-8") as f:
+            json.dump({"simbolo": simbolo, "inicio": inicio.isoformat(), "fim": fim.isoformat(),
+                       "terminal": terminal}, f)
+        filho = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--mt5-filho", pasta],
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            filho.wait(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            filho.kill()
+            filho.wait()
+            raise ErroDados(f"o MT5 ({terminal or 'terminal padrão'}) não respondeu em {timeout_s:g} s; "
+                            "abra o terminal, confira o login e tente de novo")
+        try:
+            with open(os.path.join(pasta, "saida.json"), encoding="utf-8") as f:
+                saida = json.load(f)
+        except (OSError, ValueError):
+            raise ErroDados(f"o MT5 fechou sem responder (código {filho.returncode}); "
+                            "abra o terminal, confira o login e tente de novo")
+    if "erro" in saida:
+        raise ErroDados(saida["erro"])
+    return saida["taxas"]
+
+
+def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, fuso_servidor="brasilia",
+               timeout_s=90):
+    """Candles de 5 min de `de` até `ate` (inclusive) do MT5 aberto e logado pelo usuário, em horário de Brasília.
+
+    `terminal` é o terminal64.exe a usar (vários MT5 podem estar abertos). `fuso_servidor` diz como o servidor
+    da corretora marca a hora ("brasilia" na Genial, "europa" no MetaQuotes) e `deslocamento_h` é o config
+    antigo (horas fixas à frente de Brasília) e vence quando informado.
+    Sem `mt5` o download roda num processo filho com prazo de `timeout_s`; com `mt5` (os testes injetam um falso)
+    roda neste processo, sem prazo.
+    """
+    para_servidor, para_brasilia = _conversores(fuso_servidor, deslocamento_h)
+    # o pedido também é feito no relógio do servidor; o pacote lê datetime sem fuso como horário do PC
+    # (UTC-3 aqui, o que cortava as 3 primeiras horas do dia), então vai com tzinfo=UTC; o fim é inclusivo
+    brasilia = datetime(de.year, de.month, de.day)
+    inicio = para_servidor(brasilia).replace(tzinfo=timezone.utc)
+    fim = para_servidor(brasilia + timedelta(days=(ate - de).days + 1) - timedelta(seconds=1)).replace(tzinfo=timezone.utc)
+    if mt5 is None:
+        taxas = _consultar_mt5_isolado(simbolo, inicio, fim, terminal, timeout_s)
+    else:
+        taxas = _consultar_mt5(mt5, simbolo, inicio, fim, terminal)
+    # O MT5 grava o horário do servidor como se fosse UTC. Medido em 25/10/2026: o MetaQuotes-Demo é UTC+3 no
+    # verão europeu (NFP de 02/10 às 15:30 do servidor = 09:30 em Brasília) e UTC+2 no inverno; a Genial é Brasília.
+    return [Candle(para_brasilia(datetime.fromtimestamp(int(r["time"]), timezone.utc).replace(tzinfo=None)),
                    float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["real_volume"]))
             for r in taxas]
 
@@ -153,7 +258,7 @@ def historico(ativo, de, ate, cfg, pasta="dados", mt5=None, hoje=None, abrir_url
             novos = baixar_binance(simbolo, min(faltam), max(faltam), abrir_url)
         else:
             novos = baixar_mt5(simbolo, min(faltam), max(faltam), mt5, espec.get("terminal"),
-                               espec.get("deslocamento_h", 0))
+                               espec.get("deslocamento_h"), espec.get("fuso_servidor", "brasilia"))
         unicos = {k.t: k for k in candles}
         unicos.update({k.t: k for k in novos})
         candles = sorted(unicos.values(), key=lambda k: k.t)
@@ -166,3 +271,7 @@ def historico(ativo, de, ate, cfg, pasta="dados", mt5=None, hoje=None, abrir_url
             with open(arq_cob, "a", encoding="utf-8") as f:
                 f.write(f"{min(faltam).isoformat()},{fim.isoformat()}\n")
     return [k for k in candles if de <= k.t.date() <= ate]
+
+
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--mt5-filho":
+    _filho_mt5(sys.argv[2])  # processo filho de _consultar_mt5_isolado

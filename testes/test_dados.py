@@ -2,9 +2,11 @@ import io
 import json
 import os
 import tempfile
+import time
 import unittest
 import urllib.error
 from datetime import date, datetime, timedelta, timezone
+from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 import dados
@@ -281,6 +283,122 @@ class TestFontes(unittest.TestCase):
             cs = dados.historico("EURUSD", date(2026, 10, 20), date(2026, 10, 20), cfg, pasta=d, mt5=mt5)
         self.assertEqual(mt5.args_initialize, {"path": terminal})
         self.assertEqual([k.t for k in cs], [datetime(2026, 10, 20, 0, 0)])
+
+
+def epoch(t):
+    return (t - datetime(1970, 1, 1)).total_seconds()
+
+
+class Mt5EmHorarios(Mt5Falso):
+    """Devolve um candle em cada horário dado (relógio do servidor) e guarda o intervalo pedido."""
+
+    def __init__(self, horarios, **kw):
+        super().__init__(**kw)
+        self.horarios = horarios
+
+    def copy_rates_range(self, simbolo, tf, de, ate):
+        self.pedido = (de, ate)
+        return [{"time": epoch(h), "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 0}
+                for h in self.horarios]
+
+
+class TestFusoDoServidor(unittest.TestCase):
+    """O servidor MetaQuotes usa o horário europeu: UTC+2 no inverno e UTC+3 no verão europeu; Brasília é UTC-3."""
+
+    def converter(self, horarios, de=date(2026, 10, 20), ate=date(2026, 10, 26), fuso_servidor="europa"):
+        mt5 = Mt5EmHorarios(horarios, simbolos=("EURUSD",))
+        return [k.t for k in dados.baixar_mt5("EURUSD", de, ate, mt5, fuso_servidor=fuso_servidor)], mt5
+
+    def test_europa_converte_por_instante(self):
+        ts, mt5 = self.converter([datetime(2026, 10, 20, 15, 30), datetime(2026, 10, 26, 15, 30),
+                                  datetime(2026, 1, 9, 15, 30)])
+        self.assertEqual(ts, [datetime(2026, 10, 20, 9, 30),    # verão europeu: servidor 6 h à frente
+                              datetime(2026, 10, 26, 10, 30),   # depois de 25/10: 5 h
+                              datetime(2026, 1, 9, 10, 30)])    # inverno: 5 h
+        # o pedido também é por instante: 20/10 00:00 Brasília = 06:00 do servidor (UTC+3);
+        # 26/10 23:59:59 Brasília = 27/10 04:59:59 do servidor (UTC+2)
+        self.assertEqual(mt5.pedido, (datetime(2026, 10, 20, 6, tzinfo=timezone.utc),
+                                      datetime(2026, 10, 27, 4, 59, 59, tzinfo=timezone.utc)))
+
+    def test_europa_nas_fronteiras_do_horario_de_verao(self):
+        casos = [  # (relógio do servidor, Brasília); o horário de verão muda no último domingo, 01:00 UTC
+            (datetime(2026, 3, 29, 2, 55), datetime(2026, 3, 28, 21, 55)),    # último candle do inverno (UTC+2)
+            (datetime(2026, 3, 29, 4, 0), datetime(2026, 3, 28, 22, 0)),      # primeiro do verão (UTC+3): 03:xx não existe
+            (datetime(2026, 10, 25, 2, 55), datetime(2026, 10, 24, 20, 55)),  # último candle do verão (UTC+3)
+            (datetime(2026, 10, 25, 4, 0), datetime(2026, 10, 24, 23, 0)),    # primeiro do inverno (UTC+2)
+        ]
+        for servidor, brasilia in casos:
+            with self.subTest(servidor=servidor):
+                ts, _ = self.converter([servidor], de=date(2026, 3, 28), ate=date(2026, 3, 28))
+                self.assertEqual(ts, [brasilia])
+
+    def test_brasilia_e_o_padrao_e_nao_converte(self):
+        mt5 = Mt5EmHorarios([datetime(2026, 10, 20, 15, 30)], simbolos=("WDO$",))
+        cs = dados.baixar_mt5("WDO$", date(2026, 10, 20), date(2026, 10, 20), mt5)
+        self.assertEqual(cs[0].t, datetime(2026, 10, 20, 15, 30))
+        self.assertEqual(mt5.pedido, (datetime(2026, 10, 20, tzinfo=timezone.utc),
+                                      datetime(2026, 10, 20, 23, 59, 59, tzinfo=timezone.utc)))
+
+    def test_fuso_desconhecido(self):
+        with self.assertRaises(dados.ErroDados) as e:
+            self.converter([datetime(2026, 10, 20, 15, 30)], fuso_servidor="marte")
+        self.assertIn("marte", str(e.exception))
+
+    def test_historico_le_fuso_servidor_do_config_e_deslocamento_h_antigo_vence(self):
+        europa = {"ativos": {"EURUSD": {"fonte": "mt5", "simbolo": "EURUSD", "fuso_servidor": "europa"}}}
+        antigo = {"ativos": {"EURUSD": {"fonte": "mt5", "simbolo": "EURUSD", "fuso_servidor": "europa",
+                                        "deslocamento_h": 3}}}
+        for cfg, esperado in ((europa, datetime(2026, 10, 20, 9, 30)), (antigo, datetime(2026, 10, 20, 12, 30))):
+            mt5 = Mt5EmHorarios([datetime(2026, 10, 20, 15, 30)], simbolos=("EURUSD",))
+            with tempfile.TemporaryDirectory() as d:
+                cs = dados.historico("EURUSD", date(2026, 10, 20), date(2026, 10, 20), cfg, pasta=d, mt5=mt5)
+            self.assertEqual([k.t for k in cs], [esperado])
+
+
+MT5_FALSO_FILHO = """import time
+TIMEFRAME_M5 = 5
+def initialize(**kw): return {inicializa}
+def last_error(): return (1, "erro falso")
+def symbol_select(simbolo, ligar): return True
+def shutdown(): pass
+def copy_rates_range(simbolo, tf, de, ate):
+    time.sleep({dormir})
+    return [{{"time": {hora}, "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 7}}]
+"""
+
+
+TERMINAL_FALSO = "C:\\MT5\\terminal64.exe"
+
+
+class TestMt5EmProcessoFilho(unittest.TestCase):
+    """Sem `mt5=`, o download roda num processo filho que o pai mata se o terminal pendurar. O filho importa
+    `MetaTrader5` do PYTHONPATH, onde estes testes põem um módulo falso."""
+
+    def baixar(self, timeout_s, **falso):
+        falso = {**dict(inicializa=True, dormir=0, hora=epoch(datetime(2026, 10, 20, 15, 30))), **falso}
+        with tempfile.TemporaryDirectory() as pasta:
+            with open(os.path.join(pasta, "MetaTrader5.py"), "w", encoding="utf-8") as f:
+                f.write(MT5_FALSO_FILHO.format(**falso))
+            with mock.patch.dict(os.environ, {"PYTHONPATH": pasta}):
+                return dados.baixar_mt5("EURUSD", date(2026, 10, 20), date(2026, 10, 20),
+                                        terminal=TERMINAL_FALSO, fuso_servidor="europa", timeout_s=timeout_s)
+
+    def test_filho_devolve_os_candles_convertidos(self):
+        cs = self.baixar(timeout_s=60)
+        self.assertEqual(cs, [Candle(datetime(2026, 10, 20, 9, 30), 1.0, 2.0, 0.5, 1.5, 7.0, 0.0)])
+
+    def test_filho_repassa_erro_amigavel(self):
+        with self.assertRaises(dados.ErroDados) as e:
+            self.baixar(timeout_s=60, inicializa=False)
+        self.assertIn("abra o MT5 e faça login", str(e.exception))
+
+    def test_terminal_que_pendura_vira_erro_dados(self):
+        inicio = time.monotonic()
+        with self.assertRaises(dados.ErroDados) as e:
+            self.baixar(timeout_s=0.5, dormir=60)
+        self.assertLess(time.monotonic() - inicio, 30)  # o filho foi morto, não esperou os 60 s
+        self.assertEqual(str(e.exception), f"o MT5 ({TERMINAL_FALSO}) não respondeu em 0.5 s; "
+                                           "abra o terminal, confira o login e tente de novo")
 
 
 if __name__ == "__main__":
