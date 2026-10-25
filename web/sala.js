@@ -41,7 +41,9 @@ $("#rodar").onclick = async () => {
     if (!r.ok) return aviso(dados.erro || "erro no backtest");
     montar(dados);
   } catch (e) {
-    aviso("não consegui falar com o servidor da arena: ele está rodando? (" + e.message + ")");
+    aviso(typeof LightweightCharts === "undefined"
+      ? "a biblioteca de gráficos (TradingView Lightweight Charts) não carregou: confira a internet e recarregue a página"
+      : "não consegui falar com o servidor da arena: ele está rodando? (" + e.message + ")");
   } finally {
     $("#rodar").disabled = false;
   }
@@ -56,9 +58,11 @@ function aviso(msg) {
 
 // solta os gráficos do backtest anterior: só remove() libera os listeners e os dados que o Lightweight Charts segura
 function descartar() {
-  for (const tr of arena.traders) { tr.obs.disconnect(); (tr.didi ? tr.didi.charts : tr.delta ? tr.delta.charts : [tr.chart]).forEach(c => c.remove()); }
+  for (const tr of arena.traders) { tr.obs.disconnect(); (grupo(tr)?.charts ?? [tr.chart]).forEach(c => c.remove()); }
   arena.traders = [];
 }
+// painéis embaixo do gráfico de preço: os do Didi ou o do delta do Caio (mesma forma e mesma sincronia)
+const grupo = tr => tr.didi || tr.delta;
 
 function montar(dados) {
   arena.dados = dados;
@@ -113,10 +117,10 @@ function irPara(i) {
   for (const tr of arena.traders) {
     tr.serie.setData(arena.candles.slice(0, arena.cursor).map(({iso, ...c}) => c));
     tr.mostrados = arena.cursor;
-    if (tr.didi) revelarDidi(tr, 0);
-    if (tr.delta) revelarDidi(tr, 0, tr.delta);
+    const G = grupo(tr);
+    if (G) revelarPaineis(tr, 0, G);
     if (arena.cursor) tr.chart.timeScale().scrollToRealTime();
-    if (tr.didi) { tr.didi.lider = 0; alinhar(tr); }
+    if (G) { G.lider = 0; alinhar(G); }
   }
   atualizar();
 }
@@ -129,11 +133,10 @@ function avancar(n) {
   arena.traders.forEach(tr => tr.mostrados = alvo);
   arena.cursor = alvo;
   arena.traders.forEach(tr => {
-    if (!tr.didi) return;
-    revelarDidi(tr, antes); alinhar(tr, tr.didi.lider);
-    if (!tr.didi.preso) tr.didi.lider = 0;  // passada a roda do mouse, o principal volta a mandar
+    const G = grupo(tr); if (!G) return;
+    revelarPaineis(tr, antes, G); alinhar(G, G.lider);
+    if (!G.preso) G.lider = 0;  // passada a roda do mouse, o principal volta a mandar
   });
-  arena.traders.forEach(tr => tr.delta && revelarDidi(tr, antes, tr.delta));
   atualizar();
   if (arena.cursor >= arena.candles.length) { pausar(); arena.mostrarResultado(); }
 }
@@ -159,6 +162,7 @@ function estado(tr) {
 function atualizar() {
   const n = arena.candles.length, c = arena.candles[Math.max(arena.cursor - 1, 0)];
   $("#barra").value = arena.cursor;
+  $("#barra").style.setProperty("--p", (n ? 100 * arena.cursor / n : 0) + "%");
   const diaN = arena.cursor ? arena.dias.indexOf(c.iso.slice(0, 10)) + 1 : 0;
   $("#relogio").innerHTML = arena.cursor ? `dia ${diaN} de ${arena.dias.length} · <b>${ddmm(c.iso)} ${hhmm(c.iso)}</b>` : `${arena.dias.length} pregões · ${n} candles · dê play`;
   const linhasPlacar = [], diario = [];
@@ -243,115 +247,126 @@ function desenharZonas(tr) {
   }
 }
 
-// Didi: Bollinger sobre os candles e dois painéis embaixo (Didi Index, ADX/DI), cada um um gráfico com o mesmo
+// Didi: Bollinger sobre os candles e três painéis embaixo (Didi Index, ADX/DI, TRIX), cada um um gráfico com o mesmo
 // eixo de tempo do principal (rolagem, zoom e cursor juntos). Os valores vêm prontos do Python (t.indicadores).
-const COR = {bb: "#b39ddb", curta: "#4c8dff", longa: "#ff9800", zero: "#5d6b7a", adx: "#e6edf3", mais: "#26a69a", menos: "#ef5350"};
+const COR = {bb: "#b39ddb", curta: "#4c8dff", longa: "#ff9800", zero: "#5d6b7a", adx: "#e6edf3", mais: "#26a69a", menos: "#ef5350", trix: "#5ad1e6"};
 
-function montarDidi(tr, precisao) {
-  tr.el.classList.add("didi");
-  const fmt = {type: "price", precision: precisao, minMove: 10 ** -precisao};
-  const fmt1 = {type: "price", precision: 1, minMove: 0.1};
-  const linha = (chart, color, extra = {}) => chart.addLineSeries({color, lineWidth: 1, priceLineVisible: false,
-    lastValueVisible: false, crosshairMarkerRadius: 3, priceFormat: fmt, ...extra});
-  const legenda = box => { const d = document.createElement("div"); d.className = "legenda"; box.appendChild(d); return d; };
-  const painel = () => {
-    const box = document.createElement("div"); box.className = "painel"; tr.el.appendChild(box);
-    const chart = LightweightCharts.createChart(box, OPCOES);
-    chart.priceScale("right").applyOptions({scaleMargins: {top: 0.2, bottom: 0.08}});  // espaço para a legenda
-    return {box, chart};
-  };
-  const didi = painel(), adx = painel();
-  // a mesma largura de escala nos três: as barras ficam uma embaixo da outra; só o último mostra as horas
-  const charts = [tr.chart, didi.chart, adx.chart];
-  // o logo do TradingView (atribuição da licença) fica só no gráfico principal
-  charts.forEach((c, i) => c.applyOptions({rightPriceScale: {minimumWidth: 72}, timeScale: {visible: i === 2},
+// um painel embaixo do card: gráfico próprio, com espaço em cima para a legenda
+function novoPainel(tr, topo = 0.2) {
+  const box = document.createElement("div"); box.className = "painel"; tr.el.appendChild(box);
+  const chart = LightweightCharts.createChart(box, OPCOES);
+  chart.priceScale("right").applyOptions({scaleMargins: {top: topo, bottom: 0.08}});
+  return {box, chart};
+}
+const novaLegenda = box => { const d = document.createElement("div"); d.className = "legenda"; box.appendChild(d); return d; };
+
+// Grupo de gráficos do card (o de preço + os painéis): mesma largura de escala (as barras ficam uma embaixo da
+// outra), só o último mostra as horas, o logo do TradingView (atribuição da licença) só no de preço. Uma série
+// invisível com a hora de cada candle dá aos painéis os mesmos pontos de tempo do principal (índices iguais).
+// `chaves[i]`: a coluna dos indicadores onde o cursor do painel i pousa; `alvos[i]`: a série dela.
+function grupoDePaineis(tr, paineis, series, alvos, chaves, aoMover) {
+  const charts = [tr.chart, ...paineis.map(p => p.chart)];
+  charts.forEach((c, i) => c.applyOptions({rightPriceScale: {minimumWidth: 72}, timeScale: {visible: i === charts.length - 1},
     layout: {attributionLogo: i === 0}}));
-  const series = [
-    ["bb_sup", linha(tr.chart, COR.bb)], ["bb_meio", linha(tr.chart, COR.bb, {lineStyle: 2})], ["bb_inf", linha(tr.chart, COR.bb)],
-    ["didi_curta", linha(didi.chart, COR.curta, {lineWidth: 2})], ["didi_longa", linha(didi.chart, COR.longa, {lineWidth: 2})],
-    ["adx", linha(adx.chart, COR.adx, {lineWidth: 2, priceFormat: fmt1})],
-    ["di_mais", linha(adx.chart, COR.mais, {priceFormat: fmt1})], ["di_menos", linha(adx.chart, COR.menos, {priceFormat: fmt1})],
-  ];
-  const curta = series[3][1];
-  curta.createPriceLine({price: 0, color: COR.zero, lineWidth: 1, lineStyle: 0, axisLabelVisible: false, title: "MA8"});
-  // série invisível com a hora de cada candle: os painéis têm os mesmos pontos de tempo do principal (índices iguais)
-  const vazios = [didi.chart, adx.chart].map(c => c.addLineSeries({visible: false}));
   // ts: hora de cada linha em segundos (busca binária do cursor); lider: gráfico que o usuário mexeu por último;
   // sobre: gráfico sob o mouse; hover: hora apontada pelo mouse (a legenda fica nela)
-  tr.didi = {series, curta, vazios, charts, j: 0, ts: tr.t.indicadores.t.map(seg), lider: 0, preso: false, sobre: -1, hover: null, largura: 72,
-    legendas: [legenda(tr.el.querySelector(".grafico")), legenda(didi.box), legenda(adx.box)]};
-
+  const D = {series, charts, vazios: paineis.map(p => p.chart.addLineSeries({visible: false})), j: 0,
+    ts: tr.t.indicadores.t.map(seg), lider: 0, preso: false, sobre: -1, hover: null, largura: 72};
   // Faixa visível e cursor vão num sentido só, do gráfico que o usuário está mexendo para os outros: o Lightweight
   // Charts repete os avisos depois (no desenho e a cada candle novo), e o aviso velho de outro gráfico, se voltasse,
   // desfazia o replay (faixa) ou arrastava o cursor para longe do mouse.
-  const D = tr.didi, alvos = [tr.serie, curta, series[5][1]];
-  const boxes = [tr.el.querySelector(".grafico"), didi.box, adx.box];
+  const boxes = [tr.el.querySelector(".grafico"), ...paineis.map(p => p.box)];
   charts.forEach((c, i) => {
     boxes[i].addEventListener("pointerdown", () => { D.lider = i; D.preso = true; }, true);
     boxes[i].addEventListener("wheel", () => D.lider = i, {capture: true, passive: true});
     boxes[i].addEventListener("pointerenter", () => D.sobre = i);
     boxes[i].addEventListener("pointerleave", () => {
       if (D.sobre !== i) return;
-      D.sobre = -1; D.hover = null; charts.forEach(o => o.clearCrosshairPosition()); legendasDidi(tr, null);
+      D.sobre = -1; D.hover = null; charts.forEach(o => o.clearCrosshairPosition()); aoMover();
     });
-    c.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && i === D.lider) alinhar(tr, i, r); });
+    c.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && i === D.lider) alinhar(D, i, r); });
     c.subscribeCrosshairMove(p => {
       if (i !== D.sobre) return;
       charts.forEach((o, j) => {
         if (j === i) return;
-        const v = p.time == null ? null
-          : j === 0 ? arena.candles[arena.porTempo.get(p.time)]?.close : valorEm(tr, j === 1 ? "didi_curta" : "adx", p.time);
+        const v = p.time == null ? null : j === 0 ? arena.candles[arena.porTempo.get(p.time)]?.close : valorEm(tr, D, chaves[j], p.time) ?? 0;
         if (v != null) o.setCrosshairPosition(v, p.time, alvos[j]); else o.clearCrosshairPosition();
       });
       D.hover = p.time ?? null;
-      legendasDidi(tr, D.hover);
+      aoMover();
     });
   });
+  return D;
+}
+
+function montarDidi(tr, precisao) {
+  tr.el.classList.add("didi", "trix");
+  const fmt = {type: "price", precision: precisao, minMove: 10 ** -precisao};
+  const fmt1 = {type: "price", precision: 1, minMove: 0.1};
+  const linha = (chart, color, extra = {}) => chart.addLineSeries({color, lineWidth: 1, priceLineVisible: false,
+    lastValueVisible: false, crosshairMarkerRadius: 3, priceFormat: fmt, ...extra});
+  const didi = novoPainel(tr), adx = novoPainel(tr), trix = novoPainel(tr, 0.28);
+  trix.box.classList.add("curto");
+  const series = [
+    ["bb_sup", linha(tr.chart, COR.bb)], ["bb_meio", linha(tr.chart, COR.bb, {lineStyle: 2})], ["bb_inf", linha(tr.chart, COR.bb)],
+    ["didi_curta", linha(didi.chart, COR.curta, {lineWidth: 2})], ["didi_longa", linha(didi.chart, COR.longa, {lineWidth: 2})],
+    ["adx", linha(adx.chart, COR.adx, {lineWidth: 2, priceFormat: fmt1})],
+    ["di_mais", linha(adx.chart, COR.mais, {priceFormat: fmt1})], ["di_menos", linha(adx.chart, COR.menos, {priceFormat: fmt1})],
+    ["trix", linha(trix.chart, COR.trix, {lineWidth: 2, priceFormat: {type: "price", precision: 4, minMove: 0.0001}})],
+  ];
+  const curta = series[3][1];
+  curta.createPriceLine({price: 0, color: COR.zero, lineWidth: 1, lineStyle: 0, axisLabelVisible: false, title: "MA8"});
+  series[8][1].createPriceLine({price: 0, color: COR.zero, lineWidth: 1, lineStyle: 2, axisLabelVisible: false});
+  tr.didi = grupoDePaineis(tr, [didi, adx, trix], series, [tr.serie, curta, series[5][1], series[8][1]],
+    [null, "didi_curta", "adx", "trix"], () => legendasDidi(tr));
+  tr.didi.curta = curta;
+  tr.didi.legendas = [novaLegenda(tr.el.querySelector(".grafico")), novaLegenda(didi.box), novaLegenda(adx.box), novaLegenda(trix.box)];
 }
 
 // fim do arraste: o gráfico arrastado passa a faixa para os outros e o principal volta a mandar
 const soltar = () => arena.traders.forEach(tr => {
-  if (!tr.didi?.preso) return;
-  tr.didi.preso = false; alinhar(tr, tr.didi.lider); tr.didi.lider = 0;
+  const G = grupo(tr); if (!G?.preso) return;
+  G.preso = false; alinhar(G, G.lider); G.lider = 0;
 });
 addEventListener("pointerup", soltar, true); addEventListener("pointercancel", soltar, true);
 
-// copia a faixa visível do gráfico `de` (o principal, por padrão) para os outros do card. Sem comparar antes: a faixa
+// copia a faixa visível do gráfico `de` (o principal, por padrão) para os outros do grupo. Sem comparar antes: a faixa
 // pedida só vale no próximo desenho (e um setData no painel a descarta), então a leitura do painel engana.
 // Também iguala a largura das escalas de preço (o rótulo do WIN, 208.240,00, passa dos 72 px): com larguras
 // diferentes a mesma faixa dá barras fora de prumo.
-function alinhar(tr, de = 0, r = tr.didi.charts[de].timeScale().getVisibleLogicalRange()) {
-  const D = tr.didi, w = Math.max(...D.charts.map(c => c.priceScale("right").width()));
+function alinhar(D, de = 0, r = D.charts[de].timeScale().getVisibleLogicalRange()) {
+  const w = Math.max(...D.charts.map(c => c.priceScale("right").width()));
   if (w > D.largura) { D.largura = w; D.charts.forEach(c => c.applyOptions({rightPriceScale: {minimumWidth: w}})); }
   if (r) D.charts.forEach((c, i) => i !== de && c.timeScale().setVisibleLogicalRange(r));
 }
 
 // índice da última linha já revelada com t <= time (sem time: a última revelada); busca binária
-function linhaEm(tr, time) {
-  const {ts, j} = tr.didi;
+function linhaEm(D, time) {
+  const {ts, j} = D;
   if (time == null) return j - 1;
   let lo = 0, hi = j;  // primeira linha com ts > time, entre as reveladas
   while (lo < hi) { const m = (lo + hi) >> 1; if (ts[m] > time) hi = m; else lo = m + 1; }
   return lo - 1;
 }
-function valorEm(tr, chave, time) { const j = linhaEm(tr, time); return j < 0 ? null : tr.t.indicadores[chave][j]; }
+function valorEm(tr, D, chave, time) { const j = linhaEm(D, time); return j < 0 ? null : tr.t.indicadores[chave][j]; }
 
-function legendasDidi(tr, time) {
-  const ind = tr.t.indicadores, j = linhaEm(tr, time), p = casas(arena.candles[0].close);
-  const v = (chave, d) => j < 0 || ind[chave][j] == null ? "–"
+function legendasDidi(tr) {
+  const ind = tr.t.indicadores, j = linhaEm(tr.didi, tr.didi.hover), p = casas(arena.candles[0].close);
+  const v = (chave, d) => j < 0 || ind[chave]?.[j] == null ? "–"
     : ind[chave][j].toLocaleString("pt-BR", {minimumFractionDigits: d, maximumFractionDigits: d});
   const it = (cor, nome, valor) => `<span style="color:${cor}">${nome} <b>${valor}</b></span>`;
-  const [bb, didi, adx] = tr.didi.legendas;
+  const [bb, didi, adx, trix] = tr.didi.legendas;
   bb.innerHTML = `<span class="mut">BB 8 · 2</span>` + it(COR.bb, "sup", v("bb_sup", p)) + it(COR.bb, "meio", v("bb_meio", p)) + it(COR.bb, "inf", v("bb_inf", p));
   didi.innerHTML = `<span class="mut">Didi Index 3 · 8 · 20</span>` + it(COR.curta, "MA3", v("didi_curta", p)) + it(COR.longa, "MA20", v("didi_longa", p)) + it(COR.zero, "MA8", "0");
   adx.innerHTML = `<span class="mut">ADX 8</span>` + it(COR.adx, "ADX", v("adx", 1)) + it(COR.mais, "DI+", v("di_mais", 1)) + it(COR.menos, "DI−", v("di_menos", 1));
+  trix.innerHTML = `<span class="mut">TRIX 9 · % por candle</span>` + it(COR.trix, "TRIX", v("trix", 4));
 }
 
 // revela os indicadores até o cursor do replay; `inicio` é o primeiro candle novo (0 = refaz tudo)
-// D: os painéis do Didi ou o do delta do Caio (mesma forma: series, vazios, j)
-function revelarDidi(tr, inicio, D = tr.didi) {
+// D: o grupo de painéis (Didi ou delta do Caio)
+function revelarPaineis(tr, inicio, D) {
   const ind = tr.t.indicadores, n = arena.cursor;
-  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: D.ts ? D.ts[j] : seg(ind.t[j]), value: ind[chave][j],
+  const ponto = (chave, j) => ind[chave][j] == null ? null : {time: D.ts[j], value: ind[chave][j],
     ...(chave === "delta" && {color: ind[chave][j] >= 0 ? COR.mais : COR.menos})};
   if (inicio === 0) {
     const vazio = arena.candles.slice(0, n).map(c => ({time: c.time}));
@@ -370,41 +385,33 @@ function atualizarDidi(tr, s) {
   const m = s.agulhadas.map(a => ({time: seg(a.t), position: a.lado === "compra" ? "belowBar" : "aboveBar",
     color: a.lado === "compra" ? "#26a69a" : "#ef5350", shape: a.lado === "compra" ? "arrowUp" : "arrowDown", text: "agulhada"}));
   tr.didi.curta.setMarkers(m.sort((a, b) => a.time - b.time));
-  legendasDidi(tr, tr.didi.hover);  // com o mouse em cima, a legenda fica no candle apontado
+  legendasDidi(tr);  // com o mouse em cima, a legenda fica no candle apontado
 }
 
 // Caio: histograma do delta de cada candle num painel embaixo (verde comprador, vermelho vendedor) com as linhas
-// ±limite; mesmo eixo de tempo do gráfico principal. Os valores vêm do Python (t.indicadores.delta e .limite).
+// ±limite; mesmo eixo de tempo e mesma sincronia do Didi. Os valores vêm do Python (t.indicadores.delta e .limite).
 function montarDelta(tr) {
   tr.el.classList.add("didi");  // o card alto com painéis embaixo é o mesmo do Didi
-  const box = document.createElement("div"); box.className = "painel"; tr.el.appendChild(box);
-  const chart = LightweightCharts.createChart(box, OPCOES);
-  chart.priceScale("right").applyOptions({scaleMargins: {top: 0.2, bottom: 0.05}});  // espaço para a legenda
-  const charts = [tr.chart, chart];
-  charts.forEach((c, i) => c.applyOptions({rightPriceScale: {minimumWidth: 72}, timeScale: {visible: i === 1},
-    layout: {attributionLogo: i === 0}}));
+  const painel = novoPainel(tr, 0.2);
   const lim = tr.t.indicadores.limite.find(v => v != null);
-  const hist = chart.addHistogramSeries({priceFormat: {type: "volume"}, priceLineVisible: false, lastValueVisible: false,
+  const hist = painel.chart.addHistogramSeries({priceFormat: {type: "volume"}, priceLineVisible: false, lastValueVisible: false,
     // a escala sempre mostra as linhas do limite, mesmo quando o delta da tela não chega nelas
     autoscaleInfoProvider: base => { const r = base(); if (r && lim != null) {
       r.priceRange.maxValue = Math.max(r.priceRange.maxValue, lim); r.priceRange.minValue = Math.min(r.priceRange.minValue, -lim); }
       return r; }});
   if (lim != null) for (const p of [lim, -lim])
     hist.createPriceLine({price: p, color: "#f0b429", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: p > 0 ? "+limite" : "−limite"});
-  const legenda = document.createElement("div"); legenda.className = "legenda"; box.appendChild(legenda);
-  tr.delta = {series: [["delta", hist]], vazios: [chart.addLineSeries({visible: false})], j: 0, legenda, lim, charts};
-  let sinc = false;
-  charts.forEach((c, i) => c.timeScale().subscribeVisibleLogicalRangeChange(r => {
-    if (sinc || !r) return;
-    sinc = true; charts[1 - i].timeScale().setVisibleLogicalRange(r); sinc = false;
-  }));
+  tr.delta = grupoDePaineis(tr, [painel], [["delta", hist]], [tr.serie, hist], [null, "delta"], () => legendaDelta(tr));
+  tr.delta.legenda = novaLegenda(painel.box);
+  tr.delta.lim = lim;
 }
 
 function legendaDelta(tr) {
-  const D = tr.delta, v = D.j ? tr.t.indicadores.delta[D.j - 1] : null;
+  const D = tr.delta, j = linhaEm(D, D.hover), v = j < 0 ? null : tr.t.indicadores.delta[j];
   const fmt = x => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toLocaleString("pt-BR");
+  const quando = D.hover == null || j < 0 ? "último" : hhmm(tr.t.indicadores.t[j]);
   D.legenda.innerHTML = `<span class="mut">Delta 5 min · limite ±${D.lim == null ? "–" : D.lim.toLocaleString("pt-BR")}</span>`
-    + (v == null ? `<span class="mut">sem delta neste dia</span>` : `<span style="color:${v >= 0 ? COR.mais : COR.menos}">último <b>${fmt(v)}</b></span>`);
+    + (v == null ? `<span class="mut">sem delta neste candle</span>` : `<span style="color:${v >= 0 ? COR.mais : COR.menos}">${quando} <b>${fmt(v)}</b></span>`);
 }
 
 // reprodução

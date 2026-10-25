@@ -144,7 +144,8 @@ class Arena(BaseHTTPRequestHandler):
                 return self._enviar(400, {"erro": f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y} "
                                                   "(fim de semana, feriado ou fora do histórico)"})
             params = gerente.ler_json(PARAMETROS).get(ativo, {})  # os escolhidos pelo gerente, quando houver
-            resultado = motor.rodar_backtest(ativo, candles, [(m, params.get(m.NOME)) for m in traders.TODOS], cfg)
+            sala = traders.SALAS.get(ativo, traders.TODOS)  # o Caio só nas salas com delta (WDO e WIN)
+            resultado = motor.rodar_backtest(ativo, candles, [(m, params.get(m.NOME)) for m in sala], cfg)
         except dados.ErroDados as e:
             return self._enviar(400, {"erro": str(e)})
         except Exception as e:  # nunca deixar a tela esperando sem resposta
@@ -162,22 +163,36 @@ def _mercado_do_cache(caminho, versao):
     ultimo, anterior = dias[-1], (dias[-2] if len(dias) > 1 else None)
     # tendência do 60 pela regra da Sofia, com os mesmos 200 candles de 60 que o motor entrega a ela
     tend = estudos.tendencia(dados.agrupar(candles, 60)[-200:], traders.sofia_smc.PARAMS["n"])
+    ref = anterior[-1].c if anterior else None
     return {"ultimo": ultimo[-1].c, "dia": ultimo[0].t.date().isoformat(), "tendencia60": tend or "indefinida",
-            "variacao_pct": round((ultimo[-1].c / anterior[-1].c - 1) * 100, 2) if anterior else None,
-            "fechamento_anterior": anterior[-1].c if anterior else None,
-            "candles": [{"t": k.t.isoformat(), "o": k.o, "h": k.h, "l": k.l, "c": k.c} for k in ultimo]}
+            "variacao_pct": round((ultimo[-1].c / ref - 1) * 100, 2) if ref else None,  # 0 = linha ruim no cache
+            "fechamento_anterior": ref,
+            "candles": [{"t": k.t.isoformat(), "o": k.o, "h": k.h, "l": k.l, "c": k.c} for k in ultimo],
+            # gráfico grande da sala de replay antes do Rodar: os 5 últimos pregões, compactos
+            "pregoes": [[k.t.isoformat(), k.o, k.h, k.l, k.c, k.v] for d in dias[-5:] for k in d]}
+
+
+AGUARDANDO = {"status": "aguardando", "prova_resultado": None, "requisitos_ok": 0, "requisitos_total": 0,
+              "curva": [], "faltam": []}
 
 
 def _celula(sala, nome):
-    """Placar de um trader numa sala do estado do gerente; quem o gerente ainda não avaliou fica "aguardando"."""
-    sala = sala or {}
-    t = next((t for t in sala.get("traders", []) if t.get("nome") == nome), {})
-    reqs = t.get("requisitos", [])
-    return {"status": t.get("status") or ("sem_dados" if sala.get("status") == "sem_dados" else "aguardando"),
-            "prova_resultado": t.get("prova", {}).get("resultado"),
-            "requisitos_ok": sum(1 for r in reqs if r.get("ok")), "requisitos_total": len(reqs),
-            "curva": [p[1] for p in t.get("equity", [])],
-            "faltam": [f"{r['item']}: {r['valor']}" for r in reqs if not r.get("ok")]}
+    """Placar de um trader numa sala do estado do gerente; quem o gerente ainda não avaliou fica "aguardando".
+
+    Uma célula num formato estranho (gerente de outra versão, arquivo mexido à mão) também fica "aguardando":
+    ela não derruba a página inicial inteira.
+    """
+    try:
+        sala = sala or {}
+        t = next((t for t in sala.get("traders") or [] if isinstance(t, dict) and t.get("nome") == nome), {})
+        reqs = t.get("requisitos") or []
+        return {"status": t.get("status") or ("sem_dados" if sala.get("status") == "sem_dados" else "aguardando"),
+                "prova_resultado": (t.get("prova") or {}).get("resultado"),
+                "requisitos_ok": sum(1 for r in reqs if r.get("ok")), "requisitos_total": len(reqs),
+                "curva": [p[1] for p in t.get("equity") or []],
+                "faltam": [f"{r['item']}: {r['valor']}" if r.get("valor") else r["item"] for r in reqs if not r.get("ok")]}
+    except Exception:
+        return dict(AGUARDANDO)
 
 
 def painel():
@@ -193,12 +208,13 @@ def painel():
             cartao["sem_dados"] = True
         mercado.append(cartao)
     estado = gerente.ler_json(ESTADO_FIRMA)  # {} sem arquivo ou com JSON pela metade
-    salas = estado.get("salas", {}) if isinstance(estado, dict) else {}
+    salas = estado.get("salas") if isinstance(estado, dict) else None
+    salas = salas if isinstance(salas, dict) else {}
     return {"mercado": mercado,
             "traders": [{"nome": m.NOME, "estilo": m.ESTILO,
                          "por_ativo": {a: _celula(salas.get(a), m.NOME) for a in traders.SALAS}}
                         for m in traders.TODOS],
-            "ciclo": estado.get("dia") if isinstance(estado, dict) else None}
+            "ciclo": estado.get("dia") if isinstance(estado, dict) and isinstance(estado.get("dia"), str) else None}
 
 
 def relatorios_do_dia(dia=None):

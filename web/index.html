@@ -17,7 +17,7 @@
 </header>
 
 <section id="painel">
-  <div id="mercado" class="mercado"></div>
+  <div id="mercado" class="mercado"><div class="carregando mut">carregando o mercado e o placar…</div></div>
   <div class="quadro card">
     <h3><span>Placar da firma · prova do gerente <span id="ciclo"></span></span><a class="lnk" href="/firma">abrir a firma →</a></h3>
     <table id="quadro"></table>
@@ -25,19 +25,23 @@
   </div>
 </section>
 
-<div class="ctrl">
-  <label>De <input type="date" id="de"></label>
-  <label>até <input type="date" id="ate"></label>
-  <button class="btn prim" id="rodar">Rodar</button>
-  <button class="btn" id="inicio" title="Voltar ao início" disabled>⏮</button>
-  <button class="btn" id="play" title="Play / pausa" disabled>▶</button>
-  <button class="btn" id="fim" title="Pular para o resultado" disabled>⏭</button>
-  <label>Velocidade <select id="vel"><option value="1">1x</option><option value="5">5x</option><option value="20" selected>20x</option><option value="100">100x</option></select></label>
-  <input type="range" id="barra" min="0" max="0" value="0" disabled>
-  <div id="relogio" class="mut">escolha o período e clique em Rodar</div>
-</div>
+<main id="grid"><div class="espera"><b>Sala de replay</b><span>carregando o gráfico do ativo…</span></div></main>
 
-<main id="grid"><div class="espera"><b>Sala de replay</b><span>escolha o ativo e o período e clique em <b>Rodar</b> para ver os traders operando candle a candle</span><a class="lnk atrib" href="https://www.tradingview.com/" target="_blank" rel="noopener">gráficos: TradingView Lightweight Charts</a></div></main>
+<footer class="ctrl" id="replay">
+  <div class="grp">
+    <label>De <input type="date" id="de"></label>
+    <label>até <input type="date" id="ate"></label>
+    <button class="btn prim" id="rodar">Rodar</button>
+  </div>
+  <div class="grp transporte">
+    <button class="btn" id="inicio" title="Voltar ao início" disabled>⏮</button>
+    <button class="btn" id="play" title="Play / pausa" disabled>▶</button>
+    <button class="btn" id="fim" title="Pular para o resultado" disabled>⏭</button>
+  </div>
+  <label class="vel">Velocidade <select id="vel"><option value="1">1x</option><option value="5">5x</option><option value="20" selected>20x</option><option value="100">100x</option></select></label>
+  <input type="range" id="barra" min="0" max="0" value="0" disabled aria-label="Linha do tempo do replay">
+  <div id="relogio" class="mut">escolha o período e clique em Rodar</div>
+</footer>
 
 <aside>
   <section class="card" style="flex:none">

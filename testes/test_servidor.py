@@ -54,7 +54,7 @@ class TestServidor(unittest.TestCase):
         esperado = motor.rodar_backtest("WDO", UM_DIA, [(BETA, {"multiplo": 2.0})], CFG)
         ordens = lambda r: [[e["entrada"], e["alvo"]] for e in r["traders"]["Robô Beta"]["eventos"] if e["tipo"] == "ordem"]
         url = "/api/backtest?ativo=WDO&de=2026-09-01&ate=2026-09-01"
-        with mock.patch.object(servidor.traders, "TODOS", [BETA]):  # robô de teste no lugar dos traders reais
+        with mock.patch.object(servidor.traders, "SALAS", {"WDO": [BETA]}):  # robô de teste no lugar dos traders reais
             padrao = json.loads(self.get(url)[1])
             with open(servidor.PARAMETROS, "w", encoding="utf-8") as f:
                 json.dump({"WDO": {"Robô Beta": {"multiplo": 2.0}}}, f)
@@ -73,6 +73,15 @@ class TestServidor(unittest.TestCase):
             self.assertEqual(json.loads(corpo)["ativo"], ativo)
         status, corpo = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
         self.assertIn("PETR4", json.loads(corpo)["erro"])
+
+    def test_backtest_so_com_os_traders_da_sala(self):
+        # o Caio precisa do delta da B3: entra no WDO e no WIN, não no EURUSD nem no BTCUSDT
+        for ativo, com_caio in (("WDO", True), ("WIN", True), ("EURUSD", False), ("BTCUSDT", False)):
+            status, corpo = self.get(f"/api/backtest?ativo={ativo}&de=2026-09-01&ate=2026-09-01")
+            self.assertEqual(status, 200, corpo)
+            nomes = list(json.loads(corpo)["traders"])
+            self.assertEqual(nomes, [m.NOME for m in servidor.traders.SALAS[ativo]])
+            self.assertEqual("Caio Contrafluxo" in nomes, com_caio)
 
     def test_periodo_sem_pregao(self):
         status, corpo = self.get("/api/backtest?ativo=WDO&de=2026-09-05&ate=2026-09-06")
@@ -399,6 +408,41 @@ class TestServidor(unittest.TestCase):
             p = self._painel({}, estado)
             self.assertIsNone(p["ciclo"])
             self.assertEqual({c["status"] for t in p["traders"] for c in t["por_ativo"].values()}, {"aguardando"})
+
+    def test_painel_pregoes_recentes_para_o_grafico_da_sala(self):
+        dias = [date(2026, 10, d) for d in (5, 6, 7, 8, 9, 12)]
+        candles = [k for i, d in enumerate(dias) for k in self._horas(d, [5000 + i] * 2)]
+        wdo = {m["ativo"]: m for m in self._painel({"WDO": candles}, None)["mercado"]}["WDO"]
+        # os 5 últimos pregões, compactos: [hora, abertura, máxima, mínima, fechamento, volume]
+        self.assertEqual(len(wdo["pregoes"]), 5 * 24)
+        self.assertEqual(wdo["pregoes"][0], ["2026-10-06T09:00:00", 5001, 5001.5, 5000.5, 5001, 0.0])
+        self.assertEqual(wdo["pregoes"][-1][0], "2026-10-12T10:55:00")
+
+    def test_painel_fechamento_anterior_zero_nao_derruba(self):
+        candles = self._horas(date(2026, 10, 9), [0] * 2) + self._horas(date(2026, 10, 12), [5000] * 2)
+        wdo = {m["ativo"]: m for m in self._painel({"WDO": candles}, None)["mercado"]}["WDO"]
+        self.assertIsNone(wdo["variacao_pct"])
+        self.assertEqual(wdo["ultimo"], 5000)
+
+    def test_painel_celula_ruim_vira_aguardando(self):
+        # uma célula estranha do estado não pode derrubar a página inicial: ela vira "aguardando"
+        sofia = {"nome": "Sofia SMC", "status": "pausado", "prova": None, "equity": [["2026-09-24T09:00:00", 5000.0]],
+                 "requisitos": [{"item": "prova positiva", "ok": False}]}  # sem prova e item sem valor
+        estado = {"dia": "2026-10-25", "salas": {"WDO": {"status": "ok", "traders": [sofia, "lixo"]},
+                                                 "WIN": {"status": "ok", "traders": None},
+                                                 "EURUSD": {"status": "ok", "traders": [{"nome": "Sofia SMC", "requisitos": 7}]},
+                                                 "BTCUSDT": ["não", "é", "sala"]}}
+        p = self._painel({}, estado)
+        s = p["traders"][0]["por_ativo"]
+        self.assertEqual(s["WDO"]["status"], "pausado")
+        self.assertIsNone(s["WDO"]["prova_resultado"])
+        self.assertEqual(s["WDO"]["faltam"], ["prova positiva"])
+        for a in ("WIN", "EURUSD", "BTCUSDT"):
+            self.assertEqual(s[a]["status"], "aguardando", a)
+        for estado in ({"dia": "2026-10-25", "salas": ["x"]}, {"dia": "2026-10-25", "salas": None}, ["lista"]):
+            p = self._painel({}, estado)
+            self.assertEqual({c["status"] for t in p["traders"] for c in t["por_ativo"].values()}, {"aguardando"})
+        self.assertIsNone(self._painel({}, {"dia": 20261025, "salas": {}})["ciclo"])  # a página faz texto com ele
 
     def test_firma_html(self):
         status, corpo = self.get("/firma")
