@@ -1,11 +1,13 @@
 """Candles: arquivo CSV, agrupamento por tempo gráfico e histórico do MT5 e da Binance."""
 import csv
 import functools
+import http.client
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,17 +23,23 @@ CAMPOS = ["t", "o", "h", "l", "c", "v", "delta"]
 
 
 def salvar_csv(candles, caminho):
-    with open(caminho, "w", newline="", encoding="utf-8") as f:
+    """Grava num arquivo temporário e troca no fim: queda no meio da escrita não deixa o cache pela metade."""
+    temporario = caminho + ".tmp"
+    with open(temporario, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(CAMPOS)
         for k in candles:
             w.writerow([k.t.isoformat(), k.o, k.h, k.l, k.c, k.v, k.delta])
+    os.replace(temporario, caminho)
 
 
 def ler_csv(caminho):
-    with open(caminho, newline="", encoding="utf-8") as f:
-        return [Candle(datetime.fromisoformat(r["t"]), float(r["o"]), float(r["h"]), float(r["l"]),
-                       float(r["c"]), float(r["v"]), float(r["delta"])) for r in csv.DictReader(f)]
+    try:
+        with open(caminho, newline="", encoding="utf-8") as f:
+            return [Candle(datetime.fromisoformat(r["t"]), float(r["o"]), float(r["h"]), float(r["l"]),
+                           float(r["c"]), float(r["v"]), float(r["delta"])) for r in csv.DictReader(f)]
+    except (TypeError, ValueError, KeyError):  # linha cortada: campo faltando (None) ou número/data pela metade
+        raise ErroDados(f"cache corrompido em {caminho}; apague-o e rode de novo")
 
 
 def por_dia(candles):
@@ -82,7 +90,7 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
                 except ValueError:
                     msg = e.reason
                 raise ErroDados(f"a Binance recusou o pedido de {simbolo} (HTTP {e.code}): {msg}")
-        except (urllib.error.URLError, TimeoutError) as e:
+        except (OSError, http.client.HTTPException, ValueError) as e:  # rede, resposta cortada, JSON ruim
             raise ErroDados(f"Binance indisponível agora ({getattr(e, 'reason', e)}); tente de novo em alguns minutos")
         for k in klines:
             out.append(Candle(datetime.fromtimestamp(k[0] / 1000, timezone.utc).replace(tzinfo=None) - brasilia,
@@ -143,7 +151,8 @@ def _consultar_mt5(mt5, simbolo, inicio, fim, terminal):
         taxas = mt5.copy_rates_range(simbolo, mt5.TIMEFRAME_M5, inicio, fim)
         if taxas is None:
             raise ErroDados(f"o MT5 não devolveu candles de {simbolo}: {mt5.last_error()}")
-        return [{c: float(r[c]) for c in ("time", "open", "high", "low", "close", "real_volume")} for r in taxas]
+        return [{c: float(r[c]) for c in ("time", "open", "high", "low", "close", "real_volume", "tick_volume")}
+                for r in taxas]
     finally:
         mt5.shutdown()  # solta este terminal; o próximo ativo pode usar outro
 
@@ -182,7 +191,8 @@ def _consultar_mt5_isolado(simbolo, inicio, fim, terminal, timeout_s):
             json.dump({"simbolo": simbolo, "inicio": inicio.isoformat(), "fim": fim.isoformat(),
                        "terminal": terminal}, f)
         filho = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--mt5-filho", pasta],
-                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))  # sem janela de console
         try:
             filho.wait(timeout=timeout_s)
         except subprocess.TimeoutExpired:
@@ -223,8 +233,11 @@ def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, f
         taxas = _consultar_mt5(mt5, simbolo, inicio, fim, terminal)
     # O MT5 grava o horário do servidor como se fosse UTC. Medido em 25/10/2026: o MetaQuotes-Demo é UTC+3 no
     # verão europeu (NFP de 02/10 às 15:30 do servidor = 09:30 em Brasília) e UTC+2 no inverno; a Genial é Brasília.
+    # Forex não tem volume real (tudo 0): aí vale o volume de ticks. Com volume real na série (B3) ele vale
+    # sempre, inclusive 0 num candle sem negócios.
+    campo_volume = "real_volume" if any(r["real_volume"] for r in taxas) else "tick_volume"
     return [Candle(para_brasilia(datetime.fromtimestamp(int(r["time"]), timezone.utc).replace(tzinfo=None)),
-                   float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["real_volume"]))
+                   float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r[campo_volume]))
             for r in taxas]
 
 
@@ -233,8 +246,23 @@ def _dias_de_sessao(de, ate, dias=(0, 1, 2, 3, 4)):
     return {de + timedelta(days=k) for k in range((ate - de).days + 1) if (de + timedelta(days=k)).weekday() in dias}
 
 
+def _hoje_brasilia():
+    return datetime.now(timezone(timedelta(hours=-3))).date()
+
+
+_trava = threading.Lock()  # o servidor HTTP é multithread: ler cache, baixar e gravar não pode se cruzar
+
+
 def historico(ativo, de, ate, cfg, pasta="dados", mt5=None, hoje=None, abrir_url=None):
-    """Candles de 5 min do ativo no intervalo, do cache em `pasta` ou baixados da fonte do ativo (MT5 ou Binance)."""
+    """Candles de 5 min do ativo no intervalo, do cache em `pasta` ou baixados da fonte do ativo (MT5 ou Binance).
+
+    Só devolve os dias em que o ativo opera (`sessao.dias`): o forex reabre domingo à noite, mas EURUSD é seg-sex.
+    """
+    with _trava:
+        return _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url)
+
+
+def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
     espec = cfg["ativos"].get(ativo, {})
     fonte = espec.get("fonte", "mt5")
     if fonte not in ("mt5", "binance"):
@@ -246,10 +274,13 @@ def historico(ativo, de, ate, cfg, pasta="dados", mt5=None, hoje=None, abrir_url
     candles = ler_csv(arq) if os.path.exists(arq) else []
     cobertos = set()
     if os.path.exists(arq_cob):
-        with open(arq_cob, encoding="utf-8") as f:
-            for linha in f:
-                a, b = linha.strip().split(",")
-                cobertos |= _dias_de_sessao(date.fromisoformat(a), date.fromisoformat(b), dias)
+        try:
+            with open(arq_cob, encoding="utf-8") as f:
+                for linha in f:
+                    a, b = linha.strip().split(",")
+                    cobertos |= _dias_de_sessao(date.fromisoformat(a), date.fromisoformat(b), dias)
+        except ValueError:
+            raise ErroDados(f"cache corrompido em {arq_cob}; apague-o e rode de novo")
 
     faltam = _dias_de_sessao(de, ate, dias) - cobertos
     if faltam:
@@ -258,19 +289,22 @@ def historico(ativo, de, ate, cfg, pasta="dados", mt5=None, hoje=None, abrir_url
             novos = baixar_binance(simbolo, min(faltam), max(faltam), abrir_url)
         else:
             novos = baixar_mt5(simbolo, min(faltam), max(faltam), mt5, espec.get("terminal"),
-                               espec.get("deslocamento_h"), espec.get("fuso_servidor", "brasilia"))
+                               espec.get("deslocamento_h"), espec.get("fuso_servidor", "brasilia"),
+                               espec.get("timeout_s", 90))
         unicos = {k.t: k for k in candles}
         unicos.update({k.t: k for k in novos})
         candles = sorted(unicos.values(), key=lambda k: k.t)
         salvar_csv(candles, arq)
-        # cobre só até o último dia que veio de fato (o MT5 pode ainda estar sincronizando);
-        # o dia de hoje ainda está acontecendo e nunca conta como coberto
-        fim = min(max(k.t.date() for k in novos) if novos else min(faltam) - timedelta(days=1),
-                  (hoje or date.today()) - timedelta(days=1))
-        if fim >= min(faltam):
-            with open(arq_cob, "a", encoding="utf-8") as f:
-                f.write(f"{min(faltam).isoformat()},{fim.isoformat()}\n")
-    return [k for k in candles if de <= k.t.date() <= ate]
+        # cobre só do primeiro ao último dia que vieram de fato (o histórico do servidor pode começar depois
+        # do pedido, ou o MT5 pode ainda estar sincronizando); o dia de hoje (Brasília) ainda está acontecendo
+        # e nunca conta como coberto
+        if novos:
+            ini = max(min(faltam), min(k.t.date() for k in novos))
+            fim = min(max(k.t.date() for k in novos), (hoje or _hoje_brasilia()) - timedelta(days=1))
+            if fim >= ini:
+                with open(arq_cob, "a", encoding="utf-8") as f:
+                    f.write(f"{ini.isoformat()},{fim.isoformat()}\n")
+    return [k for k in candles if de <= k.t.date() <= ate and k.t.weekday() in dias]
 
 
 if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--mt5-filho":

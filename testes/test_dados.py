@@ -1,7 +1,9 @@
+import http.client
 import io
 import json
 import os
 import tempfile
+import threading
 import time
 import unittest
 import urllib.error
@@ -85,7 +87,7 @@ class Mt5Falso:
                     t = dia.replace(hour=9, minute=0) + timedelta(minutes=5 * k)
                     epoch = (t - datetime(1970, 1, 1)).total_seconds()
                     out.append({"time": epoch, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.5,
-                                "real_volume": 7})
+                                "real_volume": 7, "tick_volume": 3})
             dia += timedelta(days=1)
         return out
 
@@ -219,6 +221,17 @@ class TestBinance(unittest.TestCase):
             with self.assertRaises(dados.ErroDados) as e:
                 dados.baixar_binance("BTCUSDT", date(2026, 10, 20), date(2026, 10, 20), abrir_url=sem_rede)
             self.assertIn("Binance indisponível agora", str(e.exception))
+        for rotulo, falha in (("conexão cortada", ConnectionResetError("reset")),
+                              ("resposta incompleta", http.client.IncompleteRead(b"[[1")),
+                              ("JSON cortado", None)):
+            with self.subTest(rotulo):
+                def corta(url, timeout=30, falha=falha):
+                    if falha:
+                        raise falha
+                    return io.BytesIO(b"[[1, 2")
+                with self.assertRaises(dados.ErroDados) as e:
+                    dados.baixar_binance("BTCUSDT", date(2026, 10, 20), date(2026, 10, 20), abrir_url=corta)
+                self.assertIn("Binance indisponível agora", str(e.exception))
         with self.subTest("4xx mostra a msg da Binance"):
             with self.assertRaises(dados.ErroDados) as e:
                 dados.baixar_binance("XXX", date(2026, 10, 20), date(2026, 10, 20),
@@ -233,7 +246,7 @@ class UmCandle(Mt5Falso):
     def copy_rates_range(self, simbolo, tf, de, ate):
         self.pedido = (de, ate)
         return [{"time": (datetime(2026, 10, 20, 3) - datetime(1970, 1, 1)).total_seconds(), "open": 1.0,
-                 "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 0}]
+                 "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 0, "tick_volume": 3}]
 
 
 class TestFontes(unittest.TestCase):
@@ -298,7 +311,7 @@ class Mt5EmHorarios(Mt5Falso):
 
     def copy_rates_range(self, simbolo, tf, de, ate):
         self.pedido = (de, ate)
-        return [{"time": epoch(h), "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 0}
+        return [{"time": epoch(h), "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 0, "tick_volume": 3}
                 for h in self.horarios]
 
 
@@ -363,7 +376,7 @@ def symbol_select(simbolo, ligar): return True
 def shutdown(): pass
 def copy_rates_range(simbolo, tf, de, ate):
     time.sleep({dormir})
-    return [{{"time": {hora}, "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 7}}]
+    return [{{"time": {hora}, "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 7, "tick_volume": 3}}]
 """
 
 
@@ -399,6 +412,139 @@ class TestMt5EmProcessoFilho(unittest.TestCase):
         self.assertLess(time.monotonic() - inicio, 30)  # o filho foi morto, não esperou os 60 s
         self.assertEqual(str(e.exception), f"o MT5 ({TERMINAL_FALSO}) não respondeu em 0.5 s; "
                                            "abra o terminal, confira o login e tente de novo")
+
+    def test_historico_usa_timeout_s_do_config(self):
+        cfg = {"ativos": {"EURUSD": {"fonte": "mt5", "simbolo": "EURUSD", "terminal": TERMINAL_FALSO,
+                                     "timeout_s": 0.5}}}
+        with tempfile.TemporaryDirectory() as pasta, tempfile.TemporaryDirectory() as cache:
+            with open(os.path.join(pasta, "MetaTrader5.py"), "w", encoding="utf-8") as f:
+                f.write(MT5_FALSO_FILHO.format(inicializa=True, dormir=60, hora=0))
+            with mock.patch.dict(os.environ, {"PYTHONPATH": pasta}):
+                with self.assertRaises(dados.ErroDados) as e:
+                    dados.historico("EURUSD", date(2026, 10, 20), date(2026, 10, 20), cfg, pasta=cache)
+        self.assertIn("não respondeu em 0.5 s", str(e.exception))
+
+
+CFG_EUR = {"ativos": {"EURUSD": {"fonte": "mt5", "simbolo": "EURUSD", "sessao": {"dias": [0, 1, 2, 3, 4]}}}}
+
+
+class MtDesde(Mt5Falso):
+    """Como Mt5Falso (candles 09:00-09:55 em dias úteis), mas o histórico do servidor só começa em `desde`."""
+
+    def __init__(self, desde, **kw):
+        super().__init__(**kw)
+        self.desde = epoch(desde)
+        self.pedidos = []
+
+    def copy_rates_range(self, simbolo, tf, de, ate):
+        self.pedidos.append((de.replace(tzinfo=None), ate.replace(tzinfo=None)))
+        return [r for r in super().copy_rates_range(simbolo, tf, de, ate) if r["time"] >= self.desde]
+
+
+class TestCoberturaEFiltroDeDias(unittest.TestCase):
+    def test_domingo_do_forex_nao_vira_dia_de_pregao(self):
+        # EURUSD reabre domingo 18:00 em Brasília; sessao.dias é seg-sex, então o domingo não pode sair
+        horarios = [datetime(2026, 10, dia, 10, 0) for dia in (19, 20, 21, 22, 23, 26, 27, 28, 29, 30)]
+        horarios += [datetime(2026, 10, 25, 18, 0), datetime(2026, 10, 25, 18, 5), datetime(2026, 10, 18, 18, 0)]
+        mt5 = Mt5EmHorarios(horarios, simbolos=("EURUSD",))
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("EURUSD", date(2026, 10, 19), date(2026, 10, 30), CFG_EUR, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 10, 31))
+        self.assertEqual(len(cs), 10)
+        self.assertNotIn(6, {k.t.weekday() for k in cs})
+
+    def test_cobertura_comeca_no_primeiro_dia_que_chegou(self):
+        mt5 = MtDesde(datetime(2026, 10, 22), simbolos=("WDO$",))  # histórico começa em 22/10; pedido é 19-23
+        with tempfile.TemporaryDirectory() as d:
+            for _ in range(2):
+                dados.historico("WDO", date(2026, 10, 19), date(2026, 10, 23), CFG, pasta=d, mt5=mt5,
+                                hoje=date(2026, 10, 26))
+            with open(os.path.join(d, "WDO_M5.cobertura.csv"), encoding="utf-8") as f:
+                self.assertEqual(f.read(), "2026-10-22,2026-10-23\n")
+        # 19-21 continuam sem cobertura e são pedidos de novo na segunda chamada
+        self.assertEqual(len(mt5.pedidos), 2)
+        self.assertEqual(mt5.pedidos[1], (datetime(2026, 10, 19), datetime(2026, 10, 21, 23, 59, 59)))
+
+    def test_hoje_e_a_data_de_brasilia(self):
+        brasilia = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+        self.assertEqual(dados._hoje_brasilia(), brasilia)
+
+    def test_duas_threads_no_mesmo_ativo_baixam_uma_vez(self):
+        class Lento(Mt5Falso):
+            def copy_rates_range(self, simbolo, tf, de, ate):
+                time.sleep(0.3)
+                return super().copy_rates_range(simbolo, tf, de, ate)
+        mt5 = Lento()
+        with tempfile.TemporaryDirectory() as d:
+            threads = [threading.Thread(target=dados.historico, args=("WDO", date(2026, 9, 1), date(2026, 9, 4), CFG),
+                                        kwargs=dict(pasta=d, mt5=mt5, hoje=date(2026, 9, 10))) for _ in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        self.assertEqual(mt5.baixadas, 1)
+
+
+class TestVolumeMt5(unittest.TestCase):
+    def taxas(self, *volumes):
+        """Um candle por (real_volume, tick_volume) dado."""
+        class Fixo(Mt5Falso):
+            def copy_rates_range(self, simbolo, tf, de, ate):
+                return [{"time": epoch(datetime(2026, 10, 20, 10, 5 * k)), "open": 1.0, "high": 2.0, "low": 0.5,
+                         "close": 1.5, "real_volume": real, "tick_volume": ticks}
+                        for k, (real, ticks) in enumerate(volumes)]
+        mt5 = Fixo(simbolos=("EURUSD",))
+        return [k.v for k in dados.baixar_mt5("EURUSD", date(2026, 10, 20), date(2026, 10, 20), mt5)]
+
+    def test_forex_sem_volume_real_usa_tick_volume(self):
+        self.assertEqual(self.taxas((0, 120), (0, 80)), [120.0, 80.0])
+
+    def test_com_volume_real_ele_vale_mesmo_num_candle_sem_negocio(self):
+        # B3: um candle sem negócios (real 0) não ganha o volume de cotações
+        self.assertEqual(self.taxas((7, 120), (0, 80)), [7.0, 0.0])
+
+
+class TestCsvSeguro(unittest.TestCase):
+    def test_escrita_atomica_nao_estraga_o_arquivo_antigo(self):
+        antigos = serie(datetime(2026, 9, 1, 9, 0), 3)
+        with tempfile.TemporaryDirectory() as d:
+            caminho = os.path.join(d, "x.csv")
+            dados.salvar_csv(antigos, caminho)
+            quebrado = serie(datetime(2026, 9, 2, 9, 0), 3) + [object()]  # falha no meio da escrita
+            with self.assertRaises(AttributeError):
+                dados.salvar_csv(quebrado, caminho)
+            self.assertEqual(dados.ler_csv(caminho), antigos)
+
+    def test_csv_truncado_vira_erro_dados(self):
+        with tempfile.TemporaryDirectory() as d:
+            caminho = os.path.join(d, "WDO_M5.csv")
+            dados.salvar_csv(serie(datetime(2026, 9, 1, 9, 0), 3), caminho)
+            with open(caminho, "rb") as f:
+                inteiro = f.read()
+            for corte in (12, 30, 60):  # cortes no meio da última linha
+                with self.subTest(corte=corte):
+                    with open(caminho, "wb") as f:
+                        f.write(inteiro[:-corte])
+                    with self.assertRaises(dados.ErroDados) as e:
+                        dados.ler_csv(caminho)
+                    self.assertIn(f"cache corrompido em {caminho}", str(e.exception))
+                    self.assertIn("apague-o e rode de novo", str(e.exception))
+
+    def test_historico_com_cache_truncado_avisa_qual_arquivo(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "WDO_M5.csv"), "w", encoding="utf-8") as f:
+                f.write("t,o,h,l,c,v,delta\n2026-09-01T09:00:00,100.0,102.0,99.0\n")
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=Mt5Falso())
+        self.assertIn("WDO_M5.csv", str(e.exception))
+
+    def test_cobertura_corrompida_avisa_qual_arquivo(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "WDO_M5.cobertura.csv"), "w", encoding="utf-8") as f:
+                f.write("2026-09-01,2026-09\n")
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=Mt5Falso())
+        self.assertIn("WDO_M5.cobertura.csv", str(e.exception))
 
 
 if __name__ == "__main__":
