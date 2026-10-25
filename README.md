@@ -25,7 +25,7 @@ Abre `http://127.0.0.1:8765` (sala de operações) e `http://127.0.0.1:8765/firm
 - EURUSD: MetaTrader 5 com uma conta demo de Forex.
 - BTCUSDT: API pública da Binance, sem conta.
 
-Gerente manual: `python gerente.py` (~5 min). Testes: `python -m unittest discover -s testes`.
+Gerente manual: `python gerente.py` (~10 a 15 min). Testes: `python -m unittest discover -s testes`.
 
 ## Onde está cada coisa
 

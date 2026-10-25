@@ -12,7 +12,8 @@ from traders.sofia_smc import arredondar_tick
 NOME = "Didi Agulhada"
 ESTILO = "agulhada 3·8·20 · Bollinger abrindo · ADX e TRIX"
 PARAMS = {"tf": 5, "alvo_x": 3.0, "trix_extremo": 0.2}
-GRADE = {"tf": [5, 15], "alvo_x": [2.0, 3.0, 4.0], "trix_extremo": [0.1, 0.2, 0.3]}
+GRADE = {"tf": [5],  # o 15 não fez operação em nenhum ativo real e custava 2× o tempo do gerente
+          "alvo_x": [2.0, 3.0, 4.0], "trix_extremo": [0.1, 0.2, 0.3]}
 MINIMO = 27  # TRIX(9) no candle anterior (índice 25); MA20, bandas e ADX de 8 já valem antes
 JANELA = 3  # candles depois da agulhada em que as bandas ainda podem abrir
 N_TRIX = 120  # valores do TRIX para o percentil da extremidade

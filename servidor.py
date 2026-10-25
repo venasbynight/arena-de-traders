@@ -212,7 +212,8 @@ def painel():
     salas = salas if isinstance(salas, dict) else {}
     return {"mercado": mercado,
             "traders": [{"nome": m.NOME, "estilo": m.ESTILO,
-                         "por_ativo": {a: _celula(salas.get(a), m.NOME) for a in traders.SALAS}}
+                         "por_ativo": {a: _celula(salas.get(a), m.NOME) if m in sala else {**AGUARDANDO, "status": "nao_opera"}
+                                       for a, sala in traders.SALAS.items()}}
                         for m in traders.TODOS],
             "ciclo": estado.get("dia") if isinstance(estado, dict) and isinstance(estado.get("dia"), str) else None}
 

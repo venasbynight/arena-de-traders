@@ -33,7 +33,7 @@ def main(argv=None):
     if not candles:
         print(f"Sem candles de {a.ativo} entre {a.de} e {a.ate} (fim de semana, feriado ou fora do histórico).")
         return 1
-    r = motor.rodar_backtest(a.ativo, candles, traders.TODOS, cfg)
+    r = motor.rodar_backtest(a.ativo, candles, traders.SALAS.get(a.ativo, traders.TODOS), cfg)
     print(f"{a.ativo} de {a.de} a {a.ate}: {len(candles)} candles de 5 min\n")
     print(f"{'Trader':<20}{'Resultado':>12}{'Trades':>8}{'Acerto':>8}{'Fator':>7}{'Drawdown':>11}  Confiança")
     linhas = sorted(r["traders"].items(), key=lambda kv: -kv[1]["placar"]["resultado"])

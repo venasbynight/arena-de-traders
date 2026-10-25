@@ -407,7 +407,14 @@ class TestServidor(unittest.TestCase):
         for estado in (None, '{"dia": "2026-10-2'):  # gerente nunca rodou; gravação pela metade
             p = self._painel({}, estado)
             self.assertIsNone(p["ciclo"])
-            self.assertEqual({c["status"] for t in p["traders"] for c in t["por_ativo"].values()}, {"aguardando"})
+            self.assertEqual({c["status"] for t in p["traders"] for c in t["por_ativo"].values()}, {"aguardando", "nao_opera"})
+
+    def test_painel_trader_fora_da_sala_nao_opera(self):
+        p = self._painel({}, None)
+        por = {t["nome"]: t["por_ativo"] for t in p["traders"]}
+        for ativo, sala in servidor.traders.SALAS.items():
+            for m in servidor.traders.TODOS:
+                self.assertEqual(por[m.NOME][ativo]["status"] == "nao_opera", m not in sala, (m.NOME, ativo))
 
     def test_painel_pregoes_recentes_para_o_grafico_da_sala(self):
         dias = [date(2026, 10, d) for d in (5, 6, 7, 8, 9, 12)]
@@ -441,7 +448,7 @@ class TestServidor(unittest.TestCase):
             self.assertEqual(s[a]["status"], "aguardando", a)
         for estado in ({"dia": "2026-10-25", "salas": ["x"]}, {"dia": "2026-10-25", "salas": None}, ["lista"]):
             p = self._painel({}, estado)
-            self.assertEqual({c["status"] for t in p["traders"] for c in t["por_ativo"].values()}, {"aguardando"})
+            self.assertEqual({c["status"] for t in p["traders"] for c in t["por_ativo"].values()}, {"aguardando", "nao_opera"})
         self.assertIsNone(self._painel({}, {"dia": 20261025, "salas": {}})["ciclo"])  # a página faz texto com ele
 
     def test_firma_html(self):

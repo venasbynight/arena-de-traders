@@ -4,7 +4,7 @@
 (() => {
   const CASAS = {WDO: 1, WIN: 0, EURUSD: 5, BTCUSDT: 2};
   const STATUS = {promovido: "promovido", experiencia: "em experiência", pausado: "pausado",
-                  aguardando: "aguardando gerente", sem_dados: "sem dados"};
+                  aguardando: "aguardando gerente", sem_dados: "sem dados", nao_opera: "não opera aqui"};
   const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
   const fmt = (v, a) => v.toLocaleString("pt-BR", {minimumFractionDigits: CASAS[a] ?? 2, maximumFractionDigits: CASAS[a] ?? 2});
   const pct = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "%";
@@ -169,6 +169,8 @@
 
   function celula(t, a, c) {
     const chip = `<span class="chip ${esc(c.status)}">${STATUS[c.status] || esc(c.status)}</span>`;
+    if (c.status === "nao_opera")
+      return `<div class="cel vazia"><span class="chip">${STATUS.nao_opera}</span></div>`;
     if (c.status === "aguardando" || c.status === "sem_dados")
       return `<div class="cel" tabindex="0" role="button" aria-expanded="false" data-trader="${esc(t.nome)}" data-ativo="${a}">${chip}<span class="nota">${
         c.status === "aguardando" ? "entra no próximo ciclo do gerente" : "a sala ficou sem candles neste ciclo"}</span></div>`;
