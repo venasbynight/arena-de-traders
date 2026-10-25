@@ -25,13 +25,13 @@ Abre `http://127.0.0.1:8765` (sala de operações) e `http://127.0.0.1:8765/firm
 - EURUSD: MetaTrader 5 com uma conta demo de Forex.
 - BTCUSDT: API pública da Binance, sem conta.
 
-Gerente manual: `python gerente.py` (~5 min). Testes: `python -m unittest discover -s testes`.
+Gerente manual: `python gerente.py` (~10 a 15 min). Testes: `python -m unittest discover -s testes`.
 
 ## Onde está cada coisa
 
 - `docs/superpowers/specs/` e `docs/superpowers/plans/`: especificação e planos.
 - `docs/prompt-chatgpt.md`: prompt para recriar o sistema com outra IA.
-- `traders/`: Sofia SMC (por ora o único; Didi Agulhada e Caio Contrafluxo estão planejados).
+- `traders/`: Sofia SMC, Didi Agulhada e Caio Contrafluxo (este só no WDO e no WIN: precisa do delta, somado dos ticks de negócio do MT5).
 - `motor.py`: simulação honesta (execução com 1 tick de folga, stop antes do alvo, custos).
 - `gerente.py`: ciclo diário treino/prova, requisitos para a demo, promoção e pausa.
 - `web/`: sala de operações (`index.html`, `sala.js`) e firma 3D (`firma.*`).

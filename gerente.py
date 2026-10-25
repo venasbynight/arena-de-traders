@@ -78,10 +78,11 @@ def ajustar(modulo, ativo, treino, cfg):
 
     Devolve (params, resultado no treino) do melhor fator de lucro com ≥ 50 trades; se ninguém chega a 50, o padrão.
     """
-    padrao = {k: modulo.PARAMS[k] for k in modulo.GRADE}
+    do_ativo = lambda v: v.get(ativo) if isinstance(v, dict) else v  # valor por ativo (limite de delta do Caio)
+    padrao = {k: do_ativo(modulo.PARAMS[k]) for k in modulo.GRADE}
     candidatos = [padrao]
     for k, valores in modulo.GRADE.items():
-        for v in valores:
+        for v in do_ativo(valores) or []:
             if {**padrao, k: v} not in candidatos:
                 candidatos.append({**padrao, k: v})
     testados = [(c, _rodar(ativo, treino, modulo, c, cfg)) for c in candidatos]

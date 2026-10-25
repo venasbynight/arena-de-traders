@@ -75,7 +75,7 @@ class Conta:
         spec = size.especificacao(ativo, cfg)  # Recusa se o ativo não está em cfg["ativos"]
         self.tick, self.ponto_rs, self.custo = spec["tick"], spec["ponto_rs"], spec["custo_por_contrato"]
         self.saldo = float(cfg["capital"])
-        self.pendentes, self.posicao = [], None
+        self.pendentes, self.posicao, self.sair = [], None, False
         self.dia = {"data": None, "trades": 0, "stops": 0, "resultado": 0.0, "posicao_aberta": False}
         self.operacoes, self.equity = [], []
 
@@ -87,12 +87,18 @@ class Conta:
             self.dia = {"data": d.isoformat(), "trades": 0, "stops": 0, "resultado": 0.0,
                         "posicao_aberta": self.posicao is not None}
 
-    def colocar(self, planos, agora, simbolo):
-        """Troca as ordens pendentes pelos planos que passarem no trader-budget e no trader-risk."""
+    def colocar(self, planos, agora, simbolo, sair=False):
+        """Troca as ordens pendentes pelos planos que passarem no trader-budget e no trader-risk.
+
+        Ordem stop ainda na validade fica (vence sozinha em executar_candle). `sair` com posição aberta = sai a
+        mercado na abertura do próximo candle; "compra" ou "venda" = só se a posição for desse lado.
+        """
         self._novo_dia(agora.date())
+        self.sair = self.posicao is not None and sair in (True, self.posicao["lado"])
         if self.posicao:
             return []
-        self.pendentes, eventos = [], []
+        # ponytail: stops vivos somam aos planos novos; quem usar ordem stop não manda outra antes de a anterior vencer
+        self.pendentes, eventos = [o for o in self.pendentes if o["tipo"] == "stop"], []
         cfg = {**self.cfg, "capital": self.saldo}  # margem e tamanho pelo saldo atual, não pelo inicial
         for p in planos:
             plano = {"simbolo": simbolo, "ativo": self.ativo, "lado": p.lado, "tipo": p.tipo, "entrada": p.entrada,
@@ -102,10 +108,12 @@ class Conta:
             except size.Recusa as e:
                 eventos.append(self._ev(agora, "block", plano=plano, motivos=[str(e)]))
                 continue
-            r = check.checar([ordem], cfg, dict(self.dia), agora)[0]
+            r = check.checar([ordem], cfg, dict(self.dia), agora)[0]  # stop vira mercado ao disparar: confere assim
             if not r["ok"]:
                 eventos.append(self._ev(agora, "block", plano=plano, motivos=r["motivos"]))
                 continue
+            if p.tipo == "stop":
+                ordem = {**ordem, "tipo": "stop", "validade": p.validade}
             self.pendentes.append(ordem)
             eventos.append(self._ev(agora, "ordem", lado=p.lado, tipo_ordem=p.tipo, contratos=ordem["contratos"],
                                     entrada=p.entrada, stop=p.stop, alvo=p.alvo, setup=p.setup))
@@ -115,13 +123,16 @@ class Conta:
         self._novo_dia(c.t.date())
         eventos = []
         if self.posicao is None and self.pendentes:
-            eventos += self._tentar_entrada(c)
+            eventos += self._tentar_entrada(c) + self._vencer_stops(c)
+        elif self.posicao and self.sair:
+            eventos += self._sair_no_sinal(c)
         elif self.posicao:
             eventos += self._conferir_saida(c, candle_da_entrada=False)
         if ultimo_do_dia:
             if self.posicao:
                 sinal = 1 if self.posicao["lado"] == "compra" else -1
                 eventos += self._sair(c.c - sinal * self.tick, c.t, "zeragem")
+            eventos += [self._cancelada(o, c.t) for o in self.pendentes if o["tipo"] == "stop"]
             self.pendentes = []
             self.equity.append((c.t, round(self.saldo, 2)))
         return eventos
@@ -131,6 +142,11 @@ class Conta:
         for o in self.pendentes:
             if o["tipo"] == "mercado":
                 cand.append((0.0, o, c.o))
+            elif o["tipo"] == "stop":  # dispara 1 tick além do gatilho; gap executa na abertura, nunca melhor
+                if o["lado"] == "compra" and c.h >= o["entrada"] + tick:
+                    cand.append((abs(o["entrada"] - c.o), o, max(o["entrada"], c.o)))
+                elif o["lado"] == "venda" and c.l <= o["entrada"] - tick:
+                    cand.append((abs(o["entrada"] - c.o), o, min(o["entrada"], c.o)))
             elif o["lado"] == "compra" and c.l <= o["entrada"] - tick:
                 cand.append((abs(o["entrada"] - c.o), o, o["entrada"]))
             elif o["lado"] == "venda" and c.h >= o["entrada"] + tick:
@@ -146,6 +162,29 @@ class Conta:
         eventos = [self._ev(c.t, "entrada", lado=o["lado"], contratos=o["contratos"], preco=preco,
                             stop=o["stop"], alvo=o["alvo"])]
         return eventos + self._conferir_saida(c, candle_da_entrada=True)
+
+    def _vencer_stops(self, c):
+        """Ordem stop que não executou perde um candle de validade; zerou, cancela."""
+        eventos, ficam = [], []
+        for o in self.pendentes:
+            if o["tipo"] == "stop":
+                o["validade"] -= 1
+                if o["validade"] <= 0:
+                    eventos.append(self._cancelada(o, c.t))
+                    continue
+            ficam.append(o)
+        self.pendentes = ficam
+        return eventos
+
+    def _cancelada(self, o, t):
+        return self._ev(t, "cancelada", lado=o["lado"], tipo_ordem=o["tipo"], entrada=o["entrada"])
+
+    def _sair_no_sinal(self, c):
+        """Saída a mercado na abertura, 1 tick pior; se a abertura já passou do stop, é stop."""
+        p = self.posicao
+        sinal = 1 if p["lado"] == "compra" else -1
+        alem_do_stop = (c.o - p["stop"]) * sinal <= 0
+        return self._sair(c.o - sinal * self.tick, c.t, "stop" if alem_do_stop else "sinal")
 
     def _conferir_saida(self, c, candle_da_entrada):
         p, tick = self.posicao, self.tick
@@ -177,7 +216,7 @@ class Conta:
         self.dia["resultado"] += resultado
         self.dia["stops"] += motivo == "stop"
         self.dia["posicao_aberta"] = False
-        self.posicao = None
+        self.posicao, self.sair = None, False
         return [self._ev(t, "saida", motivo=motivo, preco=preco, resultado_rs=resultado)]
 
 
@@ -224,9 +263,12 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
         ultimo[nome][chave] = valor
         return True
 
-    ontem5, k60 = [], 0
+    # desenhos "indicadores" (um por candle) viram colunas: k = índice do candle em cujo fechamento ficou conhecido
+    series = {m.NOME: {} for m, _ in pares}
+    ontem5, k60, n = [], 0, -1
     for hoje in por_dia(candles5).values():
         for i, c in enumerate(hoje):
+            n += 1
             fim_do_dia = i == len(hoje) - 1
             for m, _, conta in mesa:
                 eventos[m.NOME] += conta.executar_candle(c, fim_do_dia)
@@ -239,9 +281,17 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
             agora = c.t + timedelta(minutes=5)
             for m, trader, conta in mesa:
                 d = trader.decidir(hoje[:i + 1], ontem5, fechados60)
-                evs = conta.colocar(d.planos, agora, simbolo)
-                if novo(m.NOME, "estudo", d.desenhos):
-                    eventos[m.NOME].append(conta._ev(agora, "desenho", desenhos=d.desenhos))
+                evs = conta.colocar(d.planos, agora, simbolo, d.sair)
+                desenhos = []
+                for x in d.desenhos:
+                    if x.get("tipo") != "indicadores":
+                        desenhos.append(x)
+                    elif novo(m.NOME, "indicadores", x):
+                        for chave, v in {"k": n, **x}.items():
+                            if chave != "tipo":
+                                series[m.NOME].setdefault(chave, []).append(v)
+                if novo(m.NOME, "estudo", desenhos):
+                    eventos[m.NOME].append(conta._ev(agora, "desenho", desenhos=desenhos))
                 if novo(m.NOME, "pensamento", d.pensamento):
                     eventos[m.NOME].append(conta._ev(agora, "pensamento", linhas=d.pensamento))
                 if novo(m.NOME, "ordens", [{k: v for k, v in e.items() if k != "t"} for e in evs]):
@@ -252,5 +302,6 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
             "candles": [[k.t.isoformat(), k.o, k.h, k.l, k.c] for k in candles5],
             "traders": {m.NOME: {"estilo": m.ESTILO, "eventos": eventos[m.NOME], "placar": placar(conta.operacoes),
                                  "equity": [[t.isoformat(), s] for t, s in conta.equity],
-                                 "operacoes": conta.operacoes}
+                                 "operacoes": conta.operacoes,
+                                 **({"indicadores": series[m.NOME]} if series[m.NOME] else {})}
                         for m, _, conta in mesa}}

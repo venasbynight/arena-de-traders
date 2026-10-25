@@ -71,3 +71,71 @@ def order_blocks(candles, n=2):
                 out.append(Zona(j, "baixa", candles[ob].h, candles[ob].l, "ob"))
             fundo = None
     return out
+
+
+def sma(valores, n):
+    """Média aritmética simples; None enquanto não há n valores."""
+    return [None if i < n - 1 else sum(valores[i - n + 1:i + 1]) / n for i in range(len(valores))]
+
+
+def didi(fechamentos, n_curta=3, n_meio=8, n_longa=20):
+    """Didi Index: (curta, longa) = (MA3 − MA8, MA20 − MA8); a MA8 é o zero."""
+    curta, meio, longa = (sma(fechamentos, n) for n in (n_curta, n_meio, n_longa))
+    menos = lambda a, b: None if a is None or b is None else a - b
+    return [menos(a, m) for a, m in zip(curta, meio)], [menos(b, m) for b, m in zip(longa, meio)]
+
+
+def bollinger(fechamentos, n=8, k=2):
+    """(superior, centro, inferior): média de n ± k desvios populacionais."""
+    sup, meio, inf = [], sma(fechamentos, n), []
+    for i, m in enumerate(meio):
+        # desvio na mão: statistics.pstdev é exato (frações) e deixava o backtest 10× mais lento
+        d = None if m is None else k * (sum((x - m) ** 2 for x in fechamentos[i - n + 1:i + 1]) / n) ** 0.5
+        sup.append(None if d is None else m + d)
+        inf.append(None if d is None else m - d)
+    return sup, meio, inf
+
+
+def adx(candles, n=8):
+    """ADX de Wilder com (adx, di+, di−). DI vale a partir do candle n; ADX, de 2n − 1 (média dos n primeiros DX)."""
+    vazio = [None] * len(candles)
+    adx_, mais, menos = vazio[:], vazio[:], vazio[:]
+    s_tr = s_mais = s_menos = 0.0
+    dxs = []
+    for i in range(1, len(candles)):
+        a, c = candles[i - 1], candles[i]
+        tr = max(c.h - c.l, abs(c.h - a.c), abs(c.l - a.c))
+        sobe, desce = c.h - a.h, a.l - c.l
+        dm_mais = sobe if sobe > desce and sobe > 0 else 0.0
+        dm_menos = desce if desce > sobe and desce > 0 else 0.0
+        if i <= n:  # os n primeiros somam; depois, alisamento de Wilder
+            s_tr, s_mais, s_menos = s_tr + tr, s_mais + dm_mais, s_menos + dm_menos
+            if i < n:
+                continue
+        else:
+            s_tr, s_mais, s_menos = (s_tr - s_tr / n + tr, s_mais - s_mais / n + dm_mais,
+                                     s_menos - s_menos / n + dm_menos)
+        mais[i] = 100 * s_mais / s_tr if s_tr else 0.0
+        menos[i] = 100 * s_menos / s_tr if s_tr else 0.0
+        soma = mais[i] + menos[i]
+        dxs.append(100 * abs(mais[i] - menos[i]) / soma if soma else 0.0)
+        if len(dxs) == n:
+            adx_[i] = sum(dxs) / n
+        elif len(dxs) > n:
+            adx_[i] = (adx_[i - 1] * (n - 1) + dxs[-1]) / n
+    return adx_, mais, menos
+
+
+def ema(valores, n):
+    """Média exponencial (α = 2/(n+1)) que começa na média dos n primeiros valores; None antes e nos None."""
+    out, ini = [None] * len(valores), next((i for i, v in enumerate(valores) if v is not None), len(valores))
+    for i in range(ini + n - 1, len(valores)):
+        out[i] = (sum(valores[ini:i + 1]) / n if i == ini + n - 1
+                  else out[i - 1] + 2 / (n + 1) * (valores[i] - out[i - 1]))
+    return out
+
+
+def trix(fechamentos, n=9):
+    """TRIX: variação % de um candle da EMA tripla do fechamento. Vale a partir do candle 3(n − 1) + 1."""
+    e3 = ema(ema(ema(fechamentos, n), n), n)
+    return [None if a is None or b is None else 100 * (b - a) / a for a, b in zip([None] + e3, e3)]

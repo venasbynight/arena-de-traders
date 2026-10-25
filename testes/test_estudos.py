@@ -83,5 +83,57 @@ class TestZonas(unittest.TestCase):
         self.assertEqual(estudos.order_blocks(espelho), [Zona(criada=6, lado="baixa", topo=-5, fundo=-8, tipo="ob")])
 
 
+def hlc(*linhas):
+    return [Candle(T0 + timedelta(minutes=5 * k), c, h, l, c) for k, (h, l, c) in enumerate(linhas)]
+
+
+class TestIndicadores(unittest.TestCase):
+    def test_media_simples(self):
+        self.assertEqual(estudos.sma([1, 2, 3, 4, 5], 3), [None, None, 2.0, 3.0, 4.0])
+
+    def test_didi_curta_e_longa_contra_a_media_do_meio(self):
+        # médias de 1, 2 e 3: curta = fech − MA2, longa = MA3 − MA2
+        curta, longa = estudos.didi([1, 2, 4, 7], 1, 2, 3)
+        self.assertEqual(curta, [None, 0.5, 1.0, 1.5])
+        self.assertEqual(longa[:2], [None, None])
+        self.assertAlmostEqual(longa[2], 7 / 3 - 3)
+        self.assertAlmostEqual(longa[3], 13 / 3 - 5.5)
+
+    def test_didi_padrao_3_8_20(self):
+        curta, longa = estudos.didi([10.0] * 20)
+        self.assertEqual((curta[6], curta[7], longa[18], longa[19]), (None, 0.0, None, 0.0))
+
+    def test_bollinger_desvio_populacional(self):
+        sup, meio, inf = estudos.bollinger([2, 4, 2, 4, 4], 4, 2)
+        self.assertEqual((sup[2], meio[3], sup[3], inf[3]), (None, 3.0, 5.0, 1.0))
+        self.assertAlmostEqual(sup[4], 3.5 + 2 * 0.75 ** 0.5)  # janela 4, 2, 4, 4: desvio raiz de 0,75
+
+    def test_adx_wilder_com_di(self):
+        # n = 2, contas à mão: TR 3, 3, 4, 4; +DM 2, 1, 0, 0; −DM 0, 0, 2, 1
+        cs = hlc((10, 8, 9), (12, 9, 11), (13, 10, 12), (12, 8, 9), (11, 7, 8))
+        adx, mais, menos = estudos.adx(cs, 2)
+        self.assertEqual((adx[:3], mais[:2], menos[:2]), ([None] * 3, [None] * 2, [None] * 2))
+        for serie, esperado in ((mais[2:], [50, 150 / 7, 10]), (menos[2:], [0, 200 / 7, 80 / 3]),
+                                (adx[3:], [400 / 7, (400 / 7 + 500 / 11) / 2])):
+            for v, e in zip(serie, esperado):
+                self.assertAlmostEqual(v, e)
+
+    def test_adx_sem_movimento_e_zero(self):
+        adx, mais, menos = estudos.adx(hlc(*[(10, 10, 10)] * 6), 2)
+        self.assertEqual((adx[-1], mais[-1], menos[-1]), (0.0, 0.0, 0.0))
+
+    def test_trix_ema_tripla_variacao_percentual(self):
+        # n = 2 (α = 2/3), cada EMA começa na média dos 2 primeiros valores da anterior; contas à mão:
+        # EMA1 2, 2, 14/3, 38/9, 182/27; EMA2 2, 34/9, 110/27, 158/27; EMA3 26/9, 298/81, 1246/243
+        trix = estudos.trix([1, 3, 2, 6, 4, 8], 2)
+        self.assertEqual(trix[:4], [None] * 4)
+        self.assertAlmostEqual(trix[4], 100 * 64 / 234)  # 298/81 contra 26/9
+        self.assertAlmostEqual(trix[5], 100 * 352 / 894)  # 1246/243 contra 298/81
+
+    def test_trix_9_comeca_no_candle_25(self):
+        trix = estudos.trix([10.0] * 30)
+        self.assertEqual((trix[24], trix[25], trix[-1]), (None, 0.0, 0.0))
+
+
 if __name__ == "__main__":
     unittest.main()
