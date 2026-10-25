@@ -5,6 +5,7 @@ Todo texto vindo do estado passa por html.escape: a firma embute o gerente.html 
 import json
 import os
 import re
+import threading
 import time
 import unicodedata
 from datetime import datetime
@@ -24,7 +25,7 @@ p{margin-bottom:6px}ul{margin-left:18px}li{margin-bottom:4px}a{color:var(--acc)}
 
 def gravar(caminho, texto):
     """Grava inteiro ou nada (arquivo temporário + os.replace): o servidor pode ler a qualquer momento."""
-    tmp = caminho + ".tmp"
+    tmp = f"{caminho}.{os.getpid()}.{threading.get_ident()}.tmp"  # único por processo e thread
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(texto)
     for _ in range(20):
@@ -48,7 +49,8 @@ def brl(v):
 
 
 def num(v, casas=2):
-    return "—" if v is None else f"{v:,.{casas}f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    """1.234,56 / −29,79 (o mesmo sinal de menos do brl)."""
+    return "—" if v is None else f"{v:,.{casas}f}".replace(",", "_").replace(".", ",").replace("_", ".").replace("-", "−")
 
 
 def pct(v):
@@ -174,7 +176,10 @@ def _briefing(estado):
               f"Para a mente de IA: comente as decisões abaixo e grave relatorios/{dia}/gerente-ia.md.",
               f"Premissas: contas simuladas de R$ 5.000; USD/BRL {num(p.get('usd_brl'))}; treino = tudo menos os "
               "últimos 21 pregões, prova = últimos 21; promoção pede treino e prova positivos, fator ≥ 1,2, ≥ 50 trades "
-              "(treino e prova) e sem overfit; pausa com drawdown pior que −R$ 1.500 ou 5 dias seguidos perdendo R$ 25 ou mais.", ""]
+              "(treino e prova) e sem overfit (ganho por pregão da prova < 50% do treino); pausa com drawdown pior que "
+              "−R$ 1.500 ou 5 dias seguidos perdendo R$ 25 ou mais.", "", "## Pendências"]
+    linhas += [f"- {x}" for x in estado.get("pendencias", [])] or ["- nenhuma"]
+    linhas.append("")
     for ativo, sala in estado["salas"].items():
         if sala["status"] != "ok":
             linhas.append(f"## {ativo}: sem dados — {sala.get('motivo', '')}")
@@ -192,7 +197,6 @@ def _briefing(estado):
                           f"drawdown {brl(pr['drawdown'])}). Decisão: {t['decisao']}")
     linhas += ["", "## Ranking (prova)"]
     linhas += [f"{i}. {r['nome']} ({r['sala']}) {brl(r['prova_resultado'])}" for i, r in enumerate(estado.get("ranking", [])[:10], 1)]
-    linhas += ["", "## Pendências"] + ([f"- {x}" for x in estado.get("pendencias", [])] or ["- nenhuma"])
     if len(linhas) > 60:  # o briefing é curto de propósito; o detalhe está nos HTML
         linhas = linhas[:59] + ["(cortado em 60 linhas; detalhes em gerente.html)"]
     return "\n".join(linhas) + "\n"

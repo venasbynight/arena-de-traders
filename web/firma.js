@@ -1187,11 +1187,11 @@ function htmlRelatorios(estado) {
     `<h3>Relatórios do dia</h3><p class="warn">O gerente ainda não rodou: os relatórios aparecem aqui depois do primeiro ciclo (<b>python gerente.py</b>).</p>`;
   const arquivos = Array.isArray(rel.arquivos) ? rel.arquivos : [];
   const urlGerente = urlRelatorio("gerente.html");
-  // relatórios não têm script próprio: sandbox sem allow-scripts (o V repassado é ouvinte desta página)
+  // gerente.html não tem script (os dos traders têm, para o gráfico, e abrem em aba própria, fora do sandbox): sem allow-scripts (o V repassado é ouvinte desta página)
   return htmlGerente(estado) + `
     <h3>Relatórios de ${esc(rel.dia)}</h3>
     <ul class="lista">${arquivos.map(a => `<li>${linkRelatorio(String(a), esc(a))}</li>`).join("") || "<li class='mut'>nenhum arquivo listado</li>"}</ul>
-    ${urlGerente ? `<iframe class="relatorio" src="${urlGerente}" sandbox="allow-same-origin allow-popups" title="Relatório do gerente"></iframe>` : ""}`;
+    ${urlGerente ? `<iframe class="relatorio" src="${urlGerente}" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="Relatório do gerente"></iframe>` : ""}`;
 }
 
 $("#fechar").onclick = fecharPainel;

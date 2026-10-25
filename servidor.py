@@ -82,26 +82,28 @@ class Arena(BaseHTTPRequestHandler):
         except (OSError, ValueError) as e:  # gravação pela metade, arquivo apagado no meio, JSON inválido
             return self._enviar(500, {"erro": f"não consegui ler {os.path.basename(caminho)}: {e}"})
         if exemplo:
-            estado["exemplo"] = True
-        rel = relatorios_do_dia()
-        if rel:
-            estado["relatorios"] = rel
+            estado["exemplo"] = True  # o exemplo não ganha relatórios: os reais são de outro estado
+        else:
+            rel = relatorios_do_dia(estado.get("dia"))
+            if rel:
+                estado["relatorios"] = rel
         self._enviar(200, estado)
 
     def _backtest(self, q):
+        try:
+            cfg = self.server.cfg or motor.carregar_config()
+        except (OSError, ValueError) as e:
+            return self._enviar(500, {"erro": f"não consegui ler trader/config.json: {e}"})
         ativo = q.get("ativo", [""])[0]
-        if ativo not in ("WDO", "WIN"):
-            return self._enviar(400, {"erro": "ativo deve ser WDO ou WIN"})
+        if ativo not in cfg.get("ativos", {}):
+            return self._enviar(400, {"erro": f"ativo {ativo or '(vazio)'} não está em trader/config.json; "
+                                              f"use {', '.join(cfg.get('ativos', {}))}"})
         try:
             de, ate = date.fromisoformat(q["de"][0]), date.fromisoformat(q["ate"][0])
         except (KeyError, ValueError):
             return self._enviar(400, {"erro": "datas inválidas; use AAAA-MM-DD"})
         if de > ate:
             return self._enviar(400, {"erro": "a data inicial é depois da final"})
-        try:
-            cfg = self.server.cfg or motor.carregar_config()
-        except (OSError, ValueError) as e:
-            return self._enviar(500, {"erro": f"não consegui ler trader/config.json: {e}"})
         try:
             candles = self.server.historico_fn(ativo, de, ate, cfg)
             if not candles:
@@ -116,8 +118,8 @@ class Arena(BaseHTTPRequestHandler):
         self._enviar(200, resultado)
 
 
-def relatorios_do_dia():
-    """{"dia", "arquivos"} da pasta de relatórios mais recente (relatorios/AAAA-MM-DD), ou None.
+def relatorios_do_dia(dia=None):
+    """{"dia", "arquivos"} da pasta relatorios/<dia> (a do dia do estado); sem ela, da mais recente; ou None.
 
     A lista vem do index.json do último ciclo; pasta sem ele (de antes dele existir), a listagem da pasta.
     """
@@ -125,21 +127,35 @@ def relatorios_do_dia():
         dias = [d for d in os.listdir(RELATORIOS)
                 if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) and os.path.isdir(os.path.join(RELATORIOS, d))]
         if dias:
-            pasta = os.path.join(RELATORIOS, max(dias))
+            dia = dia if dia in dias else max(dias)
+            pasta = os.path.join(RELATORIOS, dia)
             arquivos = gerente.ler_json(os.path.join(pasta, "index.json")).get("arquivos") or sorted(os.listdir(pasta))
-            return {"dia": max(dias), "arquivos": arquivos}
+            return {"dia": dia, "arquivos": arquivos}
     except OSError:
         pass
     return None
 
 
-def precisa_ciclo(caminho, hoje):
-    """No arranque roda um ciclo se não há estado do gerente, ou se ele é de um dia anterior."""
+def precisa_ciclo(caminho, hoje, refazer_sem_dados=False):
+    """Roda um ciclo se não há estado do gerente ou se ele é de um dia anterior.
+
+    Com `refazer_sem_dados` (o horário das 19:30), também quando alguma sala do estado de hoje ficou sem dados.
+    """
     try:
         with open(caminho, encoding="utf-8") as f:
-            return json.load(f).get("dia", "") < hoje.isoformat()
+            estado = json.load(f)
+        if estado.get("dia", "") < hoje.isoformat():
+            return True
+        return refazer_sem_dados and any(s.get("status") != "ok" for s in estado.get("salas", {}).values())
     except (OSError, ValueError, AttributeError, TypeError):
         return True
+
+
+def _log(msg):
+    try:
+        print(msg, flush=True)
+    except Exception:  # console sem a codificação ou fechado: a thread do gerente nunca cai por um print
+        pass
 
 
 def gerente_diario():
@@ -151,12 +167,12 @@ def gerente_diario():
 
     def rodar():
         hoje = datetime.now(brt).date()
-        print(f"gerente: ciclo de {hoje} começou", flush=True)
+        _log(f"gerente: ciclo de {hoje} começou")
         try:
             estado = gerente.ciclo(motor.carregar_config(), hoje, raiz=RAIZ)
-            print(f"gerente: ciclo de {hoje} pronto; pendências: {len(estado['pendencias'])}", flush=True)
+            _log(f"gerente: ciclo de {hoje} pronto; pendências: {len(estado['pendencias'])}")
         except Exception as e:  # a thread segue viva para o ciclo de amanhã
-            print(f"gerente: o ciclo de {hoje} falhou: {e!r}", flush=True)
+            _log(f"gerente: o ciclo de {hoje} falhou: {e!r}")
 
     def laco():
         if precisa_ciclo(ESTADO_FIRMA, datetime.now(brt).date()):
@@ -168,7 +184,9 @@ def gerente_diario():
                 alvo += timedelta(days=1)
             # ponytail: um sleep longo; com o PC suspenso o ciclo sai atrasado, no acordar
             time.sleep((alvo - agora).total_seconds())
-            rodar()
+            # às 19:30 só repete se ainda não houve o ciclo de hoje ou se alguma sala ficou sem dados
+            if precisa_ciclo(ESTADO_FIRMA, datetime.now(brt).date(), refazer_sem_dados=True):
+                rodar()
 
     threading.Thread(target=laco, daemon=True, name="gerente").start()
 
@@ -182,6 +200,7 @@ def criar_servidor(porta=8765, historico_fn=None, cfg=None):
 
 if __name__ == "__main__":
     import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     srv = criar_servidor()
     print("Arena de Traders em http://localhost:8765  (Ctrl+C para parar)", flush=True)
     if "--sem-gerente" not in sys.argv:

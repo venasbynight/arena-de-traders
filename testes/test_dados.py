@@ -524,6 +524,27 @@ class TestPrecoNoTick(unittest.TestCase):
             cru = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=Ajustada())
         self.assertEqual(cru[0].o, 5432.3)
 
+    def test_cache_antigo_fora_do_tick_sai_no_tick(self):
+        mt5 = Mt5Falso()
+        cfg = {"ativos": {"WDO": {**CFG["ativos"]["WDO"], "tick": 0.5}}}
+        with tempfile.TemporaryDirectory() as d:  # cache de antes do arredondamento, já coberto
+            dados.salvar_csv([Candle(datetime(2026, 9, 1, 9, 0), 5432.3, 5432.6, 5431.9, 5432.2)],
+                             os.path.join(d, "WDO_M5.csv"))
+            with open(os.path.join(d, "WDO_M5.cobertura.csv"), "w", encoding="utf-8") as f:
+                f.write("2026-09-01,2026-09-01\n")
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), cfg, pasta=d, mt5=mt5)
+        self.assertEqual(mt5.baixadas, 0)
+        self.assertEqual([(k.o, k.h, k.l, k.c) for k in cs], [(5432.5, 5432.5, 5432.0, 5432.0)])
+
+    def test_no_tick_nao_mexe_em_preco_no_tick(self):
+        import random
+        r = random.Random(1)
+        for tick, casas, de, ate in ((0.01, 2, 10000, 130000), (0.00001, 5, 0.9, 1.3), (0.5, 1, 4000, 6000)):
+            precos = [round(r.uniform(de, ate) / tick) * tick for _ in range(3000)]
+            precos = [float(f"{p:.{casas}f}") for p in precos]
+            velas = [Candle(datetime(2026, 1, 1), p, p, p, p) for p in precos]
+            self.assertEqual(dados.no_tick(velas, tick), velas, tick)
+
 
 class TestCsvSeguro(unittest.TestCase):
     def test_escrita_atomica_nao_estraga_o_arquivo_antigo(self):

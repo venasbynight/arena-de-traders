@@ -24,7 +24,7 @@ CAMPOS = ["t", "o", "h", "l", "c", "v", "delta"]
 
 def salvar_csv(candles, caminho):
     """Grava num arquivo temporário e troca no fim: queda no meio da escrita não deixa o cache pela metade."""
-    temporario = caminho + ".tmp"
+    temporario = f"{caminho}.{os.getpid()}.{threading.get_ident()}.tmp"  # único por processo e thread
     with open(temporario, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(CAMPOS)
@@ -322,7 +322,8 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
             if fim >= ini:
                 with open(arq_cob, "a", encoding="utf-8") as f:
                     f.write(f"{ini.isoformat()},{fim.isoformat()}\n")
-    return [k for k in candles if de <= k.t.date() <= ate and k.t.weekday() in dias]
+    # o cache de antes do arredondamento também sai no tick (no tick, no_tick não muda nada)
+    return no_tick([k for k in candles if de <= k.t.date() <= ate and k.t.weekday() in dias], espec.get("tick"))
 
 
 if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--mt5-filho":

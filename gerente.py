@@ -94,10 +94,15 @@ def _negativos_seguidos(equity):
     return pior
 
 
-def decidir(treino, prova, equity):
-    """(status, overfit, decisão em uma linha). A pausa vence a promoção: risco primeiro."""
-    overfit = treino["resultado"] > 0 and prova["resultado"] < 0.5 * treino["resultado"]
-    nota = f"overfit: prova {brl(prova['resultado'])} é menos de 50% do treino {brl(treino['resultado'])}"
+def decidir(treino, prova, equity, n_treino, n_prova):
+    """(status, overfit, decisão em uma linha). A pausa vence a promoção: risco primeiro.
+
+    `n_treino`/`n_prova`: pregões de cada janela. O overfit compara o ganho por pregão (as janelas têm tamanhos
+    diferentes); prova sem nenhum trade não promove, mas também não é overfit.
+    """
+    t_dia, p_dia = treino["resultado"] / max(n_treino, 1), prova["resultado"] / max(n_prova, 1)
+    overfit = treino["resultado"] > 0 and prova["trades"] > 0 and p_dia < 0.5 * t_dia
+    nota = f"overfit: prova rende R$ {num(p_dia)} por pregão, menos de 50% dos R$ {num(t_dia)} do treino"
     pausa = []
     if prova["drawdown"] < DRAWDOWN_PAUSA:
         pausa.append(f"drawdown da prova {brl(prova['drawdown'])}, pior que {brl(DRAWDOWN_PAUSA)}")
@@ -109,7 +114,7 @@ def decidir(treino, prova, equity):
 
     faltas = []
     if not prova["trades"]:
-        faltas.append("nenhum trade na prova")
+        faltas.append("sem trades na prova")
     else:
         if prova["resultado"] <= 0:
             faltas.append(f"prova {brl(prova['resultado'])} (precisa ser positiva)")
@@ -151,13 +156,14 @@ def _recusa_mais_comum(eventos):
     return max(grupos.values(), key=len)[0] if grupos else None
 
 
-def _avaliar(modulo, ativo, treino, prova, cfg):
+def _avaliar(modulo, ativo, treino, prova, cfg, periodos):
     """(registro do trader para o estado, operações da prova, pendência se ele não operou nada)."""
     params, r_treino = ajustar(modulo, ativo, treino, cfg)
     placar_treino = r_treino["placar"]
     r = _rodar(ativo, prova, modulo, params, cfg)
     equity = [[prova[0].t.isoformat(), float(cfg["capital"])]] + r["equity"]
-    status, overfit, decisao = decidir(placar_treino, r["placar"], equity)
+    status, overfit, decisao = decidir(placar_treino, r["placar"], equity, periodos["treino"]["pregoes"],
+                                       periodos["prova"]["pregoes"])
     pendencia = None
     if not placar_treino["trades"] and not r["placar"]["trades"]:
         recusa = _recusa_mais_comum(r_treino["eventos"] + r["eventos"])
@@ -173,6 +179,28 @@ def _periodo(candles):
     datas = sorted({k.t.date() for k in candles})
     return {"de": datas[0].isoformat() if datas else "", "ate": datas[-1].isoformat() if datas else "",
             "pregoes": len(datas)}
+
+
+def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log):
+    """Estado da sala com os traders avaliados; trader com bug vira pendência e a sala segue."""
+    treino, prova, aviso = dividir(candles)
+    periodos = {"treino": _periodo(treino), "prova": _periodo(prova)}
+    sala = {"status": "ok", "motivo": aviso, "periodos": periodos, "traders": []}
+    log(f"{ativo}: {len(candles)} candles; treino {periodos['treino']['pregoes']} pregões, "
+        f"prova {periodos['prova']['pregoes']}")
+    for m in modulos:
+        try:
+            t, ops, pendencia = _avaliar(m, ativo, treino, prova, cfg, periodos)
+        except Exception as e:  # bug num trader não leva a sala junto
+            pendencias.append(f"{ativo} · {m.NOME}: erro no backtest: {type(e).__name__}: {e}")
+            log(f"  {m.NOME}: erro no backtest ({e!r})")
+            continue
+        sala["traders"].append(t)
+        operacoes[(ativo, m.NOME)] = ops
+        if pendencia:
+            pendencias.append(pendencia)
+        log(f"  {m.NOME}: {t['status']}")
+    return sala
 
 
 def _baixar(ativos, historico_fn, de, ate, cfg):
@@ -206,25 +234,18 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
         anterior = ler_json(os.path.join(pasta_estado, "firma.json")).get("salas", {})
         # quem respondeu no ciclo anterior baixa primeiro; a espera de quem falhou corre junto com o cálculo
         ordem = sorted(salas, key=lambda a: anterior.get(a, {}).get("status") != "ok")
-        feitas, operacoes, sem_operacao = {}, {}, {}
+        feitas, operacoes, avisos = {}, {}, {}
         for ativo, candles, erro in _baixar(ordem, historico_fn, de, ate, cfg):
-            if not candles:
+            sala = None
+            if candles:
+                try:
+                    sala = _sala(ativo, candles, salas[ativo], cfg, operacoes, avisos.setdefault(ativo, []), log)
+                except Exception as e:  # bug na sala não leva o ciclo junto
+                    erro = f"erro ao processar a sala: {type(e).__name__}: {e}"
+            if sala is None:
                 motivo = erro or f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y}"
-                feitas[ativo] = {"status": "sem_dados", "motivo": motivo, "traders": []}
+                sala = {"status": "sem_dados", "motivo": motivo, "traders": []}
                 log(f"{ativo}: sem dados ({motivo})")
-                continue
-            treino, prova, aviso = dividir(candles)
-            sala = {"status": "ok", "motivo": aviso, "periodos": {"treino": _periodo(treino), "prova": _periodo(prova)},
-                    "traders": []}
-            log(f"{ativo}: {len(candles)} candles; treino {sala['periodos']['treino']['pregoes']} pregões, "
-                f"prova {sala['periodos']['prova']['pregoes']}")
-            for m in salas[ativo]:
-                t, ops, pendencia = _avaliar(m, ativo, treino, prova, cfg)
-                sala["traders"].append(t)
-                operacoes[(ativo, m.NOME)] = ops
-                if pendencia:
-                    sem_operacao.setdefault(ativo, []).append(pendencia)
-                log(f"  {m.NOME}: {t['status']}")
             feitas[ativo] = sala
 
         salas_estado = {a: feitas[a] for a in salas}
@@ -232,7 +253,7 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
                           for a, s in salas_estado.items() for t in s["traders"]),
                          key=lambda r: -r["prova_resultado"])
         pendencias = [f"{a}: {s['motivo']}" for a, s in salas_estado.items() if s["status"] != "ok"]
-        pendencias += [p for a in salas for p in sem_operacao.get(a, [])]
+        pendencias += [p for a in salas for p in avisos.get(a, [])]
         pendencias += [f"{t['nome']} ({a}) {t['decisao']}" for a, s in salas_estado.items()
                        for t in s["traders"] if t["status"] == "pausado"]
         estado = {"gerado_em": datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds"),
@@ -241,14 +262,20 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
                                 "prova_pregoes": PROVA_PREGOES},
                   "salas": salas_estado, "ranking": ranking, "pendencias": pendencias}
 
-        relatorio.escrever(estado, operacoes, os.path.join(raiz, "relatorios", hoje.isoformat()))
         caminho_params = os.path.join(pasta_estado, "parametros.json")
-        parametros = ler_json(caminho_params)  # sala sem dados hoje fica com os parâmetros do último ciclo bom
+        # sala sem dados ou trader com erro hoje fica com os parâmetros do último ciclo bom
+        parametros = ler_json(caminho_params)
         for a, s in salas_estado.items():
-            if s["status"] == "ok":
-                parametros[a] = {t["nome"]: t["parametros"] for t in s["traders"]}
+            if s["traders"]:
+                parametros[a] = {**parametros.get(a, {}), **{t["nome"]: t["parametros"] for t in s["traders"]}}
         _gravar_json(caminho_params, parametros)
-        _gravar_json(os.path.join(pasta_estado, "firma.json"), estado)
+        caminho_estado = os.path.join(pasta_estado, "firma.json")
+        _gravar_json(caminho_estado, estado)  # antes dos relatórios: um bug neles não perde o ciclo
+        try:
+            relatorio.escrever(estado, operacoes, os.path.join(raiz, "relatorios", hoje.isoformat()))
+        except Exception as e:
+            estado["pendencias"].append(f"relatórios: erro ao escrever: {type(e).__name__}: {e}")
+            _gravar_json(caminho_estado, estado)
         return estado
 
 

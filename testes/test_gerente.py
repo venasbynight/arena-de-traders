@@ -53,6 +53,7 @@ def curva(*saldos):
 
 
 SOBE = curva(5000, 5100, 5200, 5150, 5300)
+DIAS_SALA = (62, 21)  # pregões de treino e de prova
 
 
 class TestCiclo(unittest.TestCase):
@@ -124,6 +125,10 @@ class TestCiclo(unittest.TestCase):
             html = f.read()
         self.assertIn("lightweight-charts", html)
         self.assertIn("/web/estilo.css", html)
+        with open(os.path.join(pasta, "gerente.html"), encoding="utf-8") as f:
+            self.assertNotIn("<script", f.read())  # vai num iframe sem allow-scripts
+        # pendências logo depois do resumo, antes do detalhe das salas
+        self.assertLess(briefing.index("## Pendências"), briefing.index(next(l for l in briefing if l.startswith("## WDO"))))
 
 
 class TestSemOperacoes(unittest.TestCase):
@@ -162,48 +167,102 @@ class TestDecisoes(unittest.TestCase):
         self.assertEqual((params, treino["placar"]["trades"]), ({"x": 1}, 10))
 
     def test_nao_promove_com_menos_de_50_trades(self):
-        status, _, decisao = gerente.decidir(placar(3000.0, 40, 2.0), placar(2000.0, 60, 1.8), SOBE)
+        status, _, decisao = gerente.decidir(placar(3000.0, 40, 2.0), placar(2000.0, 60, 1.8), SOBE, *DIAS_SALA)
         self.assertEqual(status, "experiencia")
         self.assertIn("40 trades no treino", decisao)
-        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 38, 1.8), SOBE)
+        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 38, 1.8), SOBE, *DIAS_SALA)
         self.assertEqual(status, "experiencia")
         self.assertIn("38 trades na prova", decisao)
-        status, overfit, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8), SOBE)
+        status, overfit, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8), SOBE, *DIAS_SALA)
         self.assertEqual((status, overfit), ("promovido", False))
         self.assertIn("60 trades", decisao)
 
     def test_nao_promove_com_treino_negativo(self):
         # prova boa depois de um treino perdedor é sorte até provar o contrário (caso real: Sofia no WIN)
-        status, overfit, decisao = gerente.decidir(placar(-3672.0, 169, 0.8), placar(1971.0, 50, 1.81), SOBE)
+        status, overfit, decisao = gerente.decidir(placar(-3672.0, 169, 0.8), placar(1971.0, 50, 1.81), SOBE,
+                                                   *DIAS_SALA)
         self.assertEqual((status, overfit), ("experiencia", False))
         self.assertIn("treino negativo (−R$ 3.672)", decisao)
-        self.assertEqual(gerente.decidir(placar(0.0, 169, 1.0), placar(1971.0, 50, 1.81), SOBE)[0], "experiencia")
+        self.assertEqual(gerente.decidir(placar(0.0, 169, 1.0), placar(1971.0, 50, 1.81), SOBE, *DIAS_SALA)[0],
+                         "experiencia")
 
     def test_marca_overfit(self):
-        status, overfit, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(1000.0, 60, 1.5), SOBE)
+        # o overfit compara o ganho por pregão: treino de 62 pregões, prova de 21
+        treino = placar(3100.0, 200, 2.0)  # R$ 50 por pregão
+        status, overfit, _ = gerente.decidir(treino, placar(1050.0, 60, 1.5), SOBE, 62, 21)  # R$ 50/pregão também
+        self.assertEqual((status, overfit), ("promovido", False))  # pelo total (1.050 < 50% de 3.100) seria overfit
+        status, overfit, decisao = gerente.decidir(treino, placar(350.0, 60, 1.5), SOBE, 62, 21)  # ~R$ 16,67: 1/3
         self.assertEqual((status, overfit), ("experiencia", True))
-        self.assertIn("overfit", decisao)
-        self.assertFalse(gerente.decidir(placar(3000.0, 200, 2.0), placar(1500.0, 60, 1.5), SOBE)[1])  # 50% exato
-        self.assertFalse(gerente.decidir(placar(-500.0, 200, 0.8), placar(-800.0, 60, 0.7), SOBE)[1])
+        self.assertIn("overfit: prova rende R$ 16,67 por pregão, menos de 50% dos R$ 50,00 do treino", decisao)
+        self.assertFalse(gerente.decidir(treino, placar(525.0, 60, 1.5), SOBE, 62, 21)[1])  # R$ 25: 50% exato
+        self.assertFalse(gerente.decidir(placar(-500.0, 200, 0.8), placar(-800.0, 60, 0.7), SOBE, 62, 21)[1])
+        # prova sem nenhum trade: não promove, mas também não é overfit
+        status, overfit, decisao = gerente.decidir(treino, placar(0.0, 0, None, 0.0), SOBE, 62, 21)
+        self.assertEqual((status, overfit), ("experiencia", False))
+        self.assertIn("sem trades na prova", decisao)
+        self.assertNotIn("overfit", decisao)
 
     def test_pausa_por_drawdown(self):
         # pausa vence a promoção: mesmo com prova positiva, fator e trades bons
-        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1600.0), SOBE)
+        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1600.0), SOBE,
+                                             *DIAS_SALA)
         self.assertEqual(status, "pausado")
         self.assertIn("1.600", decisao)
-        self.assertNotEqual(gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1500.0), SOBE)[0],
-                            "pausado")
+        self.assertNotEqual(gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1500.0), SOBE,
+                                            *DIAS_SALA)[0], "pausado")
+        bom = placar(3000.0, 200, 2.0), placar(1500.0, 60, 1.3)
         cinco = curva(5000, 4975, 4945, 4915, 4885, 4855, 5500)  # o 1º dia perde R$ 25 exatos: conta
-        status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3), cinco)
+        status, _, decisao = gerente.decidir(*bom, cinco, *DIAS_SALA)
         self.assertEqual(status, "pausado")
         self.assertIn("5 dias seguidos negativos na prova (perda de R$ 25 ou mais em cada)", decisao)
-        bom =placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3)
         quatro = curva(5000, 4970, 4940, 4910, 4880, 4880, 4850, 5500)  # dia parado quebra a sequência
-        self.assertNotEqual(gerente.decidir(*bom, quatro)[0], "pausado")
+        self.assertNotEqual(gerente.decidir(*bom, quatro, *DIAS_SALA)[0], "pausado")
         miudos = curva(5000, 4990, 4980, 4970, 4960, 4950, 4940, 4930)  # perdas de R$ 10 não contam
-        self.assertNotEqual(gerente.decidir(*bom, miudos)[0], "pausado")
+        self.assertNotEqual(gerente.decidir(*bom, miudos, *DIAS_SALA)[0], "pausado")
         quebra = curva(5000, 4970, 4940, 4930, 4900, 4870, 4840)  # um dia de −R$ 10 no meio quebra a sequência
-        self.assertNotEqual(gerente.decidir(*bom, quebra)[0], "pausado")
+        self.assertNotEqual(gerente.decidir(*bom, quebra, *DIAS_SALA)[0], "pausado")
+
+
+class TestRobustez(unittest.TestCase):
+    """Um trader, uma sala ou o relatório com bug não podem levar o ciclo inteiro junto."""
+
+    def ciclo(self, salas, raiz):
+        return gerente.ciclo(CFG, HOJE, historico_fn=HistoricoFalso(), salas=salas, raiz=raiz)
+
+    def test_trader_que_quebra_nao_derruba_o_ciclo(self):
+        class Quebra:
+            def __init__(self, *a, **k):
+                pass
+
+            def decidir(self, *a):
+                raise ZeroDivisionError("bug do trader")
+
+        ruim = SimpleNamespace(NOME="Ruim", ESTILO="", PARAMS={}, GRADE={}, Trader=Quebra)
+        with tempfile.TemporaryDirectory() as raiz:
+            estado = self.ciclo({"EURUSD": [ruim, rafa_rompimento], "BTCUSDT": [rafa_rompimento]}, raiz)
+            self.assertTrue(os.path.isfile(os.path.join(raiz, "estado", "firma.json")))
+        self.assertIn("EURUSD · Ruim: erro no backtest: ZeroDivisionError: bug do trader", estado["pendencias"])
+        self.assertEqual([t["nome"] for t in estado["salas"]["EURUSD"]["traders"]], ["Rafa Rompimento"])
+        self.assertEqual(estado["salas"]["BTCUSDT"]["status"], "ok")
+
+    def test_sala_que_quebra_vira_sem_dados(self):
+        with tempfile.TemporaryDirectory() as raiz, \
+                mock.patch.object(gerente, "dividir", side_effect=ValueError("sala torta")):
+            estado = self.ciclo({"EURUSD": [rafa_rompimento]}, raiz)
+        sala = estado["salas"]["EURUSD"]
+        self.assertEqual((sala["status"], sala["traders"]), ("sem_dados", []))
+        self.assertEqual(sala["motivo"], "erro ao processar a sala: ValueError: sala torta")
+        self.assertIn("EURUSD: erro ao processar a sala: ValueError: sala torta", estado["pendencias"])
+
+    def test_relatorio_que_quebra_vira_pendencia(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            with mock.patch.object(relatorio, "escrever", side_effect=RuntimeError("html torto")):
+                estado = self.ciclo({"BTCUSDT": [rafa_rompimento]}, raiz)
+            with open(os.path.join(raiz, "estado", "firma.json"), encoding="utf-8") as f:
+                gravado = json.load(f)
+            self.assertTrue(os.path.isfile(os.path.join(raiz, "estado", "parametros.json")))
+        self.assertIn("relatórios: erro ao escrever: RuntimeError: html torto", estado["pendencias"])
+        self.assertEqual(gravado, estado)  # o estado gravado já traz a pendência
 
 
 class TestRelatorio(unittest.TestCase):

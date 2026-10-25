@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import shutil
+import threading
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SKILLS = os.path.join(AQUI, ".claude", "skills")
@@ -46,8 +47,10 @@ def carregar_config(caminho="trader/config.json"):
         for chave, valor in modelo.items():  # terminal, sessao, tick... que faltarem
             espec.setdefault(chave, valor)
     if json.dumps(cfg, sort_keys=True) != antes:
-        with open(caminho, "w", encoding="utf-8") as f:
+        tmp = f"{caminho}.{os.getpid()}.{threading.get_ident()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, caminho)  # inteiro ou nada: o config do usuário nunca fica pela metade
     return cfg
 
 

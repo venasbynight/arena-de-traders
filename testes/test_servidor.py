@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 from unittest import mock
 
+import motor
 import servidor
 from testes.test_motor import CFG, dias_sinteticos
 
@@ -21,6 +22,10 @@ def historico_falso(ativo, de, ate, cfg):
 class TestServidor(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.pasta = tempfile.TemporaryDirectory()
+        # sem os parâmetros reais do gerente (estado/parametros.json) mudando o backtest dos testes
+        cls.sem_params = mock.patch.object(servidor, "PARAMETROS", os.path.join(cls.pasta.name, "parametros.json"))
+        cls.sem_params.start()
         cls.srv = servidor.criar_servidor(0, historico_fn=historico_falso, cfg=CFG)
         cls.url = f"http://127.0.0.1:{cls.srv.server_address[1]}"
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
@@ -29,6 +34,8 @@ class TestServidor(unittest.TestCase):
     def tearDownClass(cls):
         cls.srv.shutdown()
         cls.srv.server_close()
+        cls.sem_params.stop()
+        cls.pasta.cleanup()
 
     def get(self, caminho):
         try:
@@ -41,6 +48,29 @@ class TestServidor(unittest.TestCase):
         status, corpo = self.get("/api/backtest?ativo=WDO&de=2026-09-01&ate=2026-09-01")
         self.assertEqual(status, 200)
         self.assertIn("Sofia SMC", json.loads(corpo)["traders"])
+
+    def test_backtest_aplica_parametros_do_gerente(self):
+        from traders import vera_vwap
+        esperado = motor.rodar_backtest("WDO", UM_DIA, [(vera_vwap, {"desvios": 2.0})], CFG)
+        ordens = lambda r: [[e["entrada"], e["alvo"]] for e in r["traders"]["Vera VWAP"]["eventos"] if e["tipo"] == "ordem"]
+        url = "/api/backtest?ativo=WDO&de=2026-09-01&ate=2026-09-01"
+        padrao = json.loads(self.get(url)[1])
+        with open(servidor.PARAMETROS, "w", encoding="utf-8") as f:
+            json.dump({"WDO": {"Vera VWAP": {"desvios": 2.0}}}, f)
+        try:
+            ajustado = json.loads(self.get(url)[1])
+        finally:
+            os.remove(servidor.PARAMETROS)
+        self.assertEqual(ordens(ajustado), ordens(esperado))
+        self.assertNotEqual(ordens(ajustado), ordens(padrao))
+
+    def test_backtest_de_qualquer_ativo_do_config(self):
+        for ativo in ("EURUSD", "BTCUSDT"):
+            status, corpo = self.get(f"/api/backtest?ativo={ativo}&de=2026-09-01&ate=2026-09-01")
+            self.assertEqual(status, 200, corpo)
+            self.assertEqual(json.loads(corpo)["ativo"], ativo)
+        status, corpo = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
+        self.assertIn("PETR4", json.loads(corpo)["erro"])
 
     def test_periodo_sem_pregao(self):
         status, corpo = self.get("/api/backtest?ativo=WDO&de=2026-09-05&ate=2026-09-06")
@@ -80,11 +110,14 @@ class TestServidor(unittest.TestCase):
             srv.server_close()
 
     def test_firma_exemplo(self):
-        with mock.patch.object(servidor, "ESTADO_FIRMA", "nao-existe/firma.json"):
-            status, corpo = self.get("/api/firma")
+        with tempfile.TemporaryDirectory() as rel:
+            os.makedirs(os.path.join(rel, "2026-10-25"))  # relatórios reais não se misturam com o exemplo
+            with mock.patch.multiple(servidor, ESTADO_FIRMA="nao-existe/firma.json", RELATORIOS=rel):
+                status, corpo = self.get("/api/firma")
         self.assertEqual(status, 200)
         estado = json.loads(corpo)
         self.assertTrue(estado["exemplo"])
+        self.assertNotIn("relatorios", estado)
         salas = estado["salas"]
         self.assertEqual(sorted(salas), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
         for ativo in ("WDO", "WIN"):
@@ -141,6 +174,12 @@ class TestServidor(unittest.TestCase):
                     "dia": "2026-10-25", "arquivos": ["eurusd-sofia-smc.html", "gerente.html"]}})
                 status, corpo = self.get("/relatorios/2026-10-25/gerente.html")
                 self.assertEqual((status, corpo), (200, "<html>2026-10-25 gerente.html</html>"))
+                for dia, esperado in (("2026-10-24", "2026-10-24"), ("2026-10-20", "2026-10-25")):
+                    with open(caminho, "w", encoding="utf-8") as f:  # a pasta do dia do estado; sem ela, a mais nova
+                        json.dump({**estado, "dia": dia}, f)
+                    self.assertEqual(json.loads(self.get("/api/firma")[1])["relatorios"]["dia"], esperado, dia)
+                with open(caminho, "w", encoding="utf-8") as f:
+                    json.dump(estado, f)
                 os.remove(indice)  # pasta sem index.json (de antes dele): vale a listagem da pasta
                 self.assertEqual(json.loads(self.get("/api/firma")[1])["relatorios"]["arquivos"],
                                  ["eurusd-sofia-smc.html", "gerente.html", "velho.html"])
@@ -162,6 +201,12 @@ class TestServidor(unittest.TestCase):
                 with open(caminho, "w", encoding="utf-8") as f:
                     json.dump({"dia": dia}, f)
                 self.assertEqual(servidor.precisa_ciclo(caminho, hoje), precisa, dia)
+            # às 19:30 o ciclo só repete no mesmo dia se alguma sala ficou sem dados
+            for status_wdo, repete in (("sem_dados", True), ("ok", False)):
+                with open(caminho, "w", encoding="utf-8") as f:
+                    json.dump({"dia": "2026-10-25", "salas": {"WDO": {"status": status_wdo}, "EURUSD": {"status": "ok"}}}, f)
+                self.assertFalse(servidor.precisa_ciclo(caminho, hoje))
+                self.assertEqual(servidor.precisa_ciclo(caminho, hoje, refazer_sem_dados=True), repete, status_wdo)
             with open(caminho, "w", encoding="utf-8") as f:
                 f.write("{corrompido")
             self.assertTrue(servidor.precisa_ciclo(caminho, hoje))
