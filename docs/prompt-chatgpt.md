@@ -21,7 +21,7 @@ Regras inegociáveis:
 
 1. Dados e estudos (`dados.py`, `estudos.py`, `tipos.py`)
 2. Motor de simulação, risco e tamanho (`motor.py`)
-3. Os traders (`traders/`): Sofia SMC agora; Didi Agulhada e Caio Contrafluxo planejados
+3. Os três traders (`traders/`): Sofia SMC, Didi Agulhada e Caio Contrafluxo
 4. Servidor e sala de operações (`servidor.py`, `web/index.html`, `web/sala.js`)
 5. Gerente e relatórios (`gerente.py`, `relatorio.py`)
 6. Firma 3D (`web/firma.html`, `web/firma.js`, `web/firma.css`)
@@ -93,8 +93,9 @@ Cada ativo pode ter `terminal` (caminho do `terminal64.exe` do MT5 daquela corre
 
 ## Etapa 3 — Traders (um arquivo cada em `traders/`)
 
-Os traders são **Sofia SMC** (implementada), mais **Didi Agulhada** e **Caio Contrafluxo**
-(planejados, descritos abaixo). Não há trader de VWAP nem de rompimento.
+Os traders são **Sofia SMC**, **Didi Agulhada** e **Caio Contrafluxo**. Não há trader de
+VWAP nem de rompimento. Cada sala diz quem opera nela: Sofia e Didi em todos os ativos;
+Caio só em WDO e WIN (os únicos com agressor).
 
 Cada um expõe `NOME`, `ESTILO`, `PARAMS`, `GRADE` (valores que o gerente testa) e uma
 classe `Trader(ativo, tick, params, sessao)` com `decidir(hoje5, ontem5, fechados60) ->
@@ -116,14 +117,35 @@ inclusive o que não fez, ex.: "pulei: R:R 0,8 abaixo do mínimo").
    entra.
 7. Zona vale até ser usada, até um candle fechar do outro lado dela ou até o fim do dia.
 
-**Didi Agulhada** (planejado, ainda não implementado): regras a definir.
+**Didi Agulhada** — agulhada do Didi Index confirmada pela abertura do Bollinger
+(`PARAMS = {"tf": 5, "alvo_x": 3.0, "trix_extremo": 0.2}`, grade `alvo_x` 2/3/4 e
+`trix_extremo` 0,1/0,2/0,3).
+1. Médias simples do fechamento de 3, 8 e 20. Didi Index: curta = MA3 − MA8, longa =
+   MA20 − MA8. Agulhada de compra: no mesmo candle a curta passa de ≤ 0 para > 0 e a longa
+   de ≥ 0 para < 0; venda é o espelho (comparações com tolerância de tick/1000).
+2. Gatilho: do candle da agulhada até 3 candles depois, o primeiro que fecha com a largura
+   do Bollinger (8 períodos, 2 desvios populacionais) maior que no candle anterior. Sem
+   abertura na janela, a agulhada expira.
+3. Confirmações no candle do gatilho: ADX(8) de Wilder subindo com DI+ > DI− (compra) ou
+   DI− > DI+ (venda); TRIX(9) (EMA tripla, variação % de um candle) numa extremidade a
+   favor: compra com o TRIX no ou abaixo do percentil 20 dos últimos 120 valores e subindo;
+   venda no ou acima do percentil 80 e caindo.
+4. Entrada a mercado na abertura do candle seguinte ao gatilho. Stop 1 tick além da mínima
+   (compra) / máxima (venda) do candle do gatilho. Alvo de proteção a `alvo_x` × risco.
+5. Saída por sinal: no fechamento em que a largura do Bollinger diminui, ou em que a MA3
+   cruza a MA8 contra a posição — o que vier primeiro — sai na abertura seguinte (1 tick).
+6. O card dele mostra Bollinger nos candles e três painéis sincronizados: Didi Index, ADX
+   com DI+/DI− e TRIX.
 
-**Caio Contrafluxo** (ainda não implementado; depende de ticks com agressor no MT5):
+**Caio Contrafluxo** (delta de cada candle de 5 min = volume das agressões de compra menos
+venda, somado dos ticks de negócio do MT5 com `TICK_FLAG_BUY`/`TICK_FLAG_SELL`; dia sem
+ticks fica sem delta e ele não opera):
 opera contra quem entrou contra a tendência do 60 (regra da Sofia). Na resistência, em
 tendência de baixa, com delta do candle (agressão de compra menos venda) acima de +limite:
 venda. No suporte, em alta, delta abaixo de −limite: compra. Limite no WIN 10.000
-contratos; no WDO a definir num "laboratório do delta" (distribuição do delta e backtest
-com 4 limites lado a lado). Entrada a mercado no candle seguinte; stop 2 ticks além do
+contratos (grade 10.000 a 42.000); no WDO o limite sai da distribuição do |delta| por
+candle (percentis 80/90/95/98: 5.000, 7.500, 10.500, 14.500; padrão 7.500) e o gerente
+escolhe no treino. Entrada a mercado no candle seguinte; stop 2 ticks além do
 ponto mais extremo entre o topo/fundo e o candle do sinal; alvo no topo/fundo oposto mais
 próximo (sem ele, não entra); um sinal por topo/fundo por dia.
 
