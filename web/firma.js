@@ -2,6 +2,7 @@
 // e a Diretoria. Tudo procedural (caixas e cilindros) e texturas desenhadas em canvas.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const $ = s => document.querySelector(s);
@@ -293,6 +294,13 @@ for (const a of ambientes) {
     : new THREE.MeshStandardMaterial({ map: texCarpete(a.cor), roughness: 0.95 });
   piso(predio, a.w, a.d, material, a === PLANTA.hall ? 2.4 : 2, a.x, 0.003, a.z);
 }
+// forro: só aparece na primeira pessoa (de cima a casa fica aberta, como no Sims); não faz sombra
+const forro = new THREE.Group();
+forro.visible = false;
+cena.add(forro);
+// (virado para baixo só recebe a cor de chão da luz hemisférica: um pouco de emissivo o deixa claro)
+const matForro = mat("#f4efe6", { roughness: 0.95, emissive: "#6e665b" });
+for (const a of ambientes) piso(forro, a.w, a.d, matForro, null, a.x, PLANTA.altura - 0.005, a.z).rotation.x = Math.PI;
 
 // Cada peça de parede é uma caixa unitária escalada que lembra sua faixa de altura; o recorte (cutaway)
 // só muda escala e posição em y. As peças viram instâncias (um InstancedMesh por material).
@@ -886,6 +894,8 @@ diretor.position.set(0, 0, -0.85);
 mesaDiretor.add(diretor);
 diretor.userData.alvo = "gerente";
 clicaveis.push(diretor);
+telaDiretor.userData.alvo = "relatorios";   // o monitor da Diretoria abre os relatórios do dia
+clicaveis.push(telaDiretor);
 estante(predio, dir.x + 1.6, dir.z - dir.d / 2 + 0.3, 0);
 planta(predio, dir.x + dir.w / 2 - 0.45, dir.z + dir.d / 2 - 0.45);
 planta(predio, dir.x - dir.w / 2 + 0.5, dir.z - dir.d / 2 + 0.5, false);
@@ -1012,8 +1022,13 @@ fundirEstaticos([predio, fora], new Set([
 ]));
 
 // ---------------------------------------------------------------- estado → cena
-const firma = window.firma = { estado: null, modo: "cima", abrirPainel, salas };
-let selecionado = null;
+let modoAtual = "cima";   // "cima" | "fp"; firma.modo = ... aplica a troca inteira
+const firma = window.firma = {
+  estado: null, abrirPainel, salas,
+  get modo() { return modoAtual; },
+  set modo(m) { trocarModo(m); },
+};
+let selecionado = null, painelAlvo = null;
 
 function limparDinamicos() {
   for (const o of dinamicos) {
@@ -1076,30 +1091,40 @@ function aplicarEstado(estado) {
   if (alvoAntes === "gerente") selecionar(gerente);
   $("#ciclo").textContent = estado ? `Ciclo do gerente: ${quando}` : "sem estado do gerente";
   $("#exemplo").hidden = !estado?.exemplo;
-  if ($("#painel").classList.contains("aberto") && alvoAntes) abrirPainel(selecionado?.userData.alvo ?? alvoAntes);
+  if ($("#painel").classList.contains("aberto") && painelAlvo) abrirPainel(selecionado?.userData.alvo ?? painelAlvo);
 }
 
 // ---------------------------------------------------------------- painel lateral
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const pct = v => v == null ? "—" : Math.round(v * 100) + "%";
 const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-// Relatório do dia (contrato da Task 4: /relatorios/<dia>/<ativo em minúsculas>-<slug>.html). Usa o arquivo
-// listado em estado.relatorios.arquivos; sem ele, o nome do contrato; sem relatorios.dia, link desligado.
-function linkRelatorio(nome, texto) {
+// Relatório do dia (contrato da Task 4: /relatorios/<dia>/<ativo em minúsculas>-<slug>.html). Com a lista
+// estado.relatorios.arquivos, só vale o arquivo listado (fora dela: null, sem chutar o nome); sem lista (ou
+// lista que não é array), o nome do contrato; sem relatorios.dia, null.
+function urlRelatorio(nome) {
   const rel = firma.estado?.relatorios;
-  if (!rel?.dia) return `<span class="off">${texto} · disponível após o primeiro ciclo do gerente</span>`;
-  const arquivo = rel.arquivos?.find(a => a.toLowerCase() === nome.toLowerCase()) ?? nome;
-  return `<a href="/relatorios/${encodeURIComponent(rel.dia)}/${encodeURIComponent(arquivo)}" target="_blank">${texto} ↗</a>`;
+  if (!rel?.dia) return null;
+  const arquivo = Array.isArray(rel.arquivos) ? rel.arquivos.find(a => String(a).toLowerCase() === nome.toLowerCase()) : nome;
+  return arquivo ? `/relatorios/${encodeURIComponent(rel.dia)}/${encodeURIComponent(arquivo)}` : null;
+}
+function linkRelatorio(nome, texto) {
+  const url = urlRelatorio(nome);
+  if (url) return `<a href="${url}" target="_blank">${texto} ↗</a>`;
+  const motivo = firma.estado?.relatorios?.dia ? "não gerado neste ciclo" : "disponível após o primeiro ciclo do gerente";
+  return `<span class="off">${texto} · ${motivo}</span>`;
 }
 
 function abrirPainel(alvo) {
   const corpo = $("#painel-corpo");
-  if (alvo === "gerente") corpo.innerHTML = htmlGerente(firma.estado);
-  else corpo.innerHTML = htmlTrader(alvo);
+  corpo.innerHTML = alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado) : htmlTrader(alvo);
+  // o V continua alternando a câmera com o foco dentro do relatório embutido (mesma origem)
+  corpo.querySelector("iframe")?.addEventListener("load", e => { try { e.target.contentWindow.addEventListener("keydown", teclaModo); } catch {} });
+  painelAlvo = alvo;
   $("#painel").classList.add("aberto");
 }
 function fecharPainel() {
   $("#painel").classList.remove("aberto");
+  painelAlvo = null;
   selecionar(null);
 }
 
@@ -1154,8 +1179,23 @@ function htmlGerente(estado) {
     <div class="links">${linkRelatorio("gerente.html", "Relatório do gerente")}</div>`;
 }
 
+// monitor da Diretoria: o resumo do gerente, a lista de relatórios do dia e o gerente.html embutido
+function htmlRelatorios(estado) {
+  const rel = estado?.relatorios;
+  if (!estado) return htmlGerente(estado);
+  if (!rel?.dia) return htmlGerente(estado) +
+    `<h3>Relatórios do dia</h3><p class="warn">O gerente ainda não rodou: os relatórios aparecem aqui depois do primeiro ciclo (<b>python gerente.py</b>).</p>`;
+  const arquivos = Array.isArray(rel.arquivos) ? rel.arquivos : [];
+  const gerente = urlRelatorio("gerente.html");
+  return htmlGerente(estado) + `
+    <h3>Relatórios de ${esc(rel.dia)}</h3>
+    <ul class="lista">${arquivos.map(a => `<li>${linkRelatorio(String(a), esc(a))}</li>`).join("") || "<li class='mut'>nenhum arquivo listado</li>"}</ul>
+    ${gerente ? `<iframe class="relatorio" src="${gerente}" title="Relatório do gerente"></iframe>` : ""}`;
+}
+
 $("#fechar").onclick = fecharPainel;
-addEventListener("keydown", e => { if (e.key === "Escape") fecharPainel(); });
+// em primeira pessoa o ESC só solta o mouse (o painel continua aberto e usável); lá ele fecha no ×
+addEventListener("keydown", e => { if (e.key === "Escape" && firma.modo !== "fp") fecharPainel(); });
 
 // ---------------------------------------------------------------- câmera de cima
 export const controles = new OrbitControls(camera, renderer.domElement);
@@ -1176,7 +1216,8 @@ function focar(x, z, distancia, azimute = -35 * GRAU, polar = 45 * GRAU) {
   controles.update();
 }
 
-// ?cam=geral | sala&sala=EURUSD | diretoria (padrão: Diretoria); &trader=<nome> abre a ficha — útil para capturas
+// ?cam=geral | sala&sala=EURUSD | diretoria (padrão: Diretoria) | fp[&pos=x,z,yaw°,pitch°] (primeira pessoa;
+// o mouse só trava no primeiro clique); &trader=<nome> abre a ficha — útil para capturas
 const pedido = new URLSearchParams(location.search);
 const salaPedida = PLANTA.salas[pedido.get("sala")];
 if (pedido.get("cam") === "geral") focar(3, 2.5, 33, -30 * GRAU, 42 * GRAU);
@@ -1223,10 +1264,14 @@ function alvoSob(evento) {
   const r = renderer.domElement.getBoundingClientRect();
   ponteiro.set((evento.clientX - r.left) / r.width * 2 - 1, -(evento.clientY - r.top) / r.height * 2 + 1);
   raio.setFromCamera(ponteiro, camera);
-  for (const hit of raio.intersectObjects(clicaveis, true)) {
-    let o = hit.object;
-    while (o && !o.userData.alvo) o = o.parent;
-    if (o) return o;
+  return primeiroAlvo(raio.intersectObjects(clicaveis, true));
+}
+// primeiro acerto que pertence a um alvo visível (o diretor some na primeira pessoa; contornos apagados não contam)
+function primeiroAlvo(hits) {
+  for (const hit of hits) {
+    let o = hit.object, visivel = true;
+    while (o && !o.userData.alvo) { visivel &&= o.visible; o = o.parent; }
+    if (o && visivel && o.visible) return o;
   }
   return null;
 }
@@ -1235,9 +1280,9 @@ const bonecoDe = o => o?.userData.boneco ?? o;
 function marcarSobre(o) {
   const b = bonecoDe(o);
   if (b === sobre) return;
-  sobre?.userData.contornos.forEach(c => (c.visible = false));
+  sobre?.userData.contornos?.forEach(c => (c.visible = false));
   sobre = b;
-  sobre?.userData.contornos.forEach(c => (c.visible = true));
+  sobre?.userData.contornos?.forEach(c => (c.visible = true));
   recipiente.classList.toggle("mao", !!sobre);
 }
 
@@ -1254,11 +1299,137 @@ renderer.domElement.addEventListener("pointerdown", e => { if (e.button === 0) i
 renderer.domElement.addEventListener("pointerup", e => {
   if (e.button !== 0 || !inicioClique || Math.hypot(e.clientX - inicioClique[0], e.clientY - inicioClique[1]) > 6) return;
   inicioClique = null;
-  const b = bonecoDe(alvoSob(e));
-  if (!b) return;
-  selecionar(b);
-  abrirPainel(b.userData.alvo);
+  if (firma.modo === "fp") { if (!olhar.isLocked) travar(); return; }   // em primeira pessoa o clique só trava o mouse
+  const o = alvoSob(e);
+  if (o) interagir(o);
 });
+
+// trader → ficha; gerente/diretor → resumo; monitor da Diretoria → relatórios. O plumbob só vai em boneco.
+function interagir(o) {
+  const b = bonecoDe(o);
+  selecionar(b.userData.contornos ? b : null);
+  abrirPainel(b.userData.alvo);
+}
+
+// ---------------------------------------------------------------- primeira pessoa
+// V alterna com a câmera de cima. O mouse olha (PointerLockControls); WASD anda a 3 m/s (Shift 5 m/s) com
+// colisão só nas paredes (COLISORES), eixo por eixo para deslizar rente a elas; E interage com o que está na mira.
+const OLHO = 1.7, RAIO = 0.3, ANDAR = 3, CORRER = 5, ALCANCE = 2.5;
+const INICIO = [dir.x + 2.4, dir.z, 90, -8];   // x, z, yaw°, pitch°: atrás da mesa do diretor, olhando a porta
+const olhar = new PointerLockControls(camera, renderer.domElement), giro = new THREE.Euler(0, 0, 0, "YXZ");
+olhar.minPolarAngle = 10 * GRAU;
+olhar.maxPolarAngle = 170 * GRAU;
+const voltar = $("#voltar");
+const travar = () => renderer.domElement.requestPointerLock()?.catch?.(() => {});  // recusa → "pointerlockerror"
+olhar.addEventListener("lock", () => (voltar.hidden = true));
+olhar.addEventListener("unlock", () => (voltar.hidden = firma.modo !== "fp"));
+voltar.onclick = travar;
+// Trava recusada (navegador sem pointer lock, como o painel embutido do app, ou o intervalo do Chrome logo após
+// o ESC): sem o console.error do PointerLockControls (three 0.160), sem o aviso e com "arrastar para olhar".
+document.removeEventListener("pointerlockerror", olhar._onPointerlockError);
+document.addEventListener("pointerlockerror", () => (voltar.hidden = true));
+renderer.domElement.addEventListener("pointermove", e => {
+  if (firma.modo !== "fp" || olhar.isLocked || !(e.buttons & 1)) return;
+  giro.setFromQuaternion(camera.quaternion);
+  giro.y -= e.movementX * 0.004;
+  giro.x = THREE.MathUtils.clamp(giro.x - e.movementY * 0.004, -80 * GRAU, 80 * GRAU);
+  camera.quaternion.setFromEuler(giro);
+});
+
+const camCima = { pos: new THREE.Vector3(), alvo: new THREE.Vector3() };
+let poseFp = null;   // onde a primeira pessoa parou; null = ainda não entrou (começa na Diretoria)
+function trocarModo(m) {
+  if (m === modoAtual || !modos[m]) return;
+  const fp = (modoAtual = m) === "fp";
+  document.body.classList.toggle("fp", fp);   // troca a dica de teclas e mostra a mira
+  controles.enabled = !fp;
+  alturaParedes(fp ? PLANTA.altura : null);
+  forro.visible = fp;
+  diretor.visible = rotDiretor.visible = !fp;   // em primeira pessoa você é o diretor
+  camera.fov = fp ? 60 : 40;
+  camera.updateProjectionMatrix();
+  if (fp) {
+    camCima.pos.copy(camera.position);
+    camCima.alvo.copy(controles.target);
+    if (poseFp) { camera.position.copy(poseFp.pos); camera.quaternion.copy(poseFp.quat); }
+    else teleportar(...INICIO);
+  } else {
+    poseFp = { pos: camera.position.clone(), quat: camera.quaternion.clone() };
+    if (olhar.isLocked) olhar.unlock();
+    camera.position.copy(camCima.pos);
+    controles.target.copy(camCima.alvo);
+    controles.update();
+  }
+  voltar.hidden = true;
+  mirar(null);
+  marcarSobre(null);
+}
+
+function teleportar(x, z, yaw = 0, pitch = 0) {   // graus; yaw 0 = norte (−z), 90 = oeste (−x)
+  camera.position.set(x, OLHO, z);
+  camera.rotation.set(pitch * GRAU, yaw * GRAU, 0, "YXZ");
+}
+
+const bate = (x, z) => COLISORES.some(c => c.min[1] < OLHO &&
+  x + RAIO > c.min[0] && x - RAIO < c.max[0] && z + RAIO > c.min[2] && z - RAIO < c.max[2]);
+function andar(dx, dz) {
+  // passos de até 5 cm: nunca atravessa (a peça mais fina, o vidro, vira 0,63 m com o raio) e para a < 5 cm da parede
+  const n = Math.ceil(Math.hypot(dx, dz) / 0.05), p = camera.position;
+  for (let k = 0; k < n; k++) {
+    if (!bate(p.x + dx / n, p.z)) p.x += dx / n;
+    if (!bate(p.x, p.z + dz / n)) p.z += dz / n;
+  }
+}
+
+// mira: raio do centro da tela até 2,5 m, cortado pela primeira parede (as caixas de COLISORES)
+const centroTela = new THREE.Vector2(), pontoParede = new THREE.Vector3();
+const caixasParede = COLISORES.map(c => new THREE.Box3(new THREE.Vector3(...c.min), new THREE.Vector3(...c.max)));
+function alvoNaMira() {
+  raio.setFromCamera(centroTela, camera);
+  raio.far = ALCANCE;
+  for (const b of caixasParede) if (raio.ray.intersectBox(b, pontoParede)) raio.far = Math.min(raio.far, pontoParede.distanceTo(raio.ray.origin));
+  const o = primeiroAlvo(raio.intersectObjects(clicaveis, true));
+  raio.far = Infinity;
+  return o;
+}
+
+let alvoFp = null;
+const acaoDe = a => a === "gerente" ? "painel do gerente" : a === "relatorios" ? "relatórios do dia" : `ficha de ${a.nome}`;
+function mirar(o) {
+  if (o === alvoFp) return;
+  alvoFp = o;
+  marcarSobre(o);
+  $("#mira").classList.toggle("alvo", !!o);
+  $("#acao").hidden = !o;
+  if (o) $("#acao").innerHTML = `<b>E</b>${esc(acaoDe(o.userData.alvo))}`;
+}
+
+modos.fp = dt => {
+  const fw = (teclas.has("w") ? 1 : 0) - (teclas.has("s") ? 1 : 0), lt = (teclas.has("d") ? 1 : 0) - (teclas.has("a") ? 1 : 0);
+  if (fw || lt) {
+    const yaw = giro.setFromQuaternion(camera.quaternion).y, v = (teclas.has("shift") ? CORRER : ANDAR) * dt / Math.hypot(fw, lt);
+    andar((-Math.sin(yaw) * fw + Math.cos(yaw) * lt) * v, (-Math.cos(yaw) * fw - Math.sin(yaw) * lt) * v);
+  }
+  mirar(alvoNaMira());
+};
+
+function teclaModo(e) {
+  if (e.repeat || e.target.closest?.("input,textarea")) return;
+  const k = e.key.toLowerCase();
+  if (k === "v") {
+    firma.modo = firma.modo === "fp" ? "cima" : "fp";
+    if (firma.modo === "fp") travar();
+  } else if (k === "e" && firma.modo === "fp" && alvoFp) interagir(alvoFp);
+}
+addEventListener("keydown", teclaModo);
+
+// ganchos para testar sem pointer lock: firma.modo = "fp"; firma.fp.teleportar(x, z, yaw°); firma.fp.andar(dx, dz) → [x, z]
+firma.fp = { teleportar, andar: (dx, dz) => (andar(dx, dz), [camera.position.x, camera.position.z]), alvo: () => alvoFp?.userData.alvo ?? null };
+if (pedido.get("cam") === "fp") {
+  firma.modo = "fp";
+  const [x, z, yaw, pitch] = (pedido.get("pos") || "").split(",").map(Number);
+  if (Number.isFinite(x) && Number.isFinite(z)) teleportar(x, z, yaw || 0, pitch || 0);
+}
 
 // ---------------------------------------------------------------- dados (poll de 30 s)
 let ultimoTexto = "", cenaVazia = false;
@@ -1285,6 +1456,7 @@ async function carregar() {
   try {
     aplicarEstado(corpo);
   } catch (err) {
+    ultimoTexto = "";   // a cena ficou limpa pela metade: o próximo estado, mesmo igual ao anterior, repinta
     return aviso(`O estado da firma veio num formato inesperado (${err.message}).`);
   }
   ultimoTexto = texto;  // só depois de aplicado: um estado que falhou é tentado de novo no próximo poll
@@ -1311,9 +1483,11 @@ renderer.setAnimationLoop(() => {
   atualizarParedes();
   animarBonecos(t);
   if (plumbob.visible) { plumbob.rotation.y = t * 1.5; plumbob.position.y = 1.72 + 0.04 * Math.sin(t * 2.5); }
-  // rótulos crescem um pouco com a distância para continuarem legíveis na visão geral
-  const f = THREE.MathUtils.clamp(camera.position.distanceTo(controles.target) / 11, 1, 2.4);
-  for (const s of rotulos) s.scale.set(s.userData.base * f, s.userData.base * f * 150 / 512, 1);
-  if (ponteiroMudou && ultimoEvento) { ponteiroMudou = false; marcarSobre(alvoSob(ultimoEvento)); }
+  // rótulos crescem um pouco com a distância para continuarem legíveis na visão geral; em primeira pessoa
+  // ficam menores e respeitam as paredes (de cima atravessam tudo)
+  const fp = firma.modo === "fp";
+  const f = fp ? 0.75 : THREE.MathUtils.clamp(camera.position.distanceTo(controles.target) / 11, 1, 2.4);
+  for (const s of rotulos) { s.scale.set(s.userData.base * f, s.userData.base * f * 150 / 512, 1); s.material.depthTest = fp; }
+  if (!fp && ponteiroMudou && ultimoEvento) { ponteiroMudou = false; marcarSobre(alvoSob(ultimoEvento)); }
   renderer.render(cena, camera);
 });
