@@ -1300,7 +1300,15 @@ function selecionar(b) {
 }
 
 let ultimoEvento = null;
-renderer.domElement.addEventListener("pointermove", e => { ultimoEvento = e; ponteiroMudou = true; });
+renderer.domElement.addEventListener("pointermove", e => {
+  ultimoEvento = e; ponteiroMudou = true;
+  // mãozinha fechada enquanto o botão esquerdo arrasta a cena na câmera de cima
+  if (firma.modo !== "fp" && inicioClique && (e.buttons & 1)
+      && Math.hypot(e.clientX - inicioClique[0], e.clientY - inicioClique[1]) > 6)
+    recipiente.classList.add("arrastando");
+});
+for (const tipo of ["pointerup", "pointercancel", "pointerleave"])
+  renderer.domElement.addEventListener(tipo, () => recipiente.classList.remove("arrastando"));
 renderer.domElement.addEventListener("pointerdown", e => { if (e.button === 0) inicioClique = [e.clientX, e.clientY]; });
 renderer.domElement.addEventListener("pointerup", e => {
   if (e.button !== 0 || !inicioClique || Math.hypot(e.clientX - inicioClique[0], e.clientY - inicioClique[1]) > 6) return;
