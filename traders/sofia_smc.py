@@ -5,6 +5,7 @@ from tipos import Decisao, Plano
 NOME = "Sofia SMC"
 ESTILO = "OB/FVG · tendência 60→5"
 PARAMS = {"n": 2, "fvg_min": {"WDO": 1.0, "WIN": 50.0}, "folga_ticks": 2}
+GRADE = {"folga_ticks": [1, 2, 3]}
 
 
 def arredondar_tick(preco, tick):
@@ -12,8 +13,9 @@ def arredondar_tick(preco, tick):
 
 
 class Trader:
-    def __init__(self, ativo, tick, params=None):
+    def __init__(self, ativo, tick, params=None, sessao=None):
         self.ativo, self.tick, self.p = ativo, tick, {**PARAMS, **(params or {})}
+        self.sessao = sessao  # a Sofia não depende do horário da sessão; fica para os traders que dependerem
 
     def _valida(self, z, hoje5, entrada):
         """Zona ainda serve: ninguém fechou do outro lado dela nem passou 1 tick da entrada depois de criada."""
