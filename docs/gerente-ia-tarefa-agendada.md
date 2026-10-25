@@ -28,8 +28,8 @@ Passos:
    não houver briefing, escreva um `relatorios\AAAA-MM-DD\gerente-ia.md` curto
    dizendo que o ciclo falhou e cole a última linha de erro do comando; pare aí.
 2. Leia `relatorios\AAAA-MM-DD\briefing.md` (resumo do ciclo do gerente em
-   código: salas WDO, WIN, EURUSD, BTCUSDT; traders Sofia SMC, Rafa Rompimento
-   e Vera VWAP; placar de treino e prova; status experiência/promovido/pausado;
+   código: salas WDO, WIN, EURUSD, BTCUSDT; trader Sofia SMC (Didi Agulhada e
+   Caio Contrafluxo virão depois); placar de treino e prova; status experiência/promovido/pausado;
    parâmetros escolhidos; pendências). Se precisar de detalhe de um trader,
    leia só o HTML dele na mesma pasta; não leia todos.
 3. Se existir `relatorios\<dia anterior mais recente>\gerente-ia.md`, leia-o

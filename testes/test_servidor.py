@@ -10,6 +10,7 @@ from unittest import mock
 
 import motor
 import servidor
+from testes.robos_teste import BETA
 from testes.test_motor import CFG, dias_sinteticos
 
 UM_DIA = dias_sinteticos(1)
@@ -50,17 +51,18 @@ class TestServidor(unittest.TestCase):
         self.assertIn("Sofia SMC", json.loads(corpo)["traders"])
 
     def test_backtest_aplica_parametros_do_gerente(self):
-        from traders import vera_vwap
-        esperado = motor.rodar_backtest("WDO", UM_DIA, [(vera_vwap, {"desvios": 2.0})], CFG)
-        ordens = lambda r: [[e["entrada"], e["alvo"]] for e in r["traders"]["Vera VWAP"]["eventos"] if e["tipo"] == "ordem"]
+        esperado = motor.rodar_backtest("WDO", UM_DIA, [(BETA, {"multiplo": 2.0})], CFG)
+        ordens = lambda r: [[e["entrada"], e["alvo"]] for e in r["traders"]["Robô Beta"]["eventos"] if e["tipo"] == "ordem"]
         url = "/api/backtest?ativo=WDO&de=2026-09-01&ate=2026-09-01"
-        padrao = json.loads(self.get(url)[1])
-        with open(servidor.PARAMETROS, "w", encoding="utf-8") as f:
-            json.dump({"WDO": {"Vera VWAP": {"desvios": 2.0}}}, f)
-        try:
-            ajustado = json.loads(self.get(url)[1])
-        finally:
-            os.remove(servidor.PARAMETROS)
+        with mock.patch.object(servidor.traders, "TODOS", [BETA]):  # robô de teste no lugar dos traders reais
+            padrao = json.loads(self.get(url)[1])
+            with open(servidor.PARAMETROS, "w", encoding="utf-8") as f:
+                json.dump({"WDO": {"Robô Beta": {"multiplo": 2.0}}}, f)
+            try:
+                ajustado = json.loads(self.get(url)[1])
+            finally:
+                os.remove(servidor.PARAMETROS)
+        self.assertTrue(ordens(esperado))
         self.assertEqual(ordens(ajustado), ordens(esperado))
         self.assertNotEqual(ordens(ajustado), ordens(padrao))
 
@@ -122,12 +124,12 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(sorted(salas), ["BTCUSDT", "EURUSD", "OPCOES", "WDO", "WIN"])
         self.assertEqual(salas["OPCOES"]["status"], "sem_tarefa")
         self.assertEqual(len(salas["OPCOES"]["pendencias"]), 5)
-        self.assertEqual(len(salas["OPCOES"]["traders"]), 3)
+        self.assertEqual(len(salas["OPCOES"]["traders"]), 1)
         for ativo in ("WDO", "WIN"):
             self.assertEqual(salas[ativo]["status"], "sem_dados")
         for ativo in ("EURUSD", "BTCUSDT"):
             self.assertEqual(salas[ativo]["status"], "ok")
-            self.assertEqual(len(salas[ativo]["traders"]), 3)
+            self.assertEqual(len(salas[ativo]["traders"]), 1)
             for t in salas[ativo]["traders"]:
                 self.assertEqual(len(t["requisitos"]), 8, t["nome"])
                 self.assertEqual([set(r) for r in t["requisitos"]], [{"item", "ok", "valor"}] * 8, t["nome"])
@@ -287,7 +289,7 @@ class TestServidor(unittest.TestCase):
         vistos = []
 
         def ciclo_falso(cfg, hoje, historico_fn=None, raiz=None, ao_progresso=None):
-            ao_progresso("WIN", "Rafa Rompimento")
+            ao_progresso("WIN", "Robô Alfa")
             vistos.append(json.loads(self.get("/api/atividade")[1])["gerente"])
             ao_progresso(None, None)
             return {}
@@ -295,7 +297,7 @@ class TestServidor(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raiz, mock.patch.object(servidor.gerente, "ciclo", ciclo_falso):
             servidor.ciclo_do_servidor(date(2026, 10, 25), raiz)
         self.assertEqual({k: vistos[0][k] for k in ("estado", "sala", "trader")},
-                         {"estado": "trabalhando", "sala": "WIN", "trader": "Rafa Rompimento"})
+                         {"estado": "trabalhando", "sala": "WIN", "trader": "Robô Alfa"})
         self.assertEqual(json.loads(self.get("/api/atividade")[1])["gerente"]["estado"], "ocioso")
 
     def test_atividade_aguenta_leituras_e_escritas_ao_mesmo_tempo(self):

@@ -202,7 +202,7 @@ function desenharZonas(tr) {
       let x = tr.chart.timeScale().timeToCoordinate(seg(d.de));
       if (y1 == null || y2 == null) continue;
       if (x == null) x = 0;
-      // FVG azul; faixa neutra (Rafa) cinza; OB de alta verde, de baixa vermelho
+      // FVG azul; zona neutra (sem lado) cinza; OB de alta verde, de baixa vermelho
       const cor = d.rotulo === "FVG" ? "76,141,255" : d.lado === "neutro" ? "139,152,165" : d.lado === "alta" ? "38,166,154" : "239,83,80";
       g.fillStyle = `rgba(${cor},.22)`; g.strokeStyle = `rgba(${cor},.9)`; g.setLineDash([3, 3]);
       g.fillRect(x, y1, largura - x, y2 - y1); g.strokeRect(x, y1, largura - x, y2 - y1);
@@ -210,7 +210,7 @@ function desenharZonas(tr) {
     }
     if (d.tipo === "linha") {
       const y = tr.serie.priceToCoordinate(d.preco); if (y == null) continue;
-      const cor = /^(VWAP|banda )/.test(d.rotulo) ? "#a78bfa" : "#f0b429";  // VWAP e bandas (Vera) em roxo; alvos em amarelo
+      const cor = /^(VWAP|banda )/.test(d.rotulo) ? "#a78bfa" : "#f0b429";  // VWAP e bandas em roxo; alvos em amarelo
       g.strokeStyle = cor; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(largura, y); g.stroke();
       g.fillStyle = cor; g.font = "10px Segoe UI"; g.fillText(d.rotulo, 4, y - 3);
     }

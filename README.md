@@ -31,7 +31,7 @@ Gerente manual: `python gerente.py` (~5 min). Testes: `python -m unittest discov
 
 - `docs/superpowers/specs/` e `docs/superpowers/plans/`: especificação e planos.
 - `docs/prompt-chatgpt.md`: prompt para recriar o sistema com outra IA.
-- `traders/`: Sofia SMC, Rafa Rompimento e Vera VWAP.
+- `traders/`: Sofia SMC (por ora o único; Didi Agulhada e Caio Contrafluxo estão planejados).
 - `motor.py`: simulação honesta (execução com 1 tick de folga, stop antes do alvo, custos).
 - `gerente.py`: ciclo diário treino/prova, requisitos para a demo, promoção e pausa.
 - `web/`: sala de operações (`index.html`, `sala.js`) e firma 3D (`firma.*`).

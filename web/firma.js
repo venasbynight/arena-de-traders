@@ -1047,7 +1047,7 @@ const PALETAS = [
   { pele: "#e0ac85", cabelo: "#6b3b22", camisa: "#f0b429", calca: "#33363f" },
   { pele: "#a86f4c", cabelo: "#2a2a2a", camisa: "#8a6bd8", calca: "#22303f" },
 ];
-const CABELO = { "Sofia SMC": "longo", "Vera VWAP": "coque", "Rafa Rompimento": "curto" };
+const CABELO = { "Sofia SMC": "longo" };   // quem não está aqui usa "curto"
 const animados = [];  // bonecos parados com respiração e digitação (o diretor); os funcionários andam (ver "funcionários")
 
 // boneco articulado (≈1,85 m em pé): origem no chão sob o quadril, olhando para +z. Nasce sentado à mesa
@@ -1186,7 +1186,7 @@ function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
   tex.userData.larg = fracao;   // largura da plaquinha / largura do sprite (para o arranjo dos rótulos)
   return tex;
 }
-// rótulo compacto de quem está ocioso (câmera de cima): "Vera VWAP · WIN" numa linha; pausado ganha "pausado" em
+// rótulo compacto de quem está ocioso (câmera de cima): "Sofia SMC · WIN" numa linha; pausado ganha "pausado" em
 // vermelho embaixo. O canvas tem a largura do texto. Subido `linhas` acima da cabeça (para não cobrir outro rótulo),
 // ganha uma haste até a cabeça do dono.
 const SIGLA = { WDO: "WDO", WIN: "WIN", EURUSD: "EUR", BTCUSDT: "BTC", OPCOES: "OPÇÕES" };
@@ -2141,7 +2141,7 @@ function aplicarEstado(estado) {
       const t = sala.traders[k];
       trocarTela(est.tela, t ? texCurva(t) : null);
     });
-    const placa = rotulo(`${ativo} · ${s.nome}`, ok ? `${sala.traders.length} traders` : "aguardando dados", ok ? "#8b98a5" : "#f0b429", s.cor);
+    const placa = rotulo(`${ativo} · ${s.nome}`, ok ? `${sala.traders.length} ${sala.traders.length === 1 ? "trader" : "traders"}` : "aguardando dados", ok ? "#8b98a5" : "#f0b429", s.cor);
     placa.position.set(s.porta[0], 2.2, s.porta[1] + (s.z < 0 ? -0.5 : 0.5));
     dinamico(placa, predio);
     if (!ok) dinamico(cavalete(s.x + 1.3, s.z + (s.z < 0 ? 1.5 : -1.5), ativo), predio);

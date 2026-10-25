@@ -1,7 +1,9 @@
 import unittest
 from datetime import datetime, timedelta
 
+import traders
 from tipos import Candle, Plano
+from testes.robos_teste import ALFA, BETA
 from traders import sofia_smc
 
 ONTEM = datetime(2026, 9, 1, 9, 0)
@@ -113,6 +115,22 @@ class TestSofia(unittest.TestCase):
     def test_arredondar_tick_sem_ruido_de_ponto_flutuante(self):
         self.assertEqual(sofia_smc.arredondar_tick(1.086124, 0.00001), 1.08612)  # sem o round de fora: 1.0861200000000002
         self.assertEqual(sofia_smc.arredondar_tick(128437.0, 5.0), 128435.0)
+
+
+class TestSalas(unittest.TestCase):
+    def test_so_a_sofia_negocia(self):
+        self.assertEqual(traders.TODOS, [sofia_smc])
+        self.assertEqual(set(traders.SALAS), {"WDO", "WIN", "EURUSD", "BTCUSDT"})
+        for sala in traders.SALAS.values():
+            self.assertEqual(sala, traders.TODOS)
+
+    def test_contrato_dos_traders(self):
+        for m in traders.TODOS + [ALFA, BETA]:  # os robôs de teste seguem o mesmo contrato dos reais
+            self.assertTrue(m.NOME and m.ESTILO and m.PARAMS and m.GRADE)
+            self.assertTrue(set(m.GRADE) <= set(m.PARAMS))
+            for chave, valores in m.GRADE.items():
+                self.assertIn(m.PARAMS[chave], valores)  # o padrão faz parte do que o gerente testa
+            m.Trader("WDO", 0.5, None, {"inicio": "09:05"})  # sessao opcional
 
 
 if __name__ == "__main__":

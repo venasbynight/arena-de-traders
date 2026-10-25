@@ -21,7 +21,7 @@ Regras inegociáveis:
 
 1. Dados e estudos (`dados.py`, `estudos.py`, `tipos.py`)
 2. Motor de simulação, risco e tamanho (`motor.py`)
-3. Os três traders (`traders/`)
+3. Os traders (`traders/`): Sofia SMC agora; Didi Agulhada e Caio Contrafluxo planejados
 4. Servidor e sala de operações (`servidor.py`, `web/index.html`, `web/sala.js`)
 5. Gerente e relatórios (`gerente.py`, `relatorio.py`)
 6. Firma 3D (`web/firma.html`, `web/firma.js`, `web/firma.css`)
@@ -67,8 +67,7 @@ Cada ativo pode ter `terminal` (caminho do `terminal64.exe` do MT5 daquela corre
   pacote às vezes trava). Erros viram mensagem clara ("abra o MT5 e faça login"), nunca
   traceback.
 - `estudos.py`: topos e fundos confirmados (máxima maior que os 2 candles antes e os 2
-  depois; só vale depois que os 2 seguintes fecham), tendência do 60 min, FVG, order block,
-  VWAP com bandas de desvio, faixa de abertura.
+  depois; só vale depois que os 2 seguintes fecham), tendência do 60 min, FVG e order block.
 - `tipos.py`: `Candle(t, o, h, l, c, v)`, `Plano(lado, tipo, entrada, stop, alvo, motivo)`,
   `Decisao(planos, desenhos, pensamento)`.
 
@@ -94,6 +93,9 @@ Cada ativo pode ter `terminal` (caminho do `terminal64.exe` do MT5 daquela corre
 
 ## Etapa 3 — Traders (um arquivo cada em `traders/`)
 
+Os traders são **Sofia SMC** (implementada), mais **Didi Agulhada** e **Caio Contrafluxo**
+(planejados, descritos abaixo). Não há trader de VWAP nem de rompimento.
+
 Cada um expõe `NOME`, `ESTILO`, `PARAMS`, `GRADE` (valores que o gerente testa) e uma
 classe `Trader(ativo, tick, params, sessao)` com `decidir(hoje5, ontem5, fechados60) ->
 Decisao`. A decisão traz planos, o que desenhar no gráfico e o "pensamento" (explica
@@ -114,20 +116,7 @@ inclusive o que não fez, ex.: "pulei: R:R 0,8 abaixo do mínimo").
    entra.
 7. Zona vale até ser usada, até um candle fechar do outro lado dela ou até o fim do dia.
 
-**Rafa Rompimento** — faixa dos primeiros 15 minutos do dia (`minutos_faixa` 15,
-`alvo_x` 1,5, `faixa_min_ticks` 4; grade `alvo_x` 1,5 / 2,0 / 2,5).
-- Faixa = máxima e mínima dos 3 primeiros candles de 5 min. Faixa com menos de 4 ticks:
-  não opera no dia.
-- Primeiro fechamento acima do topo: compra a mercado; primeiro abaixo do fundo: venda.
-  Só um rompimento por lado por dia.
-- Stop no outro lado da faixa; alvo = fechamento ± `alvo_x` × altura da faixa.
-
-**Vera VWAP** — reversão à VWAP do dia (`desvios` 1,0, `candles_min` 12; grade 1,0 / 1,5 / 2,0).
-- VWAP pelo preço típico (máx+mín+fech)/3 ponderado pelo volume; desvio-padrão
-  populacional dos preços típicos. Só depois de 12 candles no dia.
-- Fechou acima da banda de cima: venda a mercado; abaixo da de baixo: compra. Só no
-  primeiro candle fora da banda.
-- Stop: banda + 1 desvio além; alvo: a VWAP. Se o fechamento já passou do stop, não entra.
+**Didi Agulhada** (planejado, ainda não implementado): regras a definir.
 
 **Caio Contrafluxo** (ainda não implementado; depende de ticks com agressor no MT5):
 opera contra quem entrou contra a tendência do 60 (regra da Sofia). Na resistência, em
