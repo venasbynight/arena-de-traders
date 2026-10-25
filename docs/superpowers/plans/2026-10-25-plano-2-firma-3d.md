@@ -21,6 +21,21 @@
 - Textos de interface, relatórios e diário em português. Sem assets externos no 3D.
 - Modelo de subagente: implementadores em `sonnet`; revisores em `sonnet` para diffs mecânicos e `opus` para o motor/gerente e a revisão final.
 
+## Padrão visual (The Sims 4) — vale para as Tasks 5 e 6
+
+O usuário quer o escritório **visualmente próximo do The Sims 4** (referências: `mockups/escritorio.png` e as capturas do jogo enviadas). Critérios que o revisor cobra:
+
+1. **Câmera de cima estilo Sims:** vista 3/4 em perspectiva (não ortográfica), inclinação 35°–55°, giro suave com Q/E ou botão direito, zoom com scroll entre "sala inteira" e "mesa de perto", pan com WASD/arrasto do botão do meio; foco inicial na Diretoria.
+2. **Paredes recortadas (cutaway):** paredes com 2,8 m, mas quando a câmera está de cima elas aparecem com 1,0 m de altura ("paredes baixas" do Sims); em primeira pessoa voltam à altura total. Rodapés e molduras de porta/janela.
+3. **Iluminação:** luz hemisférica + direcional com sombras (`PCFSoftShadowMap`), tom quente de interior, luminárias de teto emissivas por sala, `ACESFilmicToneMapping`, `sRGB`.
+4. **Materiais com textura procedural (canvas):** piso de madeira em tábuas no hall, carpete por sala com cor própria, paredes claras com leve ruído, janelas com vidro translúcido e vista para um gramado com calçada e arbustos fora do prédio (chão verde, sem céu preto: fundo em gradiente ou céu claro).
+5. **Mobiliário por sala:** mesa em L ou reta com pernas, cadeira de escritório com rodinhas (cilindros), monitor com moldura e tela canvas, teclado, caneca, planta em vaso, lixeira, quadro na parede; hall com sofá, mesa de centro, tapete, bebedouro e quadro de ranking grande; Diretoria com mesa maior, duas cadeiras de visita, estante e troféu.
+6. **Personagens:** boneco de 1,7 m com cabeça, tronco, braços, pernas, cabelo e cor de pele/roupa variando por trader (6 paletas), sentado na cadeira com os braços sobre a mesa; animação leve (respiração/tecla digitando: braços sobem e descem 2 cm em 1 s) para parecer vivo; plumbob verde sobre a cabeça do trader selecionado; sprite de nome/status com fundo arredondado e sombra.
+7. **UI do jogo:** painel lateral e HUD com o mesmo tema escuro da sala de operações; cursor muda para "mão" sobre um trader; ao passar o mouse, o trader ganha contorno.
+8. **Desempenho:** 60 fps numa GPU integrada com as 5 salas (geometrias reutilizadas via `InstancedMesh` ou `Mesh` compartilhando geometria/material; sombras só na luz direcional; `renderer.setPixelRatio(min(devicePixelRatio, 2))`).
+
+Antes de declarar a Task 5 pronta, o implementador tira **três capturas** (visão geral, zoom numa sala, Diretoria) e as compara com as referências; se não parecer um escritório do Sims (e sim caixas soltas), continua. O controlador repete a conferência com as próprias capturas.
+
 ## Review Focus
 
 1. Ativo de 24h (BTCUSDT) nunca dispara "fim de semana" nem feriado da B3; zera às 23:55 e reabre 00:00 (teste na Task 1).
@@ -102,12 +117,14 @@
 
 ### Task 5: Firma 3D — cena, salas, traders e câmera de cima
 
+**Ordem de execução:** Tasks 5 e 6 rodam ANTES das Tasks 1–4 (prioridade visual do usuário). Até a Task 4 existir, `GET /api/firma` devolve o arquivo de exemplo.
+
 **Files:**
-- Create: `web/firma.html`, `web/firma.js`, `web/firma.css`
-- Modify: `servidor.py` (`GET /firma` → `firma.html`), `web/index.html` (seletor com 4 ativos + link "Firma")
+- Create: `web/firma.html`, `web/firma.js`, `web/firma.css`, `estado/firma.exemplo.json` → NÃO: `estado/` é ignorado pelo git; criar em `web/firma.exemplo.json` (versionado) com 4 salas (WDO e WIN `sem_dados`; EURUSD e BTCUSDT `ok` com 3 traders cada, equity de 21 pontos, diário de 4 linhas, placar treino/prova) no formato da Task 4
+- Modify: `servidor.py` (`GET /firma` → `firma.html`; `GET /api/firma` → `estado/firma.json` se existir, senão `web/firma.exemplo.json` com `"exemplo": true`), `web/index.html` (seletor com 4 ativos + link "Firma")
 
 **Interfaces:**
-- Consumes `GET /api/firma` (Task 4). Three.js: `import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"`, `OrbitControls` de `https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js` (usar `importmap` com `"three"`).
+- Consumes `GET /api/firma` (formato da Task 4; nesta ordem, o exemplo). Three.js: `import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"`, `OrbitControls` de `https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js` (usar `importmap` com `"three"`).
 - Produces: `window.firma = {estado, modo: "cima"|"fp", abrirPainel(trader), salas}`; planta fixa exportada em `firma.js` como `PLANTA` (hall 12×8 m no centro; salas 8×6 m: WDO e WIN ao norte, Forex e Bitcoin ao sul, Diretoria a leste; portas de 1,2 m; paredes 2,8 m com 0,2 m de espessura) e `COLISORES` (lista de AABB das paredes) para a Task 6.
 - Conforme o spec: piso colorido por sala, placa com nome, 3 mesas por sala, boneco voxel por trader, sprite com nome/status/resultado do dia, monitor com textura canvas da curva de capital, sala sem dados com monitores apagados e placa "aguardando dados"; hall com mesa do gerente e quadro de ranking (sprite canvas); OrbitControls limitado (polar 20°–60°, distância 3–40), Q/E giram; clique (raycast) em trader abre o painel lateral com placar treino/prova, status, decisão, diário e links (`/relatorios/<dia>/<arquivo>` e `/?ativo=<ATIVO>`); poll de 30 s; sem estado → aviso "o gerente ainda não rodou".
 - [ ] **Step 1: Implement.** **Step 2: Verify** no navegador do app com `python servidor.py --sem-navegador` após um `gerente.py` real: 5 salas, bonecos, sprites, clique abre painel, salas WDO/WIN "aguardando dados", sem erros no console. Screenshot para o usuário.
