@@ -1083,10 +1083,13 @@ function aplicarEstado(estado) {
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const pct = v => v == null ? "—" : Math.round(v * 100) + "%";
 const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const diaRelatorio = () => firma.estado?.relatorios?.dia || firma.estado?.gerado_em?.slice(0, 10);
-function linkRelatorio(arquivo, texto) {
-  if (firma.estado?.exemplo) return `<span class="off">${texto} · disponível após o primeiro ciclo do gerente</span>`;
-  return `<a href="/relatorios/${diaRelatorio()}/${arquivo}" target="_blank">${texto} ↗</a>`;
+// Relatório do dia (contrato da Task 4: /relatorios/<dia>/<ativo em minúsculas>-<slug>.html). Usa o arquivo
+// listado em estado.relatorios.arquivos; sem ele, o nome do contrato; sem relatorios.dia, link desligado.
+function linkRelatorio(nome, texto) {
+  const rel = firma.estado?.relatorios;
+  if (!rel?.dia) return `<span class="off">${texto} · disponível após o primeiro ciclo do gerente</span>`;
+  const arquivo = rel.arquivos?.find(a => a.toLowerCase() === nome.toLowerCase()) ?? nome;
+  return `<a href="/relatorios/${encodeURIComponent(rel.dia)}/${encodeURIComponent(arquivo)}" target="_blank">${texto} ↗</a>`;
 }
 
 function abrirPainel(alvo) {
@@ -1258,30 +1261,37 @@ renderer.domElement.addEventListener("pointerup", e => {
 });
 
 // ---------------------------------------------------------------- dados (poll de 30 s)
-let ultimoTexto = "";
+let ultimoTexto = "", cenaVazia = false;
+const aviso = msg => { $("#aviso").hidden = !msg; $("#aviso").textContent = msg || ""; };
 async function carregar() {
+  let r, texto, corpo;
   try {
-    const r = await fetch("/api/firma", { cache: "no-store" });
-    const texto = await r.text();
-    if (!r.ok) {
-      $("#aviso").hidden = false;
-      $("#aviso").textContent = JSON.parse(texto).erro || "O gerente ainda não rodou: execute python gerente.py";
-      if (!firma.estado && ultimoTexto !== "erro") { ultimoTexto = "erro"; aplicarEstado(null); }
-      return;
-    }
-    $("#aviso").hidden = true;
-    if (texto !== ultimoTexto) {
-      const primeira = !ultimoTexto;
-      ultimoTexto = texto;
-      aplicarEstado(JSON.parse(texto));
-      const b = primeira && clicaveis.find(o => !o.isSprite && o.userData.alvo?.nome === pedido.get("trader") &&
-        (!salaPedida || o.userData.alvo.sala === pedido.get("sala")));
-      if (b) { selecionar(b); abrirPainel(b.userData.alvo); }
-    }
+    r = await fetch("/api/firma", { cache: "no-store" });
+    texto = await r.text();
   } catch (err) {
-    $("#aviso").hidden = false;
-    $("#aviso").textContent = `Não consegui falar com o servidor da arena (${err.message}).`;
+    return aviso(`Não consegui falar com o servidor da arena (${err.message}).`);
   }
+  try { corpo = JSON.parse(texto); } catch {
+    return aviso(`O servidor respondeu ${r.status} com algo que não é JSON em /api/firma.`);
+  }
+  if (!r.ok) {
+    // 404 = o gerente ainda não rodou; 500 = estado ilegível (ex.: gravado pela metade). A cena anterior fica.
+    aviso(corpo.erro || "O gerente ainda não rodou: execute python gerente.py");
+    if (!firma.estado && !cenaVazia) { cenaVazia = true; aplicarEstado(null); }
+    return;
+  }
+  if (texto === ultimoTexto) return aviso(null);
+  const primeira = !ultimoTexto;
+  try {
+    aplicarEstado(corpo);
+  } catch (err) {
+    return aviso(`O estado da firma veio num formato inesperado (${err.message}).`);
+  }
+  ultimoTexto = texto;  // só depois de aplicado: um estado que falhou é tentado de novo no próximo poll
+  aviso(null);
+  const b = primeira && clicaveis.find(o => !o.isSprite && o.userData.alvo?.nome === pedido.get("trader") &&
+    (!salaPedida || o.userData.alvo.sala === pedido.get("sala")));
+  if (b) { selecionar(b); abrirPainel(b.userData.alvo); }
 }
 carregar();
 setInterval(carregar, 30000);

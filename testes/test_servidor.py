@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 import threading
 import unittest
 import urllib.error
@@ -82,7 +84,36 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(status, 200)
         estado = json.loads(corpo)
         self.assertTrue(estado["exemplo"])
-        self.assertEqual(sorted(estado["salas"]), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
+        salas = estado["salas"]
+        self.assertEqual(sorted(salas), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
+        for ativo in ("WDO", "WIN"):
+            self.assertEqual(salas[ativo]["status"], "sem_dados")
+        for ativo in ("EURUSD", "BTCUSDT"):
+            self.assertEqual(salas[ativo]["status"], "ok")
+            self.assertEqual(len(salas[ativo]["traders"]), 3)
+            for t in salas[ativo]["traders"]:
+                self.assertEqual(len(t["equity"]), 21, t["nome"])
+                self.assertEqual(len(t["diario"]), 4, t["nome"])
+
+    def _get_firma_com_estado(self, conteudo):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "firma.json")
+            with open(caminho, "w", encoding="utf-8") as f:
+                f.write(conteudo)
+            with mock.patch.object(servidor, "ESTADO_FIRMA", caminho):
+                return self.get("/api/firma")
+
+    def test_firma_estado_do_gerente_sem_mexer(self):
+        estado = {"gerado_em": "2026-10-24T19:30:00", "salas": {"WDO": {"status": "sem_dados", "motivo": "x", "traders": []}},
+                  "ranking": [], "pendencias": ["Genial sem dados"]}
+        status, corpo = self._get_firma_com_estado(json.dumps(estado))
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(corpo), estado)  # servido como está, sem a chave "exemplo"
+
+    def test_firma_estado_corrompido_vira_500(self):
+        status, corpo = self._get_firma_com_estado('{"gerado_em": "2026-10-24T19:3')  # gravação pela metade
+        self.assertEqual(status, 500)
+        self.assertIn("firma.json", json.loads(corpo)["erro"])
 
     def test_firma_html(self):
         status, corpo = self.get("/firma")

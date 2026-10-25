@@ -61,12 +61,15 @@ class Arena(BaseHTTPRequestHandler):
 
     def _firma(self):
         # sem estado do gerente, a firma mostra o exemplo versionado (marcado como exemplo)
-        if os.path.isfile(ESTADO_FIRMA):
-            with open(ESTADO_FIRMA, encoding="utf-8") as f:
-                return self._enviar(200, json.load(f))
-        with open(os.path.join(WEB, "firma.exemplo.json"), encoding="utf-8") as f:
-            estado = json.load(f)
-        estado["exemplo"] = True
+        exemplo = not os.path.isfile(ESTADO_FIRMA)
+        caminho = os.path.join(WEB, "firma.exemplo.json") if exemplo else ESTADO_FIRMA
+        try:
+            with open(caminho, encoding="utf-8") as f:
+                estado = json.load(f)
+        except (OSError, ValueError) as e:  # gravação pela metade, arquivo apagado no meio, JSON inválido
+            return self._enviar(500, {"erro": f"não consegui ler {os.path.basename(caminho)}: {e}"})
+        if exemplo:
+            estado["exemplo"] = True
         self._enviar(200, estado)
 
     def _backtest(self, q):
