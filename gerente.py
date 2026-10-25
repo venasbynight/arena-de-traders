@@ -119,6 +119,8 @@ def decidir(treino, prova, equity):
             faltas.append(f"só {prova['trades']} trades na prova (mínimo {MIN_TRADES})")
     if treino["trades"] < MIN_TRADES:
         faltas.append(f"só {treino['trades']} trades no treino (mínimo {MIN_TRADES})")
+    if treino["resultado"] <= 0:  # prova boa depois de treino perdedor é sorte até provar o contrário
+        faltas.append(f"treino {'negativo' if treino['resultado'] < 0 else 'zerado'} ({brl(treino['resultado'])})")
     if overfit:
         faltas.append(nota)
     if faltas:

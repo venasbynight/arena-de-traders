@@ -172,6 +172,13 @@ class TestDecisoes(unittest.TestCase):
         self.assertEqual((status, overfit), ("promovido", False))
         self.assertIn("60 trades", decisao)
 
+    def test_nao_promove_com_treino_negativo(self):
+        # prova boa depois de um treino perdedor é sorte até provar o contrário (caso real: Sofia no WIN)
+        status, overfit, decisao = gerente.decidir(placar(-3672.0, 169, 0.8), placar(1971.0, 50, 1.81), SOBE)
+        self.assertEqual((status, overfit), ("experiencia", False))
+        self.assertIn("treino negativo (−R$ 3.672)", decisao)
+        self.assertEqual(gerente.decidir(placar(0.0, 169, 1.0), placar(1971.0, 50, 1.81), SOBE)[0], "experiencia")
+
     def test_marca_overfit(self):
         status, overfit, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(1000.0, 60, 1.5), SOBE)
         self.assertEqual((status, overfit), ("experiencia", True))

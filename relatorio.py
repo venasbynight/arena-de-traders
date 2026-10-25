@@ -173,7 +173,7 @@ def _briefing(estado):
     linhas = [f"# Briefing do gerente · {dia}", "",
               f"Para a mente de IA: comente as decisões abaixo e grave relatorios/{dia}/gerente-ia.md.",
               f"Premissas: contas simuladas de R$ 5.000; USD/BRL {num(p.get('usd_brl'))}; treino = tudo menos os "
-              "últimos 21 pregões, prova = últimos 21; promoção pede prova positiva, fator ≥ 1,2, ≥ 50 trades "
+              "últimos 21 pregões, prova = últimos 21; promoção pede treino e prova positivos, fator ≥ 1,2, ≥ 50 trades "
               "(treino e prova) e sem overfit; pausa com drawdown pior que −R$ 1.500 ou 5 dias seguidos perdendo R$ 25 ou mais.", ""]
     for ativo, sala in estado["salas"].items():
         if sala["status"] != "ok":
