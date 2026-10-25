@@ -1507,5 +1507,9 @@ renderer.setAnimationLoop(() => {
   for (const s of rotulos) { s.scale.set(s.userData.base * f, s.userData.base * f * 150 / 512, 1); s.material.depthTest = fp; }
   if (!fp && ponteiroMudou && ultimoEvento) { ponteiroMudou = false; marcarSobre(alvoSob(ultimoEvento)); }
   renderer.render(cena, camera);
-  window.firmaPronta = true;   // o aviso de "não consegui carregar o 3D" da firma.html não aparece mais
+  if (!window.firmaPronta) {
+    window.firmaPronta = true;   // o aviso de "não consegui carregar o 3D" da firma.html não aparece mais
+    // aba aberta em segundo plano: o aviso disparou antes do 1º quadro; desfaz recarregando o estado
+    if (document.getElementById("ciclo")?.textContent === "3D indisponível") { ultimoTexto = ""; carregar(); }
+  }
 });
