@@ -382,7 +382,7 @@ class TestServidor(unittest.TestCase):
                             "OPCOES": {"status": "sem_tarefa", "traders": []}}}
         p = self._painel({}, estado)
         self.assertEqual(p["ciclo"], "2026-10-25")
-        self.assertEqual([t["nome"] for t in p["traders"]], ["Sofia SMC", "Didi Agulhada"])  # traders.TODOS
+        self.assertEqual([t["nome"] for t in p["traders"]], [m.NOME for m in servidor.traders.TODOS])
         s, d = p["traders"]
         self.assertEqual(list(s["por_ativo"]), ["WDO", "WIN", "EURUSD", "BTCUSDT"])  # sem OPCOES
         self.assertEqual(s["por_ativo"]["WDO"], {
