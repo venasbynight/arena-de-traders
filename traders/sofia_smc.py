@@ -9,7 +9,7 @@ GRADE = {"folga_ticks": [1, 2, 3]}
 
 
 def arredondar_tick(preco, tick):
-    return round(preco / tick) * tick
+    return round(round(preco / tick) * tick, 10)  # o round de fora tira o ruído de ponto flutuante (1.0861200000000002)
 
 
 class Trader:

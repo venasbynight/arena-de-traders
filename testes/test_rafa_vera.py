@@ -39,8 +39,9 @@ class TestRafa(unittest.TestCase):
         self.assertEqual(d.planos, [Plano("venda", "mercado", 99.5, 104.0, 93.5, "rompimento")])
 
     def test_alvo_x_dos_params(self):
-        d = self.rafa(alvo_x=2.0).decidir(FAIXA + velas([FECHA_ACIMA], HOJE + timedelta(minutes=15)), [], [])
-        self.assertEqual(d.planos[0].alvo, 112.5)
+        hoje = FAIXA + velas([FECHA_ACIMA], HOJE + timedelta(minutes=15))
+        self.assertEqual(self.rafa(alvo_x=1.0).decidir(hoje, [], []).planos[0].alvo, 108.5)
+        self.assertEqual(self.rafa(alvo_x=2.0).decidir(hoje, [], []).planos[0].alvo, 112.5)
 
     def test_padrao_e_grade_evitam_alvo_x_1(self):
         # com alvo_x 1.0 o R:R é sempre < 1 (risco passa da altura da faixa), e o rr_minimo de 1.0 recusa tudo
@@ -65,12 +66,16 @@ class TestRafa(unittest.TestCase):
         self.assertEqual(d.planos, [])
         self.assertTrue(any("estreita" in p for p in d.pensamento))
 
+    def test_faixa_de_4_ticks_opera_e_de_3_nao(self):
+        def dia(topo):  # faixa de 100 a topo; o 4º candle fecha acima dela
+            return velas([(100.5, topo, 100, 100.5)] * 3 + [(topo, topo + 1, topo, topo + 0.5)])
+        d = self.rafa().decidir(dia(102), [], [])  # 2 pontos = 4 ticks de 0,5: o mínimo
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 102.5, 100.0, 105.5, "rompimento")])
+        self.assertEqual(self.rafa().decidir(dia(101.5), [], []).planos, [])  # 3 ticks
+
     def test_sem_faixa_antes_de_15_min(self):
         d = self.rafa().decidir(FAIXA[:2], [], [])
         self.assertEqual((d.planos, d.desenhos), ([], []))
-        # o terceiro candle fecha a faixa (mesmo estourando): ainda não é rompimento
-        fecha_alto = velas([(101, 103, 100, 102), (102, 104, 101, 103), (103, 110, 101, 110)])
-        self.assertEqual(self.rafa().decidir(fecha_alto, [], []).planos, [])
 
 
 # 11 fechamentos alternando 5430/5440; o 12º fecha fora da banda, mas antes de 1 desvio além dela
@@ -103,6 +108,14 @@ class TestVera(unittest.TestCase):
         # v = 0 em todos os candles: VWAP é a média dos preços típicos, sem divisão por zero
         d = self.vera().decidir(dia_vera(DIA_VENDA, [0.0] * 12), [], [])
         self.assertEqual(d.desenhos[0], {"tipo": "linha", "preco": 5435.5, "rotulo": "VWAP"})
+
+    def test_preco_tipico_usa_maxima_minima_e_fechamento(self):
+        # tipicos: 11 × (5445+5434+5436)/3 = 5438,33 e (5460+5435+5450)/3 = 5448,33
+        # VWAP 5439,17; desvio 2,76; só com os fechamentos seria 5437,17 e bandas 5441,04 / 5433,30
+        dia = velas([(5435, 5445, 5434, 5436)] * 11 + [(5435, 5460, 5435, 5450)])
+        d = self.vera().decidir(dia, [], [])
+        self.assertEqual([(x["rotulo"], x["preco"]) for x in d.desenhos],
+                         [("VWAP", 5439.0), ("banda +", 5442.0), ("banda −", 5436.5)])
 
     def test_vwap_pesa_pelo_volume(self):
         d = self.vera().decidir(dia_vera(DIA_VENDA, [1.0] * 11 + [3.0]), [], [])

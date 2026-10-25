@@ -104,8 +104,15 @@ class TestSofia(unittest.TestCase):
 
     def test_ativo_sem_fvg_minimo_usa_dois_ticks(self):
         # o FVG de 3 pontos do WDO passa de 2 ticks de 0,5 = 1 ponto; um ativo desconhecido não levanta erro
-        d = sofia_smc.Trader("XYZ", 0.5).decidir(HOJE_FVG_BAIXA, ONTEM_WDO, tendencia_60("baixa"))
-        self.assertEqual(len(d.planos), 1)
+        xyz = sofia_smc.Trader("XYZ", 0.5)
+        self.assertEqual(len(xyz.decidir(HOJE_FVG_BAIXA, ONTEM_WDO, tendencia_60("baixa")).planos), 1)
+        # buraco de meio ponto (1 tick) é menor que 2 ticks: fica de fora
+        pequeno = velas(HOJE, [(5437, 5438, 5434.5, 5435), (5435, 5435, 5432, 5433), (5433, 5434, 5431, 5432)])
+        self.assertEqual(xyz.decidir(pequeno, ONTEM_WDO, tendencia_60("baixa")).planos, [])
+
+    def test_arredondar_tick_sem_ruido_de_ponto_flutuante(self):
+        self.assertEqual(sofia_smc.arredondar_tick(1.086124, 0.00001), 1.08612)  # sem o round de fora: 1.0861200000000002
+        self.assertEqual(sofia_smc.arredondar_tick(128437.0, 5.0), 128435.0)
 
 
 if __name__ == "__main__":
