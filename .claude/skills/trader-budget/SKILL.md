@@ -34,7 +34,7 @@ python "${CLAUDE_SKILL_DIR}/size.py" --teste          # autoteste
 | arquivo | o quê |
 | --- | --- |
 | `trader/config.json` | as regras (comece copiando `config.example.json` desta pasta) |
-| `trader/plan.json` | o trade: `simbolo`, `lado` (`compra`/`venda`), `entrada`, `stop`, `alvo`, `setup`, `tipo`, `data` opcional |
+| `trader/plan.json` | o trade: `simbolo`, `lado` (`compra`/`venda`), `entrada`, `stop`, `alvo`, `setup`, `tipo`, `data` opcional, `ativo` opcional (sem ele vale o início do símbolo: WDO, WIN) |
 | `trader/orders.json` | a ordem proposta, gravada com `--write` |
 
 ## Passo 1: regras, uma vez
@@ -43,18 +43,23 @@ Se `trader/config.json` não existir, copie `config.example.json` e pergunte
 cada valor ao usuário em palavras simples:
 
 - **capital**: quanto dinheiro é para isso. Só o que ele pode perder.
-- **ativos**: para WDO e WIN, a **margem_por_contrato** (garantia de day trade na corretora dele; confira) e o
-  **custo_por_contrato** (corretagem + taxas da B3, por contrato, por lado, em R$). Só esses ativos são aceitos.
+- **ativos**: para cada ativo (o exemplo traz WDO, WIN, EURUSD e BTCUSDT), o **ponto_rs** (R$ por 1,0 de preço por
+  contrato) e o **tick**, a **margem_por_contrato** (garantia de day trade na corretora dele; confira), o
+  **custo_por_contrato** (corretagem + taxas, por contrato, por lado, em R$) e a **sessao** (`dias` com 0 = segunda,
+  `inicio`, `fim`, e `feriados_b3` para respeitar os feriados). WDO e WIN têm ponto e tick padrão no script; para os
+  demais o config é obrigatório. Ativo fora de `ativos` é recusado.
 - **max_contratos**, **max_perda_por_trade** (R$), **max_perda_dia** (R$).
 - **max_trades_dia**, **max_stops_dia** (o usuário para depois de 3 stops), **rr_minimo**.
-- **sem_entrada_antes** / **sem_entrada_depois** / **zerar_ate**: horário de Brasília.
+- **sem_entrada_antes** / **sem_entrada_depois** / **zerar_ate**: horário de Brasília. Os dois primeiros só valem
+  para o ativo que não traz `sessao`; com `sessao`, o início e o fim dela mandam.
 - **feriados**: datas `AAAA-MM-DD` sem pregão na B3 (confira o calendário da B3).
 - Deixe **simulado** true.
 
 ## Passo 2: o cálculo
 
 WDO: 1 ponto = R$ 10 por contrato, tick de 0,5. WIN: 1 ponto = R$ 0,20 por contrato, tick de 5.
-O ativo vem das 3 primeiras letras do símbolo (WDOX26, WINZ26). Contratos inteiros.
+EURUSD e BTCUSDT: valores do config (contrato = micro lote ou 0,001 BTC). O ativo vem de `plano.ativo`; sem ele,
+das 3 primeiras letras do símbolo (WDOX26, WINZ26). Contratos inteiros.
 Funciona na compra e na venda.
 
 | limite | contratos |

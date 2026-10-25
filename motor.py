@@ -16,7 +16,7 @@ def _skill(caminho, nome):
     return mod
 
 
-size = _skill("trader-budget/size.py", "skill_size")    # dimensionar(), ATIVOS, Recusa
+size = _skill("trader-budget/size.py", "skill_size")    # especificacao(), dimensionar(), Recusa
 check = _skill("trader-risk/check.py", "skill_check")  # checar()
 
 
@@ -32,9 +32,8 @@ def carregar_config(caminho="trader/config.json"):
 class Conta:
     def __init__(self, nome, ativo, cfg):
         self.nome, self.ativo, self.cfg = nome, ativo, cfg
-        self.tick = size.ATIVOS[ativo]["tick"]
-        self.ponto_rs = size.ATIVOS[ativo]["ponto_rs"]
-        self.custo = cfg["ativos"][ativo]["custo_por_contrato"]
+        spec = size.especificacao(ativo, cfg)  # Recusa se o ativo não está em cfg["ativos"]
+        self.tick, self.ponto_rs, self.custo = spec["tick"], spec["ponto_rs"], spec["custo_por_contrato"]
         self.saldo = float(cfg["capital"])
         self.pendentes, self.posicao = [], None
         self.dia = {"data": None, "trades": 0, "stops": 0, "resultado": 0.0, "posicao_aberta": False}
@@ -56,7 +55,7 @@ class Conta:
         self.pendentes, eventos = [], []
         cfg = {**self.cfg, "capital": self.saldo}  # margem e tamanho pelo saldo atual, não pelo inicial
         for p in planos:
-            plano = {"simbolo": simbolo, "lado": p.lado, "tipo": p.tipo, "entrada": p.entrada,
+            plano = {"simbolo": simbolo, "ativo": self.ativo, "lado": p.lado, "tipo": p.tipo, "entrada": p.entrada,
                      "stop": p.stop, "alvo": p.alvo, "setup": p.setup}
             try:
                 ordem, _, _ = size.dimensionar(plano, cfg, agora.date().isoformat())
@@ -167,8 +166,8 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
     from datetime import timedelta
     from dados import agrupar, por_dia
 
-    tick = size.ATIVOS[ativo]["tick"]
-    simbolo = ativo  # as skills leem o ativo nas 3 primeiras letras; o símbolo da corretora não importa aqui
+    tick = size.especificacao(ativo, cfg)["tick"]
+    simbolo = ativo  # as skills leem o ativo de plano["ativo"]; o símbolo da corretora não importa aqui
     c60 = agrupar(candles5, 60)
     mesa = [(m, m.Trader(ativo, tick), Conta(m.NOME, ativo, cfg)) for m in modulos_traders]
     eventos = {m.NOME: [] for m in modulos_traders}

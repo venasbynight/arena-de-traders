@@ -47,8 +47,8 @@ saída.
 
 | checagem | bloqueia quando |
 | --- | --- |
-| formato | sem símbolo, lado diferente de `compra`/`venda`, contratos não inteiro, tipo diferente de `mercado`/`limite`, preço fora do tick do ativo (WDO 0,5; WIN 5) |
-| ativo | as 3 primeiras letras do símbolo fora de `ativos` do config |
+| formato | sem símbolo, lado diferente de `compra`/`venda`, contratos não inteiro, tipo diferente de `mercado`/`limite`, preço fora do tick do ativo (config; padrão WDO 0,5, WIN 5) |
+| ativo | `ordem.ativo` (ou, sem ele, as 3 primeiras letras do símbolo) fora de `ativos` do config |
 | stop / alvo | sem stop, sem alvo, ou do lado errado da entrada |
 | perda | contratos x (pontos de risco x valor do ponto + 2 x custo); WDO R$ 10, WIN R$ 0,20 acima de `max_perda_por_trade` |
 | risco:retorno | abaixo de `rr_minimo` |
@@ -57,7 +57,7 @@ saída.
 | posição | já existe posição aberta (uma por vez) |
 | stops do dia | `max_stops_dia` stops já tomados hoje |
 | trades do dia | `max_trades_dia` entradas hoje |
-| horário | fim de semana, feriado em `feriados`, antes de `sem_entrada_antes` ou depois de `sem_entrada_depois` |
+| horário | pela `sessao` do ativo: dia fora de `dias`, feriado em `feriados` (só se `feriados_b3`), antes de `inicio` ou depois de `fim`; sem `sessao`, vale a da B3 com `sem_entrada_antes`/`sem_entrada_depois` |
 
 As ordens são conferidas em sequência, como se cada PASS tivesse executado, e
 cada PASS conta a perda máxima inteira no resto do lote. Horário é o de

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""trader-budget para os mini contratos da B3 (WDO e WIN). Só biblioteca padrão, sem rede.
+"""trader-budget para os mini contratos da B3 (WDO e WIN) e ativos extras do config (EURUSD, BTCUSDT). Só biblioteca padrão, sem rede.
 
 Lê o plano (trader/plan.json) e as regras (trader/config.json), calcula
 quantos contratos cabem nos seus limites e propõe UMA ordem em
@@ -20,8 +20,10 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# valor do ponto por contrato e menor variação (tick) de cada mini contrato da B3
+# padrões do valor do ponto por contrato e do tick de WDO e WIN; o config (ativos) sobrescreve e acrescenta outros
 ATIVOS = {"WDO": {"ponto_rs": 10.0, "tick": 0.5}, "WIN": {"ponto_rs": 0.20, "tick": 5.0}}
+# sessão padrão (horário de Brasília) quando o ativo não traz "sessao": a da B3, que respeita os feriados do config
+SESSAO_B3 = {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": True}
 # ponytail: Brasil sem horário de verão desde 2019, então UTC-3 fixo dispensa o pacote tzdata.
 # Se o horário de verão voltar, troque por zoneinfo.ZoneInfo("America/Sao_Paulo").
 BRT = timezone(timedelta(hours=-3))
@@ -41,15 +43,23 @@ def ler_json(caminho, obrigatorio=True):
 
 
 def no_tick(preco, tick):
-    return abs(preco / tick - round(preco / tick)) < 1e-9
+    # tolerância de 1e-6 tick: com 1e-9, preços de BTC (~1e5, tick 0,01) falham por erro de ponto flutuante
+    return abs(preco / tick - round(preco / tick)) < 1e-6
 
 
-def ativo_de(simbolo, cfg):
-    """'WDOX26' -> ('WDO', especificação, regras do config), ou Recusa."""
-    raiz = simbolo[:3]
-    if raiz not in ATIVOS or raiz not in cfg.get("ativos", {}):
-        raise Recusa(f"{simbolo or 'plano sem símbolo'} não está em 'ativos' do config")
-    return raiz, ATIVOS[raiz], cfg["ativos"][raiz]
+def especificacao(ativo, cfg):
+    """Especificação do ativo: ponto_rs, tick, margem, custo e sessão. WDO/WIN têm padrão em ATIVOS;
+    o config sobrescreve. Recusa o ativo que o config não traz."""
+    regras = cfg.get("ativos", {}).get(ativo)
+    base = {**ATIVOS.get(ativo, {}), **(regras or {})}
+    if regras is None or "ponto_rs" not in base or "tick" not in base:
+        raise Recusa(f"ativo {ativo or 'sem nome'} não está em 'ativos' do config")
+    # sem "sessao": a da B3, com os horários antigos sem_entrada_antes/depois do config se existirem
+    sessao = base.get("sessao") or dict(SESSAO_B3, inicio=cfg.get("sem_entrada_antes", SESSAO_B3["inicio"]),
+                                        fim=cfg.get("sem_entrada_depois", SESSAO_B3["fim"]))
+    return {"ponto_rs": float(base["ponto_rs"]), "tick": float(base["tick"]),
+            "margem_por_contrato": base["margem_por_contrato"],
+            "custo_por_contrato": base["custo_por_contrato"], "sessao": sessao}
 
 
 def dimensionar(plano, cfg, hoje, limite=None):
@@ -58,7 +68,9 @@ def dimensionar(plano, cfg, hoje, limite=None):
     if lado not in ("compra", "venda"):
         raise Recusa("lado deve ser 'compra' ou 'venda'")
     simbolo = str(plano.get("simbolo", "")).upper()
-    raiz, spec, regras = ativo_de(simbolo, cfg)
+    # o motor sempre manda plano["ativo"]; sem ele, WDO/WIN saem das 3 primeiras letras do símbolo
+    ativo = str(plano.get("ativo") or simbolo[:3]).upper()
+    spec = especificacao(ativo, cfg)
     if plano.get("data") and plano["data"] != hoje:
         raise Recusa(f"o plano é de {plano['data']}, não de hoje ({hoje}); faça um plano novo")
 
@@ -66,7 +78,7 @@ def dimensionar(plano, cfg, hoje, limite=None):
     stop, alvo = float(plano["stop"]), float(plano["alvo"])
     for nome, valor in (("entrada", entrada), ("stop", stop), ("alvo", alvo)):
         if not no_tick(valor, spec["tick"]):
-            raise Recusa(f"{nome} {valor} fora do tick de {spec['tick']:g} ponto(s) do {raiz}")
+            raise Recusa(f"{nome} {valor} fora do tick de {spec['tick']:g} ponto(s) do {ativo}")
 
     sinal = 1 if lado == "compra" else -1
     risco_pts = (entrada - stop) * sinal
@@ -79,10 +91,10 @@ def dimensionar(plano, cfg, hoje, limite=None):
     if rr < cfg["rr_minimo"]:
         raise Recusa(f"risco:retorno {rr:.2f} abaixo do mínimo {cfg['rr_minimo']}")
 
-    perda_contrato = risco_pts * spec["ponto_rs"] + 2 * regras["custo_por_contrato"]
+    perda_contrato = risco_pts * spec["ponto_rs"] + 2 * spec["custo_por_contrato"]
     limites = {
         "perda máxima por trade": math.floor(cfg["max_perda_por_trade"] / perda_contrato),
-        "margem do capital": math.floor(cfg["capital"] / regras["margem_por_contrato"]),
+        "margem do capital": math.floor(cfg["capital"] / spec["margem_por_contrato"]),
         "máximo de contratos": int(cfg["max_contratos"]),
     }
     decide = min(limites, key=limites.get)
@@ -97,6 +109,7 @@ def dimensionar(plano, cfg, hoje, limite=None):
     tipo = "limite" if limite is not None or plano.get("tipo") == "limite" else "mercado"
     ordem = {
         "simbolo": simbolo,
+        "ativo": ativo,
         "lado": lado,
         "contratos": contratos,
         "tipo": tipo,
@@ -161,6 +174,32 @@ def teste():
            "alvo": 128700.0, "setup": "didi"}
     ordem, _, decide = dimensionar(win, cfg, "2026-10-24")
     assert ordem["contratos"] == 4 and decide == "perda máxima por trade", (ordem, decide)
+    # EURUSD: o config traz ponto_rs e tick; o ativo vem de plano["ativo"], não do símbolo
+    cfg["ativos"]["EURUSD"] = {"ponto_rs": 5400, "tick": 0.00001, "margem_por_contrato": 200,
+                               "custo_por_contrato": 0.05}
+    eur = {"simbolo": "EURUSD", "ativo": "EURUSD", "lado": "compra", "entrada": 1.085, "stop": 1.084,
+           "alvo": 1.087, "setup": "teste"}
+    # 0,001 x R$ 5.400 + R$ 0,10 de custo = R$ 5,50 por contrato; R$ 100 / 5,50 = 18, mas o máximo é 5
+    ordem, limites, decide = dimensionar(eur, cfg, "2026-10-24")
+    assert limites["perda máxima por trade"] == 18 and ordem["contratos"] == 5, (limites, ordem)
+    assert decide == "máximo de contratos" and ordem["ativo"] == "EURUSD", (ordem, decide)
+    assert ordem["plano"]["perda_max_rs"] == 27.5, ordem
+    for ruim, trecho in ((dict(eur, ativo="XYZ"), "não está em 'ativos'"),
+                         (dict(eur, entrada=1.085004), "fora do tick")):
+        try:
+            dimensionar(ruim, cfg, "2026-10-24")
+            raise AssertionError(f"devia recusar: {trecho}")
+        except Recusa as e:
+            assert trecho in str(e), (trecho, str(e))
+    # especificação: padrão de WDO/WIN, config sobrescreve, sessão padrão da B3 quando ausente
+    s = especificacao("WDO", cfg)
+    assert (s["ponto_rs"], s["tick"], s["custo_por_contrato"]) == (10.0, 0.5, 0.5), s
+    assert s["sessao"] == {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": True}, s
+    assert especificacao("EURUSD", cfg)["ponto_rs"] == 5400
+    cfg["ativos"]["WDO"]["tick"] = 1.0
+    assert especificacao("WDO", cfg)["tick"] == 1.0
+    # preço grande de BTC não pode falhar no tick por erro de ponto flutuante
+    assert all(no_tick(round(p / 0.01) * 0.01, 0.01) for p in range(60000, 120000, 7))
     print("trader-budget: autoteste ok")
 
 

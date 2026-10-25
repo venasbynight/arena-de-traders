@@ -1,8 +1,27 @@
 {
   "capital": 5000,
+  "usd_brl": 5.4,
   "ativos": {
-    "WDO": {"margem_por_contrato": 150, "custo_por_contrato": 0.5, "simbolo_mt5": "WDO$"},
-    "WIN": {"margem_por_contrato": 100, "custo_por_contrato": 0.25, "simbolo_mt5": "WIN$"}
+    "WDO": {
+      "ponto_rs": 10, "tick": 0.5, "margem_por_contrato": 150, "custo_por_contrato": 0.5,
+      "fonte": "mt5", "simbolo": "WDO$", "terminal": "C:\\Program Files\\MetaTrader 5 Genial\\terminal64.exe",
+      "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": true}
+    },
+    "WIN": {
+      "ponto_rs": 0.2, "tick": 5, "margem_por_contrato": 100, "custo_por_contrato": 0.25,
+      "fonte": "mt5", "simbolo": "WIN$", "terminal": "C:\\Program Files\\MetaTrader 5 Genial\\terminal64.exe",
+      "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": true}
+    },
+    "EURUSD": {
+      "ponto_rs": 5400, "tick": 0.00001, "margem_por_contrato": 200, "custo_por_contrato": 0.05,
+      "fonte": "mt5", "simbolo": "EURUSD", "terminal": "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
+      "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "00:05", "fim": "23:30"}
+    },
+    "BTCUSDT": {
+      "ponto_rs": 0.0054, "tick": 0.01, "margem_por_contrato": 300, "custo_por_contrato": 0.1,
+      "fonte": "binance", "simbolo": "BTCUSDT",
+      "sessao": {"dias": [0, 1, 2, 3, 4, 5, 6], "inicio": "00:05", "fim": "23:30"}
+    }
   },
   "max_contratos": 5,
   "max_perda_por_trade": 100,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""trader-risk para os mini contratos da B3 (WDO e WIN). Só biblioteca padrão, sem rede.
+"""trader-risk para os mini contratos da B3 (WDO e WIN) e ativos extras do config (EURUSD, BTCUSDT). Só biblioteca padrão, sem rede.
 
 Confere cada ordem de trader/orders.json contra as regras (trader/config.json)
 e o que já aconteceu hoje (trader/state/dia.json). Cada ordem recebe PASS ou
@@ -25,8 +25,11 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# valor do ponto por contrato e menor variação (tick) de cada mini contrato da B3
+# padrões do valor do ponto por contrato e do tick de WDO e WIN; o config (ativos) sobrescreve e acrescenta outros
+# (mesma regra do size.especificacao, que fica na outra skill: cada skill roda sozinha)
 ATIVOS = {"WDO": {"ponto_rs": 10.0, "tick": 0.5}, "WIN": {"ponto_rs": 0.20, "tick": 5.0}}
+# sessão padrão (horário de Brasília) quando o ativo não traz "sessao": a da B3, que respeita os feriados do config
+SESSAO_B3 = {"dias": [0, 1, 2, 3, 4], "inicio": "09:05", "fim": "18:00", "feriados_b3": True}
 # ponytail: Brasil sem horário de verão desde 2019, então UTC-3 fixo dispensa o pacote tzdata.
 BRT = timezone(timedelta(hours=-3))
 DIA_VAZIO = {"trades": 0, "stops": 0, "resultado": 0.0, "posicao_aberta": False}
@@ -42,25 +45,42 @@ def impressao(ordem):
 
 
 def no_tick(preco, tick):
-    return abs(preco / tick - round(preco / tick)) < 1e-9
+    # tolerância de 1e-6 tick: com 1e-9, preços de BTC (~1e5, tick 0,01) falham por erro de ponto flutuante
+    return abs(preco / tick - round(preco / tick)) < 1e-6
 
 
 def hhmm(texto):
-    return datetime.strptime(texto, "%H:%M").time() if texto else None
+    return datetime.strptime(texto, "%H:%M").time()
 
 
-def janela(agora, cfg):
-    """Motivo do bloqueio pelo horário, ou None."""
-    if agora.weekday() >= 5:
-        return "mercado fechado (fim de semana)"
-    if agora.date().isoformat() in cfg.get("feriados", []):
+def sessao_de(regras, cfg):
+    """Sessão do ativo. Sem "sessao": a da B3, com os horários antigos sem_entrada_antes/depois do config."""
+    return regras.get("sessao") or dict(SESSAO_B3, inicio=cfg.get("sem_entrada_antes", SESSAO_B3["inicio"]),
+                                        fim=cfg.get("sem_entrada_depois", SESSAO_B3["fim"]))
+
+
+def especificacao(ativo, cfg):
+    """ponto_rs, tick, margem, custo e sessão do ativo (padrão de WDO/WIN + config), ou None se o config não o traz."""
+    regras = cfg.get("ativos", {}).get(ativo)
+    base = {**ATIVOS.get(ativo, {}), **(regras or {})}
+    if regras is None or "ponto_rs" not in base or "tick" not in base:
+        return None
+    return {"ponto_rs": float(base["ponto_rs"]), "tick": float(base["tick"]),
+            "margem_por_contrato": base["margem_por_contrato"],
+            "custo_por_contrato": base["custo_por_contrato"], "sessao": sessao_de(base, cfg)}
+
+
+def janela(agora, cfg, sessao):
+    """Motivo do bloqueio pelo horário da sessão do ativo, ou None."""
+    if agora.weekday() not in sessao["dias"]:
+        return "fora da sessão (dia)" + (", fim de semana" if agora.weekday() >= 5 else "")
+    if sessao.get("feriados_b3", False) and agora.date().isoformat() in cfg.get("feriados", []):
         return "mercado fechado (feriado na B3)"
-    antes, depois = hhmm(cfg.get("sem_entrada_antes")), hhmm(cfg.get("sem_entrada_depois"))
     hora = agora.time()
-    if antes and hora < antes:
-        return f"antes de {cfg['sem_entrada_antes']}, sem entradas"
-    if depois and hora > depois:
-        return f"depois de {cfg['sem_entrada_depois']}, sem entradas"
+    if hora < hhmm(sessao["inicio"]):
+        return f"antes de {sessao['inicio']}, sem entradas"
+    if hora > hhmm(sessao["fim"]):
+        return f"depois de {sessao['fim']}, sem entradas"
     return None
 
 
@@ -90,8 +110,9 @@ def checar(ordens, cfg, dia, agora):
     resultados = []
 
     for n, o in enumerate(ordens, 1):
-        raiz = str(o.get("simbolo", "")).upper()[:3]
-        spec, regras = ATIVOS.get(raiz), cfg.get("ativos", {}).get(raiz)
+        # o motor sempre manda o["ativo"]; sem ele, WDO/WIN saem das 3 primeiras letras do símbolo
+        ativo = str(o.get("ativo") or str(o.get("simbolo", ""))[:3]).upper()
+        spec = especificacao(ativo, cfg)
         motivos, avisos, info = formato(o, spec and spec["tick"]), [], {}
         if o.get("saida"):
             if not motivos:
@@ -100,8 +121,8 @@ def checar(ordens, cfg, dia, agora):
                                "avisos": avisos, "info": info, "impressao": impressao(o)})
             continue
 
-        if not spec or not regras:
-            motivos.append(f"{o.get('simbolo')} não está em 'ativos' do config")
+        if not spec:
+            motivos.append(f"ativo {ativo or o.get('simbolo')} não está em 'ativos' do config")
         if o.get("stop") is None:
             motivos.append("ordem sem stop")
         if o.get("alvo") is None:
@@ -111,7 +132,7 @@ def checar(ordens, cfg, dia, agora):
             sinal = 1 if o["lado"] == "compra" else -1
             risco_pts = (o["entrada"] - o["stop"]) * sinal
             ganho_pts = (o["alvo"] - o["entrada"]) * sinal
-            perda = o["contratos"] * (risco_pts * spec["ponto_rs"] + 2 * regras["custo_por_contrato"])
+            perda = o["contratos"] * (risco_pts * spec["ponto_rs"] + 2 * spec["custo_por_contrato"])
             info = {"risco_pts": risco_pts, "perda_max_rs": round(perda, 2)}
             if risco_pts <= 0:
                 motivos.append("stop do lado errado da entrada")
@@ -130,7 +151,7 @@ def checar(ordens, cfg, dia, agora):
                                    f"acima do limite diário R$ {cfg['max_perda_dia']:.2f}")
             if o["contratos"] > cfg["max_contratos"]:
                 motivos.append(f"{o['contratos']} contratos acima do máximo {cfg['max_contratos']}")
-            margem = o["contratos"] * regras["margem_por_contrato"]
+            margem = o["contratos"] * spec["margem_por_contrato"]
             if margem > cfg["capital"]:
                 motivos.append(f"margem R$ {margem:.2f} acima do capital R$ {cfg['capital']:.2f}")
 
@@ -140,7 +161,7 @@ def checar(ordens, cfg, dia, agora):
             motivos.append(f"já foram {stops} stops hoje (limite {cfg['max_stops_dia']}); dia encerrado")
         if trades >= cfg["max_trades_dia"]:
             motivos.append(f"já foram {trades} trades hoje (limite {cfg['max_trades_dia']})")
-        motivo_hora = janela(agora, cfg)
+        motivo_hora = janela(agora, cfg, spec["sessao"] if spec else sessao_de({}, cfg))
         if motivo_hora:
             motivos.append(motivo_hora)
         if not cfg.get("simulado", True):
@@ -225,6 +246,28 @@ def teste():
     saida = {"simbolo": "WDOX26", "lado": "venda", "contratos": 2, "tipo": "mercado", "saida": True}
     assert checar([saida], cfg, {"data": "2026-10-23", "trades": 9, "stops": 3, "resultado": -500,
                                  "posicao_aberta": True}, sexta.replace(hour=18, minute=20))[0]["ok"]
+    # ativos com especificação e sessão no config: o ativo vem de ordem["ativo"], não do símbolo
+    cfg["ativos"]["BTCUSDT"] = {"ponto_rs": 0.0054, "tick": 0.01, "margem_por_contrato": 300,
+                                "custo_por_contrato": 0.10,
+                                "sessao": {"dias": [0, 1, 2, 3, 4, 5, 6], "inicio": "00:05", "fim": "23:30"}}
+    cfg["ativos"]["EURUSD"] = {"ponto_rs": 5400, "tick": 0.00001, "margem_por_contrato": 200,
+                               "custo_por_contrato": 0.05,
+                               "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "00:05", "fim": "23:30"}}
+    btc = {"simbolo": "BTCUSDT", "ativo": "BTCUSDT", "lado": "compra", "contratos": 5, "tipo": "limite",
+           "entrada": 65000.12, "stop": 64900.12, "alvo": 65200.12}
+    domingo = datetime(2026, 10, 25, 10, 15, tzinfo=BRT)
+    r = checar([btc], cfg, None, domingo)[0]
+    assert r["ok"] and r["info"]["perda_max_rs"] == 3.7, r  # 5 x (100 x 0,0054 + 0,20)
+    assert checar([btc], cfg, None, datetime(2026, 11, 20, 10, 15, tzinfo=BRT))[0]["ok"]  # feriado da B3 não vale
+    bloqueia([dict(btc, entrada=65000.123)], "fora do tick", agora=domingo)
+    bloqueia([btc], "antes de 00:05", agora=domingo.replace(hour=0, minute=0))
+    bloqueia([btc], "depois de 23:30", agora=domingo.replace(hour=23, minute=45))
+    eur = {"simbolo": "EURUSD", "ativo": "EURUSD", "lado": "compra", "contratos": 5, "tipo": "limite",
+           "entrada": 1.085, "stop": 1.084, "alvo": 1.087}
+    r = checar([eur], cfg, None, sexta)[0]
+    assert r["ok"] and r["info"]["perda_max_rs"] == 27.5, r  # 5 x (0,001 x 5400 + 0,10)
+    bloqueia([eur], "fora da sessão", agora=datetime(2026, 10, 24, 10, 15, tzinfo=BRT))  # sábado
+    bloqueia([dict(eur, ativo="XYZ")], "não está em 'ativos'")
     print("trader-risk: autoteste ok")
 
 

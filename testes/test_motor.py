@@ -99,6 +99,49 @@ class TestConta(unittest.TestCase):
             self.assertEqual(cfg["capital"], CFG["capital"])
 
 
+class TestAtivos(unittest.TestCase):
+    """Especificação e sessão vêm do config: WDO, WIN, EURUSD e BTCUSDT."""
+
+    def test_btc_opera_no_domingo(self):
+        c = motor.Conta("Teste", "BTCUSDT", CFG)
+        domingo = datetime(2026, 10, 25, 10, 0)
+        plano = Plano("compra", "limite", 65000.0, 64900.0, 65200.0, "teste")
+        ev = c.colocar([plano], domingo, "BTCUSDT")
+        self.assertEqual([e["tipo"] for e in ev], ["ordem"], ev)
+        self.assertEqual(c.pendentes[0]["ativo"], "BTCUSDT")
+
+    def test_wdo_domingo_continua_fechado(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        ev = c.colocar([COMPRA], datetime(2026, 10, 25, 10, 0), "WDO$")
+        self.assertEqual(ev[0]["tipo"], "block")
+        self.assertTrue(any("fora da sessão" in m for m in ev[0]["motivos"]))
+
+    def test_eurusd_dimensiona_micro_lotes(self):
+        plano = {"simbolo": "EURUSD", "ativo": "EURUSD", "lado": "compra", "entrada": 1.08500,
+                 "stop": 1.08400, "alvo": 1.08700, "setup": "teste"}
+        # 0,001 de risco x R$ 5.400 + 2 x R$ 0,05 = R$ 5,50 por contrato; R$ 100 / 5,50 = 18
+        ordem, limites, decide = motor.size.dimensionar(plano, CFG, "2026-09-01")
+        self.assertEqual(limites["perda máxima por trade"], 18)
+        self.assertEqual((ordem["contratos"], decide), (5, "máximo de contratos"))
+        self.assertAlmostEqual(ordem["plano"]["perda_max_rs"] / ordem["contratos"], 5.5)
+        # e pela conta: 5 micro lotes passam no trader-risk
+        c = motor.Conta("Teste", "EURUSD", CFG)
+        ev = c.colocar([Plano("compra", "limite", 1.085, 1.084, 1.087, "teste")], T, "EURUSD")
+        self.assertEqual([e["tipo"] for e in ev], ["ordem"], ev)
+        self.assertEqual(ev[0]["contratos"], 5)
+
+    def test_wdo_continua_igual(self):
+        c = motor.Conta("Teste", "WDO", CFG)
+        ev = c.colocar([Plano("compra", "limite", 5432.5, 5428.0, 5441.0, "smc-ob")], T, "WDOX26")
+        self.assertEqual([e["tipo"] for e in ev], ["ordem"], ev)
+        self.assertEqual((ev[0]["contratos"], c.pendentes[0]["plano"]["perda_max_rs"]), (2, 92.0))
+        self.assertEqual((c.tick, c.ponto_rs, c.custo), (0.5, 10.0, 0.5))
+
+    def test_ativo_fora_do_config_e_recusado(self):
+        with self.assertRaises(motor.size.Recusa):
+            motor.Conta("Teste", "XYZ", CFG)
+
+
 def dias_sinteticos(n_dias, semente=1):
     """Passeio aleatório de WDO, 114 candles de 5 min por dia a partir das 9:00, em dias úteis."""
     import random
