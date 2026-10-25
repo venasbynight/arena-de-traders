@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import shutil
@@ -93,13 +94,35 @@ class TestCiclo(unittest.TestCase):
             self.assertIn("não respondeu", sala["motivo"])
             self.assertIn(f"{ativo}: o MT5 (Genial) não respondeu em 90 s ({ativo}$)", self.estado["pendencias"])
             self.assertEqual(self.historico.chamadas.count(ativo), 1)  # uma tentativa por ciclo, sem repetir
-        self.assertEqual(list(self.estado["salas"]), ["WDO", "WIN", "EURUSD", "BTCUSDT"])
+        self.assertEqual(list(self.estado["salas"]), ["WDO", "WIN", "EURUSD", "BTCUSDT", "OPCOES"])
         self.assertEqual(self.estado["salas"]["BTCUSDT"]["status"], "ok")
         nomes = [(r["sala"], r["nome"]) for r in self.estado["ranking"]]
         self.assertEqual(sorted(nomes), [("BTCUSDT", "Rafa Rompimento"), ("EURUSD", "Rafa Rompimento"),
                                          ("EURUSD", "Vera VWAP")])
         resultados = [r["prova_resultado"] for r in self.estado["ranking"]]
         self.assertEqual(resultados, sorted(resultados, reverse=True))
+
+    def test_traders_trazem_requisitos_na_ordem(self):
+        for ativo in ("EURUSD", "BTCUSDT"):
+            for t in self.estado["salas"][ativo]["traders"]:
+                self.assertEqual([r["item"] for r in t["requisitos"][:8]], ITENS)
+                self.assertEqual(t["status"] == "promovido", all(r["ok"] for r in t["requisitos"]))
+
+    def test_sala_opcoes_sem_tarefa_e_sem_backtest(self):
+        sala = self.estado["salas"]["OPCOES"]
+        self.assertEqual(list(sala), ["status", "nome", "motivo", "pendencias", "traders"])
+        self.assertEqual((sala["status"], sala["nome"], sala["motivo"]),
+                         ("sem_tarefa", "Ações / Opções", "aguardando definição do Diretor"))
+        self.assertEqual(sala["pendencias"], [
+            "como escolher a opção (call/put, strike, vencimento)", "quais ações acompanhar",
+            "quais operacionais usar no 60 min", "fonte de dados das opções (MT5 Genial?)",
+            "regra de saída e tamanho da posição"])
+        self.assertEqual(sala["traders"], [{"nome": m.NOME, "estilo": m.ESTILO, "status": "sem_tarefa"} for m in TODOS])
+        self.assertNotIn("OPCOES", self.historico.chamadas)
+        self.assertNotIn("OPCOES", [r["sala"] for r in self.estado["ranking"]])
+        self.assertFalse([p for p in self.estado["pendencias"] if p.startswith("OPCOES")])
+        pasta = os.path.join(self.raiz, "relatorios", HOJE.isoformat())
+        self.assertFalse([a for a in os.listdir(pasta) if "opcoes" in a.lower()])
 
     def test_escreve_estado_e_relatorios(self):
         with open(os.path.join(self.raiz, "estado", "firma.json"), encoding="utf-8") as f:
@@ -144,6 +167,45 @@ class TestSemOperacoes(unittest.TestCase):
         pend = [p for p in estado["pendencias"] if p.startswith("EURUSD · Rafa Rompimento: nenhuma operação")]
         self.assertEqual(len(pend), 1, estado["pendencias"])
         self.assertIn("(ordens recusadas: nem 1 contrato cabe (limite: perda máxima por trade)", pend[0])
+        risco = t["requisitos"][8]
+        self.assertEqual((risco["item"], risco["ok"]), ("caber no risco por trade", False))
+        self.assertIn("nem 1 contrato cabe", risco["valor"])
+        self.assertEqual(len(t["requisitos"]), 9)
+
+
+class TestProgresso(unittest.TestCase):
+    def rodar(self, historico_fn, salas):
+        chamadas = []
+        with tempfile.TemporaryDirectory() as raiz:
+            try:
+                gerente.ciclo(CFG, HOJE, historico_fn=historico_fn, salas=salas, raiz=raiz,
+                              ao_progresso=lambda sala, trader: chamadas.append((sala, trader)))
+            except Exception:
+                pass
+        return chamadas
+
+    def test_avisa_cada_trader_e_termina_ocioso(self):
+        chamadas = self.rodar(HistoricoFalso(), {"EURUSD": [rafa_rompimento, vera_vwap]})
+        self.assertEqual(chamadas, [("EURUSD", None), ("EURUSD", "Rafa Rompimento"), ("EURUSD", "Vera VWAP"),
+                                    (None, None)])
+
+    def test_avisa_a_sala_antes_de_baixar_os_candles(self):
+        chamadas = self.rodar(HistoricoFalso(), {"WDO": [rafa_rompimento], "BTCUSDT": [rafa_rompimento]})
+        self.assertEqual(chamadas, [("WDO", None), ("BTCUSDT", None), ("BTCUSDT", "Rafa Rompimento"), (None, None)])
+
+    def test_termina_ocioso_quando_o_laco_dos_traders_estoura(self):
+        with mock.patch.object(gerente, "_avaliar", side_effect=KeyboardInterrupt):
+            chamadas = []
+            with tempfile.TemporaryDirectory() as raiz, self.assertRaises(KeyboardInterrupt):
+                gerente.ciclo(CFG, HOJE, historico_fn=HistoricoFalso(), salas={"EURUSD": [rafa_rompimento]}, raiz=raiz,
+                              ao_progresso=lambda sala, trader: chamadas.append((sala, trader)))
+        self.assertEqual(chamadas[-1], (None, None))
+        self.assertIn(("EURUSD", "Rafa Rompimento"), chamadas)
+
+    def test_termina_ocioso_mesmo_com_erro_no_ciclo(self):
+        with mock.patch.object(gerente, "_gravar_json", side_effect=OSError("disco cheio")):
+            chamadas = self.rodar(HistoricoFalso(), {"EURUSD": [rafa_rompimento]})
+        self.assertEqual(chamadas[-1], (None, None))
 
 
 class TestDecisoes(unittest.TestCase):
@@ -329,6 +391,59 @@ class TestRelatorio(unittest.TestCase):
             self.assertNotIn("USD/BRL", texto, a)
 
 
+ITENS = ["50+ trades no treino", "50+ trades na prova", "treino positivo", "prova positiva", "fator ≥ 1,2 na prova",
+         "sem overfit", "drawdown da prova acima de −R$ 1.500", "sem 5 dias seguidos negativos"]
+CAIU = curva(5000, 4900, 4800, 4700, 4600, 4500, 4400)  # 6 dias seguidos perdendo R$ 100
+
+
+class TestRequisitos(unittest.TestCase):
+    def ok(self, treino, prova, equity=SOBE):
+        reqs = gerente.requisitos(treino, prova, equity, *DIAS_SALA)
+        self.assertEqual([r["item"] for r in reqs], ITENS)
+        for r in reqs:
+            self.assertEqual(sorted(r), ["item", "ok", "valor"])
+            self.assertIsInstance(r["ok"], bool)
+            self.assertIsInstance(r["valor"], str)
+        return [r["ok"] for r in reqs]
+
+    def test_promovido_tudo_ok(self):
+        treino, prova = placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8)
+        self.assertEqual(gerente.decidir(treino, prova, SOBE, *DIAS_SALA)[0], "promovido")
+        self.assertEqual(self.ok(treino, prova), [True] * 8)
+
+    def test_pausado_drawdown_e_dias_seguidos(self):
+        treino, prova = placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, drawdown=-1600.0)
+        self.assertEqual(gerente.decidir(treino, prova, SOBE, *DIAS_SALA)[0], "pausado")
+        self.assertEqual(self.ok(treino, prova), [True] * 6 + [False, True])
+        self.assertEqual(gerente.decidir(treino, placar(2000.0, 60, 1.8), CAIU, *DIAS_SALA)[0], "pausado")
+        self.assertEqual(self.ok(treino, placar(2000.0, 60, 1.8), CAIU), [True] * 7 + [False])
+
+    def test_treino_negativo(self):
+        treino, prova = placar(-3672.0, 169, 0.8), placar(1971.0, 50, 1.81)
+        self.assertEqual(gerente.decidir(treino, prova, SOBE, *DIAS_SALA)[0], "experiencia")
+        self.assertEqual(self.ok(treino, prova), [True, True, False, True, True, True, True, True])
+        reqs = gerente.requisitos(treino, prova, SOBE, *DIAS_SALA)
+        self.assertEqual(reqs[2]["valor"], "−R$ 3.672")
+
+    def test_zero_trades(self):
+        treino, prova = placar(0.0, 0, None, 0.0), placar(0.0, 0, None, 0.0)
+        self.assertEqual(gerente.decidir(treino, prova, SOBE, *DIAS_SALA)[0], "experiencia")
+        self.assertEqual(self.ok(treino, prova), [False, False, False, False, False, True, True, True])
+
+    def test_valor_com_plural_e_sinal_antes_do_rs(self):
+        treino, prova = placar(3100.0, 200, 2.0), placar(-1620.0, 60, 0.5)
+        reqs = gerente.requisitos(treino, prova, curva(5000, 4900), *DIAS_SALA)
+        self.assertEqual(reqs[5]["valor"], "−R$ 77,14 por pregão na prova, R$ 50,00 no treino")
+        self.assertEqual(reqs[7]["valor"], "1 dia seguido")
+        self.assertEqual(gerente.requisitos(treino, prova, CAIU, *DIAS_SALA)[7]["valor"], "6 dias seguidos")
+        self.assertEqual(gerente.requisitos(treino, prova, curva(5000, 5100), *DIAS_SALA)[7]["valor"], "0 dias seguidos")
+
+    def test_overfit_e_fator_baixo(self):
+        treino = placar(3100.0, 200, 2.0)
+        self.assertFalse(self.ok(treino, placar(350.0, 60, 1.5))[5])
+        self.assertFalse(self.ok(treino, placar(1050.0, 60, 1.1))[4])
+
+
 class TestMotorParaOGerente(unittest.TestCase):
     def test_backtest_aceita_parametros(self):
         cs = [k for k in SINTETICOS["EURUSD"] if k.t.date() <= DATAS[4]]
@@ -362,6 +477,24 @@ class TestMotorParaOGerente(unittest.TestCase):
         self.assertNotIn("simbolo_mt5", wdo)
         self.assertEqual(cfg["ativos"]["EURUSD"], {**exemplo["EURUSD"], "custo_por_contrato": 0.07})  # do usuário fica
         self.assertEqual(cfg["ativos"]["BTCUSDT"]["fonte"], "binance")
+
+
+
+class TestCli(unittest.TestCase):
+    def test_opcoes_aparece_como_sem_tarefa(self):
+        estado = {"salas": {"WDO": {"status": "sem_dados", "motivo": "o MT5 não respondeu", "traders": []},
+                            "OPCOES": gerente._opcoes()}, "pendencias": []}
+        saida = io.StringIO()
+        saida.reconfigure = lambda **k: None
+        with mock.patch.object(gerente, "ciclo", return_value=estado), \
+                mock.patch.object(gerente.motor, "carregar_config", return_value=CFG), \
+                mock.patch.object(gerente.sys, "argv", ["gerente.py", "--dia", "2026-10-24"]), \
+                mock.patch.object(gerente.sys, "stdout", saida):
+            gerente.main()
+        texto = saida.getvalue()
+        self.assertIn("WDO: sem dados — o MT5 não respondeu", texto)
+        self.assertIn("OPCOES: sem tarefa (aguardando o Diretor)", texto)
+        self.assertNotIn("OPCOES: sem dados", texto)
 
 
 if __name__ == "__main__":

@@ -119,13 +119,18 @@ class TestServidor(unittest.TestCase):
         self.assertTrue(estado["exemplo"])
         self.assertNotIn("relatorios", estado)
         salas = estado["salas"]
-        self.assertEqual(sorted(salas), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
+        self.assertEqual(sorted(salas), ["BTCUSDT", "EURUSD", "OPCOES", "WDO", "WIN"])
+        self.assertEqual(salas["OPCOES"]["status"], "sem_tarefa")
+        self.assertEqual(len(salas["OPCOES"]["pendencias"]), 5)
+        self.assertEqual(len(salas["OPCOES"]["traders"]), 3)
         for ativo in ("WDO", "WIN"):
             self.assertEqual(salas[ativo]["status"], "sem_dados")
         for ativo in ("EURUSD", "BTCUSDT"):
             self.assertEqual(salas[ativo]["status"], "ok")
             self.assertEqual(len(salas[ativo]["traders"]), 3)
             for t in salas[ativo]["traders"]:
+                self.assertEqual(len(t["requisitos"]), 8, t["nome"])
+                self.assertEqual([set(r) for r in t["requisitos"]], [{"item", "ok", "valor"}] * 8, t["nome"])
                 self.assertEqual(len(t["equity"]), 21, t["nome"])
                 self.assertEqual(len(t["diario"]), 4, t["nome"])
 
@@ -255,7 +260,56 @@ class TestServidor(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(raiz, "trader", "config.json")))
             self.assertTrue(os.path.isfile(os.path.join(raiz, "estado", "firma.json")))
         self.assertEqual(chamadas, [{"pasta": os.path.join(raiz, "dados")}] * 4)
-        self.assertEqual({s["status"] for s in estado["salas"].values()}, {"sem_dados"})
+        self.assertEqual({a: s["status"] for a, s in estado["salas"].items()},
+                         {"WDO": "sem_dados", "WIN": "sem_dados", "EURUSD": "sem_dados", "BTCUSDT": "sem_dados",
+                          "OPCOES": "sem_tarefa"})
+
+    def test_opcoes_sem_tarefa_nao_repete_o_ciclo_das_19h(self):
+        hoje = date(2026, 10, 25)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "firma.json")
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump({"dia": "2026-10-25", "salas": {"WDO": {"status": "ok"}, "OPCOES": {"status": "sem_tarefa"}}}, f)
+            self.assertFalse(servidor.precisa_ciclo(caminho, hoje, refazer_sem_dados=True))
+
+    def test_atividade_ociosa_fora_do_ciclo(self):
+        servidor.registrar_atividade(None, None)
+        status, corpo = self.get("/api/atividade")
+        self.assertEqual(status, 200)
+        ativ = json.loads(corpo)
+        self.assertEqual(sorted(ativ), ["atualizado", "gerente"])
+        self.assertEqual(ativ["gerente"]["estado"], "ocioso")
+        self.assertEqual((ativ["gerente"]["sala"], ativ["gerente"]["trader"]), (None, None))
+        datetime.fromisoformat(ativ["gerente"]["desde"])
+        datetime.fromisoformat(ativ["atualizado"])
+
+    def test_atividade_trabalhando_com_o_callback_do_ciclo(self):
+        vistos = []
+
+        def ciclo_falso(cfg, hoje, historico_fn=None, raiz=None, ao_progresso=None):
+            ao_progresso("WIN", "Rafa Rompimento")
+            vistos.append(json.loads(self.get("/api/atividade")[1])["gerente"])
+            ao_progresso(None, None)
+            return {}
+
+        with tempfile.TemporaryDirectory() as raiz, mock.patch.object(servidor.gerente, "ciclo", ciclo_falso):
+            servidor.ciclo_do_servidor(date(2026, 10, 25), raiz)
+        self.assertEqual({k: vistos[0][k] for k in ("estado", "sala", "trader")},
+                         {"estado": "trabalhando", "sala": "WIN", "trader": "Rafa Rompimento"})
+        self.assertEqual(json.loads(self.get("/api/atividade")[1])["gerente"]["estado"], "ocioso")
+
+    def test_atividade_aguenta_leituras_e_escritas_ao_mesmo_tempo(self):
+        def escreve():
+            for i in range(200):
+                servidor.registrar_atividade("WDO", f"t{i}") if i % 2 else servidor.registrar_atividade(None, None)
+
+        t = threading.Thread(target=escreve)
+        t.start()
+        for _ in range(50):
+            g = json.loads(self.get("/api/atividade")[1])["gerente"]
+            self.assertEqual(g["estado"] == "trabalhando", g["sala"] is not None)  # nunca um estado pela metade
+        t.join()
+        servidor.registrar_atividade(None, None)
 
     def test_firma_html(self):
         status, corpo = self.get("/firma")
