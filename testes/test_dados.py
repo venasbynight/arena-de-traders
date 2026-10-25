@@ -1,7 +1,11 @@
+import io
+import json
 import os
 import tempfile
 import unittest
-from datetime import date, datetime, timedelta
+import urllib.error
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import parse_qs, urlparse
 
 import dados
 from tipos import Candle
@@ -54,10 +58,14 @@ class Mt5Falso:
     TIMEFRAME_M5 = 5
 
     def __init__(self, liga=True, simbolos=("WDO$", "WIN$")):
-        self.liga, self.simbolos, self.baixadas = liga, simbolos, 0
+        self.liga, self.simbolos, self.baixadas, self.args_initialize, self.encerrou = liga, simbolos, 0, None, False
 
-    def initialize(self):
+    def initialize(self, **kw):
+        self.args_initialize = kw
         return self.liga
+
+    def shutdown(self):
+        self.encerrou = True
 
     def symbol_select(self, simbolo, ligar):
         return simbolo in self.simbolos
@@ -67,6 +75,7 @@ class Mt5Falso:
 
     def copy_rates_range(self, simbolo, tf, de, ate):
         self.baixadas += 1
+        de, ate = de.replace(tzinfo=None), ate.replace(tzinfo=None)
         out, dia = [], de
         while dia < ate:
             if dia.weekday() < 5:
@@ -79,7 +88,12 @@ class Mt5Falso:
         return out
 
 
-CFG = {"ativos": {"WDO": {"simbolo_mt5": "WDO$"}, "WIN": {"simbolo_mt5": "WIN$"}}}
+GENIAL = "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe"
+CFG = {"ativos": {
+    "WDO": {"fonte": "mt5", "simbolo": "WDO$", "terminal": GENIAL, "sessao": {"dias": [0, 1, 2, 3, 4]}},
+    "WIN": {"fonte": "mt5", "simbolo": "WIN$", "terminal": GENIAL, "sessao": {"dias": [0, 1, 2, 3, 4]}},
+    "BTCUSDT": {"fonte": "binance", "simbolo": "BTCUSDT", "sessao": {"dias": [0, 1, 2, 3, 4, 5, 6]}},
+}}
 
 
 class TestHistoricoMt5(unittest.TestCase):
@@ -90,7 +104,7 @@ class TestHistoricoMt5(unittest.TestCase):
         self.assertIn("abra o MT5 e faça login", str(e.exception))
 
     def test_simbolo_inexistente(self):
-        cfg = {"ativos": {"WDO": {"simbolo_mt5": "WDO$"}}}
+        cfg = {"ativos": {"WDO": {"simbolo_mt5": "WDO$"}}}  # config antigo: sem fonte/simbolo/terminal
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(dados.ErroDados) as e:
                 dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), cfg, pasta=d, mt5=Mt5Falso(simbolos=()))
@@ -132,6 +146,141 @@ class TestHistoricoMt5(unittest.TestCase):
         self.assertEqual({k.t.date() for k in meio}, {date(2026, 9, 2)})
         self.assertEqual(meio[0].t, datetime(2026, 9, 2, 9, 0))
         self.assertEqual(meio[0].v, 7.0)
+
+
+class BinanceFalso:
+    """Imita api.binance.com/api/v3/klines: candles de 5 min seguidos, respeitando startTime, endTime e limit."""
+
+    def __init__(self):
+        self.pedidos = []
+
+    def __call__(self, url, timeout=30):
+        q = {k: v[0] for k, v in parse_qs(urlparse(url).query).items()}
+        self.pedidos.append(q)
+        t, fim, limite = -(-int(q["startTime"]) // 300000) * 300000, int(q["endTime"]), int(q["limit"])
+        ks = []
+        while t <= fim and len(ks) < limite:
+            ks.append([t, "100.5", "102.5", "99.5", "101.5", "3.25", t + 299999, "330.0", 9, "1.0", "100.0", "0"])
+            t += 300000
+        return io.BytesIO(json.dumps(ks).encode())
+
+
+def erro_http(codigo, corpo=b"{}"):
+    def abrir(url, timeout=30):
+        raise urllib.error.HTTPError(url, codigo, "erro", {}, io.BytesIO(corpo))
+    return abrir
+
+
+class TestBinance(unittest.TestCase):
+    def test_binance_pagina_e_converte_horario(self):
+        falso = BinanceFalso()
+        cs = dados.baixar_binance("BTCUSDT", date(2026, 10, 20), date(2026, 10, 23), abrir_url=falso)
+        self.assertEqual(len(cs), 4 * 288)
+        self.assertEqual(len(falso.pedidos), 2)  # 1000 + 152
+        self.assertEqual(falso.pedidos[0]["symbol"], "BTCUSDT")
+        self.assertEqual(falso.pedidos[0]["interval"], "5m")
+        self.assertEqual(falso.pedidos[0]["limit"], "1000")
+        ms_0300_utc = int((datetime(2026, 10, 20, 3) - datetime(1970, 1, 1)).total_seconds() * 1000)
+        self.assertEqual(int(falso.pedidos[0]["startTime"]), ms_0300_utc)
+        self.assertEqual(int(falso.pedidos[1]["startTime"]), ms_0300_utc + 1000 * 300000)
+        # abertura 03:00 UTC = 00:00 em Brasília; volume base, delta 0
+        self.assertEqual(cs[0], Candle(datetime(2026, 10, 20, 0, 0), 100.5, 102.5, 99.5, 101.5, 3.25, 0.0))
+        self.assertEqual(cs[-1].t, datetime(2026, 10, 23, 23, 55))
+        self.assertEqual([k.t for k in cs], sorted({k.t for k in cs}))
+
+    def test_binance_429_vira_erro_dados(self):
+        with tempfile.TemporaryDirectory() as d:
+            ok = dados.historico("BTCUSDT", date(2026, 10, 20), date(2026, 10, 21), CFG, pasta=d,
+                                 abrir_url=BinanceFalso(), hoje=date(2026, 10, 25))
+            antes = {}
+            for nome in ("BTCUSDT_M5.csv", "BTCUSDT_M5.cobertura.csv"):
+                with open(os.path.join(d, nome), "rb") as f:
+                    antes[nome] = f.read()
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.historico("BTCUSDT", date(2026, 10, 20), date(2026, 10, 23), CFG, pasta=d,
+                                abrir_url=erro_http(429), hoje=date(2026, 10, 25))
+            self.assertIn("Binance indisponível agora (HTTP 429)", str(e.exception))
+            self.assertIn("tente de novo em alguns minutos", str(e.exception))
+            for nome, conteudo in antes.items():  # cache anterior intacto
+                with open(os.path.join(d, nome), "rb") as f:
+                    self.assertEqual(f.read(), conteudo)
+            self.assertEqual(len(dados.ler_csv(os.path.join(d, "BTCUSDT_M5.csv"))), len(ok))
+
+    def test_binance_outros_erros(self):
+        with self.subTest("5xx"):
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.baixar_binance("BTCUSDT", date(2026, 10, 20), date(2026, 10, 20), abrir_url=erro_http(503))
+            self.assertIn("HTTP 503", str(e.exception))
+        with self.subTest("rede"):
+            def sem_rede(url, timeout=30):
+                raise urllib.error.URLError("sem rede")
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.baixar_binance("BTCUSDT", date(2026, 10, 20), date(2026, 10, 20), abrir_url=sem_rede)
+            self.assertIn("Binance indisponível agora", str(e.exception))
+        with self.subTest("4xx mostra a msg da Binance"):
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.baixar_binance("XXX", date(2026, 10, 20), date(2026, 10, 20),
+                                     abrir_url=erro_http(400, b'{"code":-1121,"msg":"Invalid symbol."}'))
+            self.assertIn("Invalid symbol.", str(e.exception))
+            self.assertIn("XXX", str(e.exception))
+
+
+class UmCandle(Mt5Falso):
+    """Devolve um único candle às 03:00 do dia 20/10 no relógio do servidor e guarda o intervalo pedido."""
+
+    def copy_rates_range(self, simbolo, tf, de, ate):
+        self.pedido = (de, ate)
+        return [{"time": (datetime(2026, 10, 20, 3) - datetime(1970, 1, 1)).total_seconds(), "open": 1.0,
+                 "high": 2.0, "low": 0.5, "close": 1.5, "real_volume": 0}]
+
+
+class TestFontes(unittest.TestCase):
+    def test_historico_escolhe_fonte(self):
+        mt5, binance = Mt5Falso(), BinanceFalso()
+        with tempfile.TemporaryDirectory() as d:
+            # sábado e domingo: BTC conta todo dia, e o MT5 não é chamado
+            fim_de_semana = dados.historico("BTCUSDT", date(2026, 10, 24), date(2026, 10, 25), CFG, pasta=d,
+                                            mt5=mt5, abrir_url=binance, hoje=date(2026, 10, 26))
+            self.assertEqual(len(fim_de_semana), 2 * 288)
+            self.assertEqual(mt5.baixadas, 0)
+            dados.historico("BTCUSDT", date(2026, 10, 24), date(2026, 10, 25), CFG, pasta=d,
+                            mt5=mt5, abrir_url=binance, hoje=date(2026, 10, 26))
+            self.assertEqual(len(binance.pedidos), 1)  # segunda chamada vem do cache
+            # WDO vai para o MT5 e não toca na Binance
+            wdo = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=mt5, abrir_url=binance)
+            self.assertEqual((mt5.baixadas, len(wdo), len(binance.pedidos)), (1, 12, 1))
+
+    def test_fonte_desconhecida(self):
+        cfg = {"ativos": {"X": {"fonte": "bolsa-de-marte", "simbolo": "X"}}}
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(dados.ErroDados) as e:
+                dados.historico("X", date(2026, 9, 1), date(2026, 9, 1), cfg, pasta=d)
+        self.assertIn("bolsa-de-marte", str(e.exception))
+
+    def test_mt5_terminal_e_deslocamento(self):
+        terminal = "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+        mt5 = UmCandle(simbolos=("EURUSD",))
+        cs = dados.baixar_mt5("EURUSD", date(2026, 10, 20), date(2026, 10, 20), mt5, terminal=terminal, deslocamento_h=3)
+        self.assertEqual(mt5.args_initialize, {"path": terminal})
+        self.assertTrue(mt5.encerrou)  # solta o terminal para o próximo ativo poder usar outro
+        self.assertEqual(cs[0].t, datetime(2026, 10, 20, 0, 0))  # 03:00 do servidor = 00:00 de Brasília
+        # o dia 20/10 de Brasília vai de 03:00 do dia 20 a 02:59:59 do dia 21 no relógio do servidor, em UTC
+        # explícito (sem fuso, o pacote usaria o horário do PC) e sem o candle das 03:00 do dia seguinte
+        self.assertEqual(mt5.pedido, (datetime(2026, 10, 20, 3, tzinfo=timezone.utc),
+                                      datetime(2026, 10, 21, 2, 59, 59, tzinfo=timezone.utc)))
+        # sem terminal: initialize() sem argumentos, sem deslocamento
+        mt5 = UmCandle(simbolos=("EURUSD",))
+        cs = dados.baixar_mt5("EURUSD", date(2026, 10, 20), date(2026, 10, 20), mt5)
+        self.assertEqual((mt5.args_initialize, cs[0].t), ({}, datetime(2026, 10, 20, 3, 0)))
+
+    def test_historico_repassa_terminal_e_deslocamento_do_config(self):
+        terminal = "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+        cfg = {"ativos": {"EURUSD": {"fonte": "mt5", "simbolo": "EURUSD", "terminal": terminal, "deslocamento_h": 3}}}
+        mt5 = UmCandle(simbolos=("EURUSD",))
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("EURUSD", date(2026, 10, 20), date(2026, 10, 20), cfg, pasta=d, mt5=mt5)
+        self.assertEqual(mt5.args_initialize, {"path": terminal})
+        self.assertEqual([k.t for k in cs], [datetime(2026, 10, 20, 0, 0)])
 
 
 if __name__ == "__main__":
