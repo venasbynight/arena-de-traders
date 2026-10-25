@@ -1210,7 +1210,8 @@ Object.assign(controles, {
   minDistance: 3, maxDistance: 40,
   screenSpacePanning: false,
 });
-controles.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
+// botão esquerdo arrasta a cena (um clique sem arrastar continua selecionando: ver o limiar de 6 px no pointerup)
+controles.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
 
 function focar(x, z, distancia, azimute = -35 * GRAU, polar = 45 * GRAU) {
   controles.target.set(x, 0, z);
