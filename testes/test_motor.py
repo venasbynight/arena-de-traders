@@ -137,6 +137,12 @@ class TestAtivos(unittest.TestCase):
         self.assertEqual((ev[0]["contratos"], c.pendentes[0]["plano"]["perda_max_rs"]), (2, 92.0))
         self.assertEqual((c.tick, c.ponto_rs, c.custo), (0.5, 10.0, 0.5))
 
+    def test_size_e_check_leem_a_mesma_especificacao(self):
+        """check.especificacao é uma cópia de size.especificacao (cada skill roda sozinha): não podem divergir."""
+        self.assertGreaterEqual(len(CFG["ativos"]), 4)
+        for a in CFG["ativos"]:
+            self.assertEqual(motor.size.especificacao(a, CFG), motor.check.especificacao(a, CFG), a)
+
     def test_ativo_fora_do_config_e_recusado(self):
         with self.assertRaises(motor.size.Recusa):
             motor.Conta("Teste", "XYZ", CFG)

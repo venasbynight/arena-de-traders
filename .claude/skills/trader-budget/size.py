@@ -70,6 +70,8 @@ def dimensionar(plano, cfg, hoje, limite=None):
     simbolo = str(plano.get("simbolo", "")).upper()
     # o motor sempre manda plano["ativo"]; sem ele, WDO/WIN saem das 3 primeiras letras do símbolo
     ativo = str(plano.get("ativo") or simbolo[:3]).upper()
+    if simbolo[:3] in ATIVOS and simbolo[:3] != ativo:  # plano escrito à mão: símbolo de um ativo, tamanho de outro
+        raise Recusa(f"símbolo {simbolo} é do {simbolo[:3]}, mas o plano diz ativo {ativo}")
     spec = especificacao(ativo, cfg)
     if plano.get("data") and plano["data"] != hoje:
         raise Recusa(f"o plano é de {plano['data']}, não de hoje ({hoje}); faça um plano novo")
@@ -185,7 +187,9 @@ def teste():
     assert decide == "máximo de contratos" and ordem["ativo"] == "EURUSD", (ordem, decide)
     assert ordem["plano"]["perda_max_rs"] == 27.5, ordem
     for ruim, trecho in ((dict(eur, ativo="XYZ"), "não está em 'ativos'"),
-                         (dict(eur, entrada=1.085004), "fora do tick")):
+                         (dict(eur, entrada=1.085004), "fora do tick"),
+                         (dict(plano, ativo="WIN"), "mas o plano diz ativo WIN"),  # WDOX26 não dimensiona como WIN
+                         (dict(eur, simbolo="WDOX26"), "mas o plano diz ativo EURUSD")):
         try:
             dimensionar(ruim, cfg, "2026-10-24")
             raise AssertionError(f"devia recusar: {trecho}")
@@ -200,6 +204,8 @@ def teste():
     assert especificacao("WDO", cfg)["tick"] == 1.0
     # preço grande de BTC não pode falhar no tick por erro de ponto flutuante
     assert all(no_tick(round(p / 0.01) * 0.01, 0.01) for p in range(60000, 120000, 7))
+    assert no_tick(111856.93, 0.01)  # erro de 1,9e-9 em tick: reprovava com a tolerância antiga de 1e-9
+    assert not no_tick(111856.935, 0.01)  # meio tick continua fora
     print("trader-budget: autoteste ok")
 
 

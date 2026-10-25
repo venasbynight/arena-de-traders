@@ -65,9 +65,10 @@ def especificacao(ativo, cfg):
     base = {**ATIVOS.get(ativo, {}), **(regras or {})}
     if regras is None or "ponto_rs" not in base or "tick" not in base:
         return None
+    # margem e custo com .get: entrada incompleta bloqueia a entrada (com motivo) e nunca derruba uma saída
     return {"ponto_rs": float(base["ponto_rs"]), "tick": float(base["tick"]),
-            "margem_por_contrato": base["margem_por_contrato"],
-            "custo_por_contrato": base["custo_por_contrato"], "sessao": sessao_de(base, cfg)}
+            "margem_por_contrato": base.get("margem_por_contrato"),
+            "custo_por_contrato": base.get("custo_por_contrato"), "sessao": sessao_de(base, cfg)}
 
 
 def janela(agora, cfg, sessao):
@@ -121,8 +122,13 @@ def checar(ordens, cfg, dia, agora):
                                "avisos": avisos, "info": info, "impressao": impressao(o)})
             continue
 
+        raiz = str(o.get("simbolo", "")).upper()[:3]
         if not spec:
             motivos.append(f"ativo {ativo or o.get('simbolo')} não está em 'ativos' do config")
+        elif None in (spec["margem_por_contrato"], spec["custo_por_contrato"]):
+            motivos.append(f"ativo {ativo} sem margem_por_contrato ou custo_por_contrato no config")
+        if raiz in ATIVOS and raiz != ativo:  # ordem escrita à mão: símbolo de um ativo, tamanho de outro
+            motivos.append(f"símbolo {o.get('simbolo')} é do {raiz}, mas a ordem diz ativo {ativo}")
         if o.get("stop") is None:
             motivos.append("ordem sem stop")
         if o.get("alvo") is None:
@@ -268,6 +274,16 @@ def teste():
     assert r["ok"] and r["info"]["perda_max_rs"] == 27.5, r  # 5 x (0,001 x 5400 + 0,10)
     bloqueia([eur], "fora da sessão", agora=datetime(2026, 10, 24, 10, 15, tzinfo=BRT))  # sábado
     bloqueia([dict(eur, ativo="XYZ")], "não está em 'ativos'")
+    # símbolo de um ativo com o nome de outro não passa (WDOX26 não pode ser dimensionada como WIN)
+    bloqueia([dict(ordem, ativo="WIN")], "mas a ordem diz ativo WIN")
+    bloqueia([dict(eur, simbolo="WDOX26")], "mas a ordem diz ativo EURUSD")
+    # entrada do config sem margem/custo: a entrada é bloqueada com motivo, a saída continua passando
+    cfg["ativos"]["INCOMPLETO"] = {"ponto_rs": 1, "tick": 0.5}
+    inc = {"simbolo": "INCOMPLETO", "ativo": "INCOMPLETO", "lado": "compra", "contratos": 1, "tipo": "limite",
+           "entrada": 100.0, "stop": 99.0, "alvo": 102.0}
+    bloqueia([inc], "sem margem_por_contrato ou custo_por_contrato")
+    sai = dict(inc, lado="venda", tipo="mercado", saida=True)
+    assert checar([sai], cfg, None, domingo)[0]["ok"]  # nem o domingo bloqueia a saída
     print("trader-risk: autoteste ok")
 
 
