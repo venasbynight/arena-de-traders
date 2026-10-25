@@ -28,6 +28,10 @@ DRAWDOWN_PAUSA = -1500.0
 DIAS_NEGATIVOS_PAUSA = 5
 DIA_NEGATIVO = -25.0  # só conta como dia negativo perder R$ 25 ou mais (custos miúdos não pausam ninguém)
 DIARIO_LINHAS = 8
+# a sala de ações/opções ainda não tem operacional: o quadro lista o que o Diretor precisa decidir
+PENDENCIAS_OPCOES = ["como escolher a opção (call/put, strike, vencimento)", "quais ações acompanhar",
+                     "quais operacionais usar no 60 min", "fonte de dados das opções (MT5 Genial?)",
+                     "regra de saída e tamanho da posição"]
 TRAVA = threading.Lock()  # dois ciclos no mesmo processo nunca rodam ao mesmo tempo
 
 
@@ -94,21 +98,54 @@ def _negativos_seguidos(equity):
     return pior
 
 
+def _por_pregao(treino, prova, n_treino, n_prova):
+    """(ganho por pregão do treino, da prova, overfit). Prova sem nenhum trade não é overfit."""
+    t_dia, p_dia = treino["resultado"] / max(n_treino, 1), prova["resultado"] / max(n_prova, 1)
+    return t_dia, p_dia, treino["resultado"] > 0 and prova["trades"] > 0 and p_dia < 0.5 * t_dia
+
+
+def requisitos(treino, prova, equity, n_treino, n_prova):
+    """Os 8 critérios de promoção/pausa, na ordem do quadro da firma: [{"item", "ok", "valor"}].
+
+    `decidir` usa estes mesmos `ok`; aqui o `valor` mostra o número que decidiu.
+    """
+    t_dia, p_dia, overfit = _por_pregao(treino, prova, n_treino, n_prova)
+    seguidos = _negativos_seguidos(equity)
+    fator = "sem perdas" if prova["fator_lucro"] is None and prova["resultado"] > 0 else num(prova["fator_lucro"])
+    return [
+        {"item": f"{MIN_TRADES}+ trades no treino", "ok": treino["trades"] >= MIN_TRADES,
+         "valor": f"{treino['trades']} trades"},
+        {"item": f"{MIN_TRADES}+ trades na prova", "ok": prova["trades"] >= MIN_TRADES,
+         "valor": f"{prova['trades']} trades"},
+        {"item": "treino positivo", "ok": treino["resultado"] > 0, "valor": brl(treino["resultado"])},
+        {"item": "prova positiva", "ok": prova["resultado"] > 0, "valor": brl(prova["resultado"])},
+        {"item": f"fator ≥ {num(FATOR_MIN, 1)} na prova", "ok": prova["trades"] > 0 and _fator(prova) >= FATOR_MIN,
+         "valor": fator},
+        {"item": "sem overfit", "ok": not overfit,
+         "valor": f"R$ {num(p_dia)} por pregão na prova, R$ {num(t_dia)} no treino"},
+        {"item": f"drawdown da prova acima de {brl(DRAWDOWN_PAUSA)}", "ok": prova["drawdown"] >= DRAWDOWN_PAUSA,
+         "valor": brl(prova["drawdown"])},
+        {"item": f"sem {DIAS_NEGATIVOS_PAUSA} dias seguidos negativos", "ok": seguidos < DIAS_NEGATIVOS_PAUSA,
+         "valor": f"{seguidos} seguidos"},
+    ]
+
+
 def decidir(treino, prova, equity, n_treino, n_prova):
     """(status, overfit, decisão em uma linha). A pausa vence a promoção: risco primeiro.
 
     `n_treino`/`n_prova`: pregões de cada janela. O overfit compara o ganho por pregão (as janelas têm tamanhos
-    diferentes); prova sem nenhum trade não promove, mas também não é overfit.
+    diferentes); prova sem nenhum trade não promove, mas também não é overfit. Os critérios vêm de `requisitos`.
     """
-    t_dia, p_dia = treino["resultado"] / max(n_treino, 1), prova["resultado"] / max(n_prova, 1)
-    overfit = treino["resultado"] > 0 and prova["trades"] > 0 and p_dia < 0.5 * t_dia
+    t50, p50, treino_pos, prova_pos, fator_ok, sem_overfit, drawdown_ok, dias_ok = (
+        r["ok"] for r in requisitos(treino, prova, equity, n_treino, n_prova))
+    t_dia, p_dia, overfit = _por_pregao(treino, prova, n_treino, n_prova)
     nota = f"overfit: prova rende R$ {num(p_dia)} por pregão, menos de 50% dos R$ {num(t_dia)} do treino"
     pausa = []
-    if prova["drawdown"] < DRAWDOWN_PAUSA:
+    if not drawdown_ok:
         pausa.append(f"drawdown da prova {brl(prova['drawdown'])}, pior que {brl(DRAWDOWN_PAUSA)}")
-    seguidos = _negativos_seguidos(equity)
-    if seguidos >= DIAS_NEGATIVOS_PAUSA:
-        pausa.append(f"{seguidos} dias seguidos negativos na prova (perda de R$ {-DIA_NEGATIVO:.0f} ou mais em cada)")
+    if not dias_ok:
+        pausa.append(f"{_negativos_seguidos(equity)} dias seguidos negativos na prova "
+                     f"(perda de R$ {-DIA_NEGATIVO:.0f} ou mais em cada)")
     if pausa:
         return "pausado", overfit, "pausado: " + "; ".join(pausa + ([nota] if overfit else []))
 
@@ -116,17 +153,17 @@ def decidir(treino, prova, equity, n_treino, n_prova):
     if not prova["trades"]:
         faltas.append("sem trades na prova")
     else:
-        if prova["resultado"] <= 0:
+        if not prova_pos:
             faltas.append(f"prova {brl(prova['resultado'])} (precisa ser positiva)")
-        if _fator(prova) < FATOR_MIN:
+        if not fator_ok:
             faltas.append(f"fator {num(prova['fator_lucro'])} na prova (mínimo {num(FATOR_MIN, 1)})")
-        if prova["trades"] < MIN_TRADES:
+        if not p50:
             faltas.append(f"só {prova['trades']} trades na prova (mínimo {MIN_TRADES})")
-    if treino["trades"] < MIN_TRADES:
+    if not t50:
         faltas.append(f"só {treino['trades']} trades no treino (mínimo {MIN_TRADES})")
-    if treino["resultado"] <= 0:  # prova boa depois de treino perdedor é sorte até provar o contrário
+    if not treino_pos:  # prova boa depois de treino perdedor é sorte até provar o contrário
         faltas.append(f"treino {'negativo' if treino['resultado'] < 0 else 'zerado'} ({brl(treino['resultado'])})")
-    if overfit:
+    if not sem_overfit:
         faltas.append(nota)
     if faltas:
         return "experiencia", overfit, "segue em experiência: " + "; ".join(faltas)
@@ -165,13 +202,17 @@ def _avaliar(modulo, ativo, treino, prova, cfg, periodos):
     status, overfit, decisao = decidir(placar_treino, r["placar"], equity, periodos["treino"]["pregoes"],
                                        periodos["prova"]["pregoes"])
     pendencia = None
+    reqs = requisitos(placar_treino, r["placar"], equity, periodos["treino"]["pregoes"], periodos["prova"]["pregoes"])
     if not placar_treino["trades"] and not r["placar"]["trades"]:
         recusa = _recusa_mais_comum(r_treino["eventos"] + r["eventos"])
         pendencia = f"{ativo} · {modulo.NOME}: nenhuma operação " + (
             f"(ordens recusadas: {recusa})" if recusa else "(nenhuma ordem no período)")
+        if recusa:
+            reqs.append({"item": "caber no risco por trade", "ok": False, "valor": recusa})
     return ({"nome": modulo.NOME, "estilo": modulo.ESTILO, "status": status, "parametros": params,
              "overfit": overfit, "treino": placar_treino, "prova": r["placar"], "equity": equity,
-             "diario": _diario(r["eventos"], prova[-1].t.date().isoformat()), "decisao": decisao},
+             "diario": _diario(r["eventos"], prova[-1].t.date().isoformat()), "decisao": decisao,
+             "requisitos": reqs},
             r["operacoes"], pendencia)
 
 
@@ -181,7 +222,7 @@ def _periodo(candles):
             "pregoes": len(datas)}
 
 
-def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log):
+def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log, ao_progresso=lambda sala, trader: None):
     """Estado da sala com os traders avaliados; trader com bug vira pendência e a sala segue.
 
     Se todos falharam, a sala fica sem_dados (a firma mostra a placa) em vez de "ok" sem ninguém.
@@ -193,6 +234,7 @@ def _sala(ativo, candles, modulos, cfg, operacoes, pendencias, log):
         f"prova {periodos['prova']['pregoes']}")
     erros = []
     for m in modulos:
+        ao_progresso(ativo, m.NOME)
         try:
             t, ops, pendencia = _avaliar(m, ativo, treino, prova, cfg, periodos)
         except Exception as e:  # bug num trader não leva a sala junto
@@ -232,61 +274,76 @@ def _baixar(ativos, historico_fn, de, ate, cfg):
         yield fila.get()
 
 
-def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz=".", log=None):
-    """Um ciclo do gerente para o dia `hoje` (histórico até ontem). Grava estado e relatórios; devolve o estado."""
+def _opcoes():
+    return {"status": "sem_tarefa", "nome": "Ações / Opções", "motivo": "aguardando definição do Diretor",
+            "pendencias": list(PENDENCIAS_OPCOES),
+            "traders": [{"nome": m.NOME, "estilo": m.ESTILO, "status": "sem_tarefa"} for m in traders.TODOS]}
+
+
+def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz=".", log=None, ao_progresso=None):
+    """Um ciclo do gerente para o dia `hoje` (histórico até ontem). Grava estado e relatórios; devolve o estado.
+
+    `ao_progresso(sala, trader)` é chamado antes de cada trader e, ao fim (mesmo com erro), como (None, None).
+    A sala OPCOES entra no estado de todo ciclo, sem backtest.
+    """
     log = log or (lambda msg: None)
+    ao_progresso = ao_progresso or (lambda sala, trader: None)
     with TRAVA:
-        de, ate = hoje - timedelta(days=JANELA_DIAS), hoje - timedelta(days=1)
-        pasta_estado = os.path.join(raiz, "estado")
-        anterior = ler_json(os.path.join(pasta_estado, "firma.json")).get("salas", {})
-        # quem respondeu no ciclo anterior baixa primeiro; a espera de quem falhou corre junto com o cálculo
-        ordem = sorted(salas, key=lambda a: anterior.get(a, {}).get("status") != "ok")
-        feitas, operacoes, avisos = {}, {}, {}
-        for ativo, candles, erro in _baixar(ordem, historico_fn, de, ate, cfg):
-            sala = None
-            if candles:
-                try:
-                    sala = _sala(ativo, candles, salas[ativo], cfg, operacoes, avisos.setdefault(ativo, []), log)
-                except Exception as e:  # bug na sala não leva o ciclo junto
-                    erro = f"erro ao processar a sala: {type(e).__name__}: {e}"
-            if sala is None:
-                motivo = erro or f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y}"
-                sala = {"status": "sem_dados", "motivo": motivo, "traders": []}
-                log(f"{ativo}: sem dados ({motivo})")
-            feitas[ativo] = sala
-
-        salas_estado = {a: feitas[a] for a in salas}
-        ranking = sorted(({"sala": a, "nome": t["nome"], "prova_resultado": t["prova"]["resultado"]}
-                          for a, s in salas_estado.items() for t in s["traders"]),
-                         key=lambda r: -r["prova_resultado"])
-        pendencias = [f"{a}: {s['motivo']}" for a, s in salas_estado.items() if s["status"] != "ok"]
-        pendencias += [p for a in salas for p in avisos.get(a, [])]
-        pendencias += [f"{t['nome']} ({a}) {t['decisao']}" for a, s in salas_estado.items()
-                       for t in s["traders"] if t["status"] == "pausado"]
-        estado = {"gerado_em": datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds"),
-                  "dia": hoje.isoformat(),
-                  "premissas": {"capital": cfg["capital"], "usd_brl": cfg.get("usd_brl"), "janela_dias": JANELA_DIAS,
-                                "prova_pregoes": PROVA_PREGOES,
-                                # tick (casas dos preços nos relatórios) e ponto_rs fixo de cada ativo do config
-                                "ativos": {a: {"tick": e.get("tick"), "ponto_rs": e.get("ponto_rs")}
-                                           for a, e in cfg.get("ativos", {}).items()}},
-                  "salas": salas_estado, "ranking": ranking, "pendencias": pendencias}
-
-        caminho_params = os.path.join(pasta_estado, "parametros.json")
-        # sala sem dados ou trader com erro hoje fica com os parâmetros do último ciclo bom
-        parametros = ler_json(caminho_params)
-        for a, s in salas_estado.items():
-            if s["traders"]:
-                parametros[a] = {**parametros.get(a, {}), **{t["nome"]: t["parametros"] for t in s["traders"]}}
-        _gravar_json(caminho_params, parametros)
-        caminho_estado = os.path.join(pasta_estado, "firma.json")
-        _gravar_json(caminho_estado, estado)  # antes dos relatórios: um bug neles não perde o ciclo
         try:
-            relatorio.escrever(estado, operacoes, os.path.join(raiz, "relatorios", hoje.isoformat()))
-        except Exception as e:
-            estado["pendencias"].append(f"relatórios: erro ao escrever: {type(e).__name__}: {e}")
-            _gravar_json(caminho_estado, estado)
-        return estado
+            de, ate = hoje - timedelta(days=JANELA_DIAS), hoje - timedelta(days=1)
+            pasta_estado = os.path.join(raiz, "estado")
+            anterior = ler_json(os.path.join(pasta_estado, "firma.json")).get("salas", {})
+            # quem respondeu no ciclo anterior baixa primeiro; a espera de quem falhou corre junto com o cálculo
+            ordem = sorted(salas, key=lambda a: anterior.get(a, {}).get("status") != "ok")
+            feitas, operacoes, avisos = {}, {}, {}
+            for ativo, candles, erro in _baixar(ordem, historico_fn, de, ate, cfg):
+                sala = None
+                if candles:
+                    try:
+                        sala = _sala(ativo, candles, salas[ativo], cfg, operacoes, avisos.setdefault(ativo, []), log,
+                                       ao_progresso)
+                    except Exception as e:  # bug na sala não leva o ciclo junto
+                        erro = f"erro ao processar a sala: {type(e).__name__}: {e}"
+                if sala is None:
+                    motivo = erro or f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y}"
+                    sala = {"status": "sem_dados", "motivo": motivo, "traders": []}
+                    log(f"{ativo}: sem dados ({motivo})")
+                feitas[ativo] = sala
+
+            salas_estado = {a: feitas[a] for a in salas}
+            ranking = sorted(({"sala": a, "nome": t["nome"], "prova_resultado": t["prova"]["resultado"]}
+                              for a, s in salas_estado.items() for t in s["traders"]),
+                             key=lambda r: -r["prova_resultado"])
+            pendencias = [f"{a}: {s['motivo']}" for a, s in salas_estado.items() if s["status"] != "ok"]
+            pendencias += [p for a in salas for p in avisos.get(a, [])]
+            pendencias += [f"{t['nome']} ({a}) {t['decisao']}" for a, s in salas_estado.items()
+                           for t in s["traders"] if t["status"] == "pausado"]
+            estado = {"gerado_em": datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds"),
+                      "dia": hoje.isoformat(),
+                      "premissas": {"capital": cfg["capital"], "usd_brl": cfg.get("usd_brl"), "janela_dias": JANELA_DIAS,
+                                    "prova_pregoes": PROVA_PREGOES,
+                                    # tick (casas dos preços nos relatórios) e ponto_rs fixo de cada ativo do config
+                                    "ativos": {a: {"tick": e.get("tick"), "ponto_rs": e.get("ponto_rs")}
+                                               for a, e in cfg.get("ativos", {}).items()}},
+                      "salas": {**salas_estado, "OPCOES": _opcoes()}, "ranking": ranking, "pendencias": pendencias}
+
+            caminho_params = os.path.join(pasta_estado, "parametros.json")
+            # sala sem dados ou trader com erro hoje fica com os parâmetros do último ciclo bom
+            parametros = ler_json(caminho_params)
+            for a, s in salas_estado.items():
+                if s["traders"]:
+                    parametros[a] = {**parametros.get(a, {}), **{t["nome"]: t["parametros"] for t in s["traders"]}}
+            _gravar_json(caminho_params, parametros)
+            caminho_estado = os.path.join(pasta_estado, "firma.json")
+            _gravar_json(caminho_estado, estado)  # antes dos relatórios: um bug neles não perde o ciclo
+            try:
+                relatorio.escrever({**estado, "salas": salas_estado}, operacoes, os.path.join(raiz, "relatorios", hoje.isoformat()))
+            except Exception as e:
+                estado["pendencias"].append(f"relatórios: erro ao escrever: {type(e).__name__}: {e}")
+                _gravar_json(caminho_estado, estado)
+            return estado
+        finally:
+            ao_progresso(None, None)
 
 
 def main():

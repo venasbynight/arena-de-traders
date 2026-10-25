@@ -28,6 +28,28 @@ ESTADO_FIRMA = os.path.join(RAIZ, "estado", "firma.json")  # escrito pelo gerent
 PARAMETROS = os.path.join(RAIZ, "estado", "parametros.json")  # parâmetros escolhidos pelo gerente
 EXEMPLO_FIRMA = os.path.join(WEB, "firma.exemplo.json")
 RELATORIOS = os.path.join(RAIZ, "relatorios")
+LOCK_ATIVIDADE = threading.Lock()
+# o que o gerente faz agora; escrito pela thread do ciclo, lido pelas requisições (sempre com o lock)
+ATIVIDADE = {"estado": "ocioso", "sala": None, "trader": None, "desde": ""}
+
+
+def _agora():
+    return datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds")
+
+
+def registrar_atividade(sala, trader):
+    """Callback `ao_progresso` do ciclo: (sala, trader) = trabalhando nele; (None, None) = ocioso."""
+    novo = {"estado": "trabalhando" if sala else "ocioso", "sala": sala or None, "trader": trader if sala else None}
+    with LOCK_ATIVIDADE:
+        if any(ATIVIDADE[k] != v for k, v in novo.items()) or not ATIVIDADE["desde"]:
+            ATIVIDADE.update(novo, desde=_agora())
+
+
+def atividade():
+    with LOCK_ATIVIDADE:
+        if not ATIVIDADE["desde"]:  # ocioso desde o arranque do servidor
+            ATIVIDADE["desde"] = _agora()
+        return {"gerente": dict(ATIVIDADE), "atualizado": _agora()}
 
 
 class Arena(BaseHTTPRequestHandler):
@@ -68,6 +90,8 @@ class Arena(BaseHTTPRequestHandler):
             return self._enviar(200, [{"nome": m.NOME, "estilo": m.ESTILO} for m in traders.TODOS])
         if url.path == "/api/firma":
             return self._firma()
+        if url.path == "/api/atividade":
+            return self._enviar(200, atividade())
         if url.path == "/api/backtest":
             return self._backtest(parse_qs(url.query))
         self._enviar(404, {"erro": "não encontrado"})
@@ -153,7 +177,7 @@ def precisa_ciclo(caminho, hoje, refazer_sem_dados=False):
             estado = json.load(f)
         if estado.get("dia") != hoje.isoformat():
             return True
-        return refazer_sem_dados and any(s.get("status") != "ok" for s in estado.get("salas", {}).values())
+        return refazer_sem_dados and any(s.get("status") not in ("ok", "sem_tarefa") for s in estado.get("salas", {}).values())
     except (OSError, ValueError, AttributeError, TypeError):
         return True
 
@@ -168,7 +192,8 @@ def _log(msg):
 def ciclo_do_servidor(hoje, raiz=RAIZ):
     """Ciclo do gerente com os caminhos da raiz do projeto: o servidor funciona aberto de qualquer pasta."""
     cfg = motor.carregar_config(os.path.join(raiz, "trader", "config.json"))
-    return gerente.ciclo(cfg, hoje, historico_fn=functools.partial(historico, raiz=raiz), raiz=raiz)
+    return gerente.ciclo(cfg, hoje, historico_fn=functools.partial(historico, raiz=raiz), raiz=raiz,
+                         ao_progresso=registrar_atividade)
 
 
 def laco_do_gerente(rodar, relogio, dormir=time.sleep):

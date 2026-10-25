@@ -133,7 +133,49 @@
       "11:40 Comprei no meio do FVG (1,0868); stop abaixo do OB.",
       "14:20 Alvo atingido, saí com lucro."
      ],
-     "decisao": "promovida: prova positiva, fator 1,42 com 64 trades e sem overfit"
+     "decisao": "promovida: prova positiva, fator 1,42 com 64 trades e sem overfit",
+     "requisitos": [
+      {
+       "item": "50+ trades no treino",
+       "ok": true,
+       "valor": "256 trades"
+      },
+      {
+       "item": "50+ trades na prova",
+       "ok": true,
+       "valor": "64 trades"
+      },
+      {
+       "item": "treino positivo",
+       "ok": true,
+       "valor": "+R$ 3.120"
+      },
+      {
+       "item": "prova positiva",
+       "ok": true,
+       "valor": "+R$ 1.840"
+      },
+      {
+       "item": "fator ≥ 1,2 na prova",
+       "ok": true,
+       "valor": "1,42"
+      },
+      {
+       "item": "sem overfit",
+       "ok": true,
+       "valor": "R$ 87,62 por pregão na prova, R$ 50,32 no treino"
+      },
+      {
+       "item": "drawdown da prova acima de −R$ 1.500",
+       "ok": true,
+       "valor": "−R$ 420"
+      },
+      {
+       "item": "sem 5 dias seguidos negativos",
+       "ok": true,
+       "valor": "1 seguidos"
+      }
+     ]
     },
     {
      "nome": "Rafa Rompimento",
@@ -253,7 +295,49 @@
       "03:10 Stop no lado oposto da faixa.",
       "09:00 Já rompi para os dois lados hoje; fico de fora."
      ],
-     "decisao": "segue em experiência: só 38 trades na prova (mínimo 50)"
+     "decisao": "segue em experiência: só 38 trades na prova (mínimo 50)",
+     "requisitos": [
+      {
+       "item": "50+ trades no treino",
+       "ok": true,
+       "valor": "152 trades"
+      },
+      {
+       "item": "50+ trades na prova",
+       "ok": false,
+       "valor": "38 trades"
+      },
+      {
+       "item": "treino positivo",
+       "ok": true,
+       "valor": "+R$ 580"
+      },
+      {
+       "item": "prova positiva",
+       "ok": true,
+       "valor": "+R$ 310"
+      },
+      {
+       "item": "fator ≥ 1,2 na prova",
+       "ok": false,
+       "valor": "1,08"
+      },
+      {
+       "item": "sem overfit",
+       "ok": true,
+       "valor": "R$ 14,76 por pregão na prova, R$ 9,35 no treino"
+      },
+      {
+       "item": "drawdown da prova acima de −R$ 1.500",
+       "ok": true,
+       "valor": "−R$ 380"
+      },
+      {
+       "item": "sem 5 dias seguidos negativos",
+       "ok": true,
+       "valor": "2 seguidos"
+      }
+     ]
     },
     {
      "nome": "Vera VWAP",
@@ -373,7 +457,49 @@
       "07:30 Voltou para a VWAP (1,0842); alvo atingido.",
       "13:15 Desvio estreito, sem sinal de entrada."
      ],
-     "decisao": "pausada: drawdown da prova −R$ 1.710, pior que −R$ 1.500; overfit (prova < 50% do treino)"
+     "decisao": "pausada: drawdown da prova −R$ 1.710, pior que −R$ 1.500; overfit (prova < 50% do treino)",
+     "requisitos": [
+      {
+       "item": "50+ trades no treino",
+       "ok": true,
+       "valor": "220 trades"
+      },
+      {
+       "item": "50+ trades na prova",
+       "ok": true,
+       "valor": "55 trades"
+      },
+      {
+       "item": "treino positivo",
+       "ok": true,
+       "valor": "+R$ 2.240"
+      },
+      {
+       "item": "prova positiva",
+       "ok": false,
+       "valor": "−R$ 1.620"
+      },
+      {
+       "item": "fator ≥ 1,2 na prova",
+       "ok": false,
+       "valor": "0,71"
+      },
+      {
+       "item": "sem overfit",
+       "ok": false,
+       "valor": "R$ −77,14 por pregão na prova, R$ 36,13 no treino"
+      },
+      {
+       "item": "drawdown da prova acima de −R$ 1.500",
+       "ok": false,
+       "valor": "−R$ 1.710"
+      },
+      {
+       "item": "sem 5 dias seguidos negativos",
+       "ok": true,
+       "valor": "3 seguidos"
+      }
+     ]
     }
    ]
   },
@@ -499,7 +625,49 @@
       "11:40 Comprei no meio do FVG (67.890); stop abaixo do OB.",
       "14:20 Alvo atingido, saí com lucro."
      ],
-     "decisao": "segue em experiência: fator 1,17 na prova, abaixo de 1,2"
+     "decisao": "segue em experiência: fator 1,17 na prova, abaixo de 1,2",
+     "requisitos": [
+      {
+       "item": "50+ trades no treino",
+       "ok": true,
+       "valor": "284 trades"
+      },
+      {
+       "item": "50+ trades na prova",
+       "ok": true,
+       "valor": "71 trades"
+      },
+      {
+       "item": "treino positivo",
+       "ok": true,
+       "valor": "+R$ 1.700"
+      },
+      {
+       "item": "prova positiva",
+       "ok": true,
+       "valor": "+R$ 920"
+      },
+      {
+       "item": "fator ≥ 1,2 na prova",
+       "ok": false,
+       "valor": "1,17"
+      },
+      {
+       "item": "sem overfit",
+       "ok": true,
+       "valor": "R$ 43,81 por pregão na prova, R$ 27,42 no treino"
+      },
+      {
+       "item": "drawdown da prova acima de −R$ 1.500",
+       "ok": true,
+       "valor": "−R$ 760"
+      },
+      {
+       "item": "sem 5 dias seguidos negativos",
+       "ok": true,
+       "valor": "1 seguidos"
+      }
+     ]
     },
     {
      "nome": "Rafa Rompimento",
@@ -619,7 +787,49 @@
       "03:10 Stop no lado oposto da faixa.",
       "09:00 Já rompi para os dois lados hoje; fico de fora."
      ],
-     "decisao": "promovido: prova positiva, fator 1,55 com 58 trades e sem overfit"
+     "decisao": "promovido: prova positiva, fator 1,55 com 58 trades e sem overfit",
+     "requisitos": [
+      {
+       "item": "50+ trades no treino",
+       "ok": true,
+       "valor": "232 trades"
+      },
+      {
+       "item": "50+ trades na prova",
+       "ok": true,
+       "valor": "58 trades"
+      },
+      {
+       "item": "treino positivo",
+       "ok": true,
+       "valor": "+R$ 3.980"
+      },
+      {
+       "item": "prova positiva",
+       "ok": true,
+       "valor": "+R$ 2.350"
+      },
+      {
+       "item": "fator ≥ 1,2 na prova",
+       "ok": true,
+       "valor": "1,55"
+      },
+      {
+       "item": "sem overfit",
+       "ok": true,
+       "valor": "R$ 111,90 por pregão na prova, R$ 64,19 no treino"
+      },
+      {
+       "item": "drawdown da prova acima de −R$ 1.500",
+       "ok": true,
+       "valor": "−R$ 640"
+      },
+      {
+       "item": "sem 5 dias seguidos negativos",
+       "ok": true,
+       "valor": "1 seguidos"
+      }
+     ]
     },
     {
      "nome": "Vera VWAP",
@@ -739,7 +949,78 @@
       "07:30 Voltou para a VWAP (67.120); alvo atingido.",
       "13:15 Desvio estreito, sem sinal de entrada."
      ],
-     "decisao": "segue em experiência; overfit: prova R$ 480 é menos de 50% do treino"
+     "decisao": "segue em experiência; overfit: prova R$ 480 é menos de 50% do treino",
+     "requisitos": [
+      {
+       "item": "50+ trades no treino",
+       "ok": true,
+       "valor": "248 trades"
+      },
+      {
+       "item": "50+ trades na prova",
+       "ok": true,
+       "valor": "62 trades"
+      },
+      {
+       "item": "treino positivo",
+       "ok": true,
+       "valor": "+R$ 2.900"
+      },
+      {
+       "item": "prova positiva",
+       "ok": true,
+       "valor": "+R$ 480"
+      },
+      {
+       "item": "fator ≥ 1,2 na prova",
+       "ok": false,
+       "valor": "1,06"
+      },
+      {
+       "item": "sem overfit",
+       "ok": false,
+       "valor": "R$ 22,86 por pregão na prova, R$ 46,77 no treino"
+      },
+      {
+       "item": "drawdown da prova acima de −R$ 1.500",
+       "ok": true,
+       "valor": "−R$ 530"
+      },
+      {
+       "item": "sem 5 dias seguidos negativos",
+       "ok": true,
+       "valor": "2 seguidos"
+      }
+     ]
+    }
+   ]
+  },
+  "OPCOES": {
+   "status": "sem_tarefa",
+   "nome": "Ações / Opções",
+   "motivo": "aguardando definição do Diretor",
+   "pendencias": [
+    "como escolher a opção (call/put, strike, vencimento)",
+    "quais ações acompanhar",
+    "quais operacionais usar no 60 min",
+    "fonte de dados das opções (MT5 Genial?)",
+    "regra de saída e tamanho da posição"
+   ],
+   "traders": [
+    {
+     "nome": "Sofia SMC",
+     "estilo": "OB/FVG · tendência 60→5",
+     "status": "sem_tarefa"
+    },
+    {
+     "nome": "Rafa Rompimento",
+     "estilo": "rompimento da faixa de abertura",
+     "status": "sem_tarefa"
+    },
+    {
+     "nome": "Vera VWAP",
+     "estilo": "reversão à VWAP · bandas de desvio",
+     "status": "sem_tarefa"
     }
    ]
   }
