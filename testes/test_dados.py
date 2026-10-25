@@ -504,6 +504,27 @@ class TestVolumeMt5(unittest.TestCase):
         self.assertEqual(self.taxas((7, 120), (0, 80)), [7.0, 0.0])
 
 
+class TestPrecoNoTick(unittest.TestCase):
+    def test_serie_ajustada_volta_para_o_tick(self):
+        class Ajustada(Mt5Falso):  # WDO$ contínuo antes da rolagem: preços fora do tick de 0,5
+            def copy_rates_range(self, simbolo, tf, de, ate):
+                velas = [(5432.3, 5432.6, 5431.9, 5432.2), (5432.25, 5432.75, 5432.2, 5432.75),
+                         (5433.4, 5433.2, 5433.3, 5433.1)]  # a última é dado quebrado: máxima abaixo da abertura
+                return [{"time": epoch(datetime(2026, 9, 1, 9, 5 * k)), "open": o, "high": h, "low": l, "close": c,
+                         "real_volume": 7, "tick_volume": 3} for k, (o, h, l, c) in enumerate(velas)]
+        cfg = {"ativos": {"WDO": {**CFG["ativos"]["WDO"], "tick": 0.5}}}
+        with tempfile.TemporaryDirectory() as d:
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), cfg, pasta=d, mt5=Ajustada())
+            self.assertEqual(dados.ler_csv(os.path.join(d, "WDO_M5.csv")), cs)  # o cache guarda o arredondado
+        # 5432.25 / 0,5 = 10864,5: o round() do Python empata para o par (10864), então vira 5432.0
+        self.assertEqual([(k.o, k.h, k.l, k.c) for k in cs], [(5432.5, 5432.5, 5432.0, 5432.0),
+                                                              (5432.0, 5433.0, 5432.0, 5433.0),
+                                                              (5433.5, 5433.5, 5433.0, 5433.0)])
+        with tempfile.TemporaryDirectory() as d:  # sem tick no config, nada muda
+            cru = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 1), CFG, pasta=d, mt5=Ajustada())
+        self.assertEqual(cru[0].o, 5432.3)
+
+
 class TestCsvSeguro(unittest.TestCase):
     def test_escrita_atomica_nao_estraga_o_arquivo_antigo(self):
         antigos = serie(datetime(2026, 9, 1, 9, 0), 3)

@@ -111,9 +111,11 @@ class TestCiclo(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(os.path.join(self.raiz, "estado"))), ["firma.json", "parametros.json"])
 
         pasta = os.path.join(self.raiz, "relatorios", HOJE.isoformat())
-        self.assertEqual(sorted(os.listdir(pasta)), ["briefing.md", "btcusdt-rafa-rompimento.html",
-                                                     "eurusd-rafa-rompimento.html", "eurusd-vera-vwap.html",
-                                                     "gerente.html"])
+        feitos = ["briefing.md", "btcusdt-rafa-rompimento.html", "eurusd-rafa-rompimento.html",
+                  "eurusd-vera-vwap.html", "gerente.html"]
+        self.assertEqual(sorted(os.listdir(pasta)), sorted(feitos + ["index.json"]))  # nenhum .tmp sobrando
+        with open(os.path.join(pasta, "index.json"), encoding="utf-8") as f:
+            self.assertEqual(sorted(json.load(f)["arquivos"]), feitos)
         with open(os.path.join(pasta, "briefing.md"), encoding="utf-8") as f:
             briefing = f.read().splitlines()
         self.assertLessEqual(len(briefing), 60)
@@ -122,6 +124,19 @@ class TestCiclo(unittest.TestCase):
             html = f.read()
         self.assertIn("lightweight-charts", html)
         self.assertIn("/web/estilo.css", html)
+
+
+class TestSemOperacoes(unittest.TestCase):
+    def test_trader_sem_operacoes_vira_pendencia(self):
+        cfg = {**CFG, "max_perda_por_trade": 1}  # nem 1 contrato cabe: toda ordem é recusada
+        with tempfile.TemporaryDirectory() as raiz:
+            estado = gerente.ciclo(cfg, HOJE, historico_fn=HistoricoFalso(), salas={"EURUSD": [rafa_rompimento]},
+                                   raiz=raiz)
+        t = estado["salas"]["EURUSD"]["traders"][0]
+        self.assertEqual((t["treino"]["trades"], t["prova"]["trades"]), (0, 0))
+        pend = [p for p in estado["pendencias"] if p.startswith("EURUSD · Rafa Rompimento: nenhuma operação")]
+        self.assertEqual(len(pend), 1, estado["pendencias"])
+        self.assertIn("(ordens recusadas: nem 1 contrato cabe (limite: perda máxima por trade)", pend[0])
 
 
 class TestDecisoes(unittest.TestCase):
@@ -138,13 +153,13 @@ class TestDecisoes(unittest.TestCase):
         with mock.patch.object(gerente, "_rodar", rodar):
             params, treino = gerente.ajustar(modulo, "EURUSD", [], CFG)
         self.assertEqual(params, {"x": 2})
-        self.assertEqual(treino["fator_lucro"], 1.6)
+        self.assertEqual(treino["placar"]["fator_lucro"], 1.6)
         self.assertEqual(vistos, [{"x": 1}, {"x": 2}, {"x": 3}])  # o padrão (x=1) só roda uma vez
 
         placares.update({1: (10, 1.1), 2: (49, 1.6)})  # ninguém com 50 trades: fica no padrão
         with mock.patch.object(gerente, "_rodar", rodar):
             params, treino = gerente.ajustar(modulo, "EURUSD", [], CFG)
-        self.assertEqual((params, treino["trades"]), ({"x": 1}, 10))
+        self.assertEqual((params, treino["placar"]["trades"]), ({"x": 1}, 10))
 
     def test_nao_promove_com_menos_de_50_trades(self):
         status, _, decisao = gerente.decidir(placar(3000.0, 40, 2.0), placar(2000.0, 60, 1.8), SOBE)
@@ -171,12 +186,17 @@ class TestDecisoes(unittest.TestCase):
         self.assertIn("1.600", decisao)
         self.assertNotEqual(gerente.decidir(placar(3000.0, 200, 2.0), placar(2000.0, 60, 1.8, -1500.0), SOBE)[0],
                             "pausado")
-        cinco = curva(5000, 4990, 4980, 4970, 4960, 4950, 5500)
+        cinco = curva(5000, 4975, 4945, 4915, 4885, 4855, 5500)  # o 1º dia perde R$ 25 exatos: conta
         status, _, decisao = gerente.decidir(placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3), cinco)
         self.assertEqual(status, "pausado")
-        self.assertIn("5 dias seguidos", decisao)
-        quatro = curva(5000, 4990, 4980, 4970, 4960, 4960, 4950, 5500)  # dia parado quebra a sequência
-        self.assertNotEqual(gerente.decidir(placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3), quatro)[0], "pausado")
+        self.assertIn("5 dias seguidos negativos na prova (perda de R$ 25 ou mais em cada)", decisao)
+        bom =placar(3000.0, 200, 2.0), placar(500.0, 60, 1.3)
+        quatro = curva(5000, 4970, 4940, 4910, 4880, 4880, 4850, 5500)  # dia parado quebra a sequência
+        self.assertNotEqual(gerente.decidir(*bom, quatro)[0], "pausado")
+        miudos = curva(5000, 4990, 4980, 4970, 4960, 4950, 4940, 4930)  # perdas de R$ 10 não contam
+        self.assertNotEqual(gerente.decidir(*bom, miudos)[0], "pausado")
+        quebra = curva(5000, 4970, 4940, 4930, 4900, 4870, 4840)  # um dia de −R$ 10 no meio quebra a sequência
+        self.assertNotEqual(gerente.decidir(*bom, quebra)[0], "pausado")
 
 
 class TestRelatorio(unittest.TestCase):
@@ -196,7 +216,7 @@ class TestRelatorio(unittest.TestCase):
                                    "resultado_rs": -5.0, "motivo_saida": "stop", "setup": "<s>x</s>"}]}
         with tempfile.TemporaryDirectory() as pasta:
             arquivos = relatorio.escrever(estado, ops, pasta)
-            self.assertEqual(sorted(arquivos), sorted(os.listdir(pasta)))
+            self.assertEqual(sorted(arquivos + ["index.json"]), sorted(os.listdir(pasta)))
             for a in arquivos:
                 with open(os.path.join(pasta, a), encoding="utf-8") as f:
                     texto = f.read()
@@ -232,9 +252,13 @@ class TestMotorParaOGerente(unittest.TestCase):
             self.assertEqual(motor.carregar_config(caminho), cfg)  # segunda leitura não muda nada
         self.assertEqual((cfg["capital"], cfg["usd_brl"]), (7000, 5.4))
         self.assertEqual(sorted(cfg["ativos"]), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
-        self.assertEqual(cfg["ativos"]["WDO"], {"margem_por_contrato": 150, "custo_por_contrato": 0.5,
-                                                "simbolo": "WDO$", "fonte": "mt5"})
-        self.assertEqual(cfg["ativos"]["EURUSD"]["custo_por_contrato"], 0.07)  # valor do usuário fica
+        with open(motor.EXEMPLO_CONFIG, encoding="utf-8") as f:
+            exemplo = json.load(f)["ativos"]
+        wdo = cfg["ativos"]["WDO"]  # o antigo ganha terminal, sessao etc. do modelo e guarda margem e custo
+        self.assertEqual(wdo, {**exemplo["WDO"], "margem_por_contrato": 150, "custo_por_contrato": 0.5})
+        self.assertEqual((wdo["terminal"], wdo["sessao"]), (exemplo["WDO"]["terminal"], exemplo["WDO"]["sessao"]))
+        self.assertNotIn("simbolo_mt5", wdo)
+        self.assertEqual(cfg["ativos"]["EURUSD"], {**exemplo["EURUSD"], "custo_por_contrato": 0.07})  # do usuário fica
         self.assertEqual(cfg["ativos"]["BTCUSDT"]["fonte"], "binance")
 
 

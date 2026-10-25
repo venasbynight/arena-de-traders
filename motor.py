@@ -23,8 +23,9 @@ check = _skill("trader-risk/check.py", "skill_check")  # checar()
 def carregar_config(caminho="trader/config.json"):
     """Lê as regras; na primeira vez copia o modelo da skill trader-budget.
 
-    Config antigo ganha do modelo o que falta (ativos que ele não tem e usd_brl), sem mexer nos valores do
-    usuário, e o simbolo_mt5 do Plano 1 vira simbolo + fonte "mt5"; havendo mudança, o arquivo é regravado.
+    Config antigo ganha do modelo o que falta (usd_brl, ativos que ele não tem e as chaves que faltam nos que
+    ele tem), sem mexer nos valores do usuário, e o simbolo_mt5 do Plano 1 vira simbolo + fonte "mt5"; havendo
+    mudança, o arquivo é regravado.
     """
     if not os.path.exists(caminho):
         os.makedirs(os.path.dirname(caminho) or ".", exist_ok=True)
@@ -36,12 +37,14 @@ def carregar_config(caminho="trader/config.json"):
     antes = json.dumps(cfg, sort_keys=True)
     cfg.setdefault("usd_brl", exemplo["usd_brl"])
     ativos = cfg.setdefault("ativos", {})
-    for ativo, espec in exemplo["ativos"].items():
-        ativos.setdefault(ativo, espec)
-    for espec in ativos.values():
+    for espec in ativos.values():  # antes de completar, para o símbolo do usuário vencer o do modelo
         if "simbolo_mt5" in espec and "simbolo" not in espec:
             espec["simbolo"] = espec.pop("simbolo_mt5")
             espec.setdefault("fonte", "mt5")
+    for ativo, modelo in exemplo["ativos"].items():
+        espec = ativos.setdefault(ativo, {})
+        for chave, valor in modelo.items():  # terminal, sessao, tick... que faltarem
+            espec.setdefault(chave, valor)
     if json.dumps(cfg, sort_keys=True) != antes:
         with open(caminho, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)

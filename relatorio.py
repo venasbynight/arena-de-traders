@@ -5,6 +5,7 @@ Todo texto vindo do estado passa por html.escape: a firma embute o gerente.html 
 import json
 import os
 import re
+import time
 import unicodedata
 from datetime import datetime
 from html import escape
@@ -19,6 +20,19 @@ p{margin-bottom:6px}ul{margin-left:18px}li{margin-bottom:4px}a{color:var(--acc)}
 .chip{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;margin-right:6px}
 #curva{height:320px;border:1px solid var(--line);border-radius:8px}
 </style>"""
+
+
+def gravar(caminho, texto):
+    """Grava inteiro ou nada (arquivo temporário + os.replace): o servidor pode ler a qualquer momento."""
+    tmp = caminho + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(texto)
+    for _ in range(20):
+        try:
+            return os.replace(tmp, caminho)
+        except PermissionError:  # Windows: quem lê está com o arquivo aberto neste instante
+            time.sleep(0.05)
+    os.replace(tmp, caminho)
 
 
 def slug(nome):
@@ -160,7 +174,7 @@ def _briefing(estado):
               f"Para a mente de IA: comente as decisões abaixo e grave relatorios/{dia}/gerente-ia.md.",
               f"Premissas: contas simuladas de R$ 5.000; USD/BRL {num(p.get('usd_brl'))}; treino = tudo menos os "
               "últimos 21 pregões, prova = últimos 21; promoção pede prova positiva, fator ≥ 1,2, ≥ 50 trades "
-              "(treino e prova) e sem overfit; pausa com drawdown pior que −R$ 1.500 ou 5 dias negativos seguidos.", ""]
+              "(treino e prova) e sem overfit; pausa com drawdown pior que −R$ 1.500 ou 5 dias seguidos perdendo R$ 25 ou mais.", ""]
     for ativo, sala in estado["salas"].items():
         if sala["status"] != "ok":
             linhas.append(f"## {ativo}: sem dados — {sala.get('motivo', '')}")
@@ -187,7 +201,8 @@ def _briefing(estado):
 def escrever(estado, operacoes_por_trader, pasta_dia):
     """Grava os relatórios do dia em `pasta_dia` e devolve os nomes dos arquivos.
 
-    `operacoes_por_trader`: {(ativo, nome): operações da prova}.
+    `operacoes_por_trader`: {(ativo, nome): operações da prova}. Por último grava `index.json` com a lista
+    deste ciclo: arquivos que sobraram de um ciclo anterior do mesmo dia ficam fora dela.
     """
     os.makedirs(pasta_dia, exist_ok=True)
     arquivos = {"gerente.html": _gerente(estado)}
@@ -197,6 +212,7 @@ def escrever(estado, operacoes_por_trader, pasta_dia):
             arquivos[f"{ativo.lower()}-{slug(t['nome'])}.html"] = _trader(ativo, sala, t, ops, estado)
     arquivos["briefing.md"] = _briefing(estado)
     for nome, texto in arquivos.items():
-        with open(os.path.join(pasta_dia, nome), "w", encoding="utf-8") as f:
-            f.write(texto)
+        gravar(os.path.join(pasta_dia, nome), texto)
+    gravar(os.path.join(pasta_dia, "index.json"),
+           json.dumps({"dia": estado.get("dia"), "arquivos": list(arquivos)}, ensure_ascii=False))
     return list(arquivos)

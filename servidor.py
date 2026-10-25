@@ -117,12 +117,17 @@ class Arena(BaseHTTPRequestHandler):
 
 
 def relatorios_do_dia():
-    """{"dia", "arquivos"} da pasta de relatórios mais recente (relatorios/AAAA-MM-DD), ou None."""
+    """{"dia", "arquivos"} da pasta de relatórios mais recente (relatorios/AAAA-MM-DD), ou None.
+
+    A lista vem do index.json do último ciclo; pasta sem ele (de antes dele existir), a listagem da pasta.
+    """
     try:
         dias = [d for d in os.listdir(RELATORIOS)
                 if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) and os.path.isdir(os.path.join(RELATORIOS, d))]
         if dias:
-            return {"dia": max(dias), "arquivos": sorted(os.listdir(os.path.join(RELATORIOS, max(dias))))}
+            pasta = os.path.join(RELATORIOS, max(dias))
+            arquivos = gerente.ler_json(os.path.join(pasta, "index.json")).get("arquivos") or sorted(os.listdir(pasta))
+            return {"dia": max(dias), "arquivos": arquivos}
     except OSError:
         pass
     return None

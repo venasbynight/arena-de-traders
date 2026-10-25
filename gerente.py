@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import queue
+import re
 import sys
 import threading
 import time
@@ -25,6 +26,7 @@ MIN_TRADES = 50
 FATOR_MIN = 1.2
 DRAWDOWN_PAUSA = -1500.0
 DIAS_NEGATIVOS_PAUSA = 5
+DIA_NEGATIVO = -25.0  # só conta como dia negativo perder R$ 25 ou mais (custos miúdos não pausam ninguém)
 DIARIO_LINHAS = 8
 TRAVA = threading.Lock()  # dois ciclos nunca rodam ao mesmo tempo (servidor: arranque e 19:30 na mesma thread)
 
@@ -39,17 +41,8 @@ def ler_json(caminho):
 
 
 def _gravar_json(caminho, obj):
-    """Grava inteiro ou nada (arquivo temporário + os.replace): o servidor pode ler a qualquer momento."""
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    tmp = caminho + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=1)
-    for _ in range(20):
-        try:
-            return os.replace(tmp, caminho)
-        except PermissionError:  # Windows: o servidor está com o arquivo aberto neste instante
-            time.sleep(0.05)
-    os.replace(tmp, caminho)
+    relatorio.gravar(caminho, json.dumps(obj, ensure_ascii=False, indent=1))
 
 
 def dividir(candles):
@@ -79,7 +72,7 @@ def _fator(p):
 def ajustar(modulo, ativo, treino, cfg):
     """Testa a GRADE do trader no treino, um parâmetro por vez com os outros no padrão.
 
-    Devolve (params, placar no treino) do melhor fator de lucro com ≥ 50 trades; se ninguém chega a 50, o padrão.
+    Devolve (params, resultado no treino) do melhor fator de lucro com ≥ 50 trades; se ninguém chega a 50, o padrão.
     """
     padrao = {k: modulo.PARAMS[k] for k in modulo.GRADE}
     candidatos = [padrao]
@@ -87,16 +80,16 @@ def ajustar(modulo, ativo, treino, cfg):
         for v in valores:
             if {**padrao, k: v} not in candidatos:
                 candidatos.append({**padrao, k: v})
-    testados = [(c, _rodar(ativo, treino, modulo, c, cfg)["placar"]) for c in candidatos]
-    validos = [x for x in testados if x[1]["trades"] >= MIN_TRADES]
-    return max(validos, key=lambda x: _fator(x[1])) if validos else testados[0]
+    testados = [(c, _rodar(ativo, treino, modulo, c, cfg)) for c in candidatos]
+    validos = [x for x in testados if x[1]["placar"]["trades"] >= MIN_TRADES]
+    return max(validos, key=lambda x: _fator(x[1]["placar"])) if validos else testados[0]
 
 
 def _negativos_seguidos(equity):
-    """Maior sequência de dias com saldo em queda; dia parado quebra a sequência."""
+    """Maior sequência de dias com perda de R$ 25 ou mais; qualquer outro dia quebra a sequência."""
     pior = seguidos = 0
     for (_, antes), (_, depois) in zip(equity, equity[1:]):
-        seguidos = seguidos + 1 if depois < antes else 0
+        seguidos = seguidos + 1 if round(depois - antes, 2) <= DIA_NEGATIVO else 0
         pior = max(pior, seguidos)
     return pior
 
@@ -110,7 +103,7 @@ def decidir(treino, prova, equity):
         pausa.append(f"drawdown da prova {brl(prova['drawdown'])}, pior que {brl(DRAWDOWN_PAUSA)}")
     seguidos = _negativos_seguidos(equity)
     if seguidos >= DIAS_NEGATIVOS_PAUSA:
-        pausa.append(f"{seguidos} dias seguidos negativos na prova")
+        pausa.append(f"{seguidos} dias seguidos negativos na prova (perda de R$ {-DIA_NEGATIVO:.0f} ou mais em cada)")
     if pausa:
         return "pausado", overfit, "pausado: " + "; ".join(pausa + ([nota] if overfit else []))
 
@@ -146,16 +139,32 @@ def _diario(eventos, dia):
     return linhas[-DIARIO_LINHAS:]
 
 
+def _recusa_mais_comum(eventos):
+    """Motivo de recusa mais frequente (agrupado sem os números), no texto do primeiro caso; None se não houve."""
+    grupos = {}
+    for e in eventos:
+        if e["tipo"] == "block":
+            for m in e["motivos"]:
+                grupos.setdefault(re.sub(r"\d[\d.,]*", "#", m), []).append(m)
+    return max(grupos.values(), key=len)[0] if grupos else None
+
+
 def _avaliar(modulo, ativo, treino, prova, cfg):
-    """(registro do trader para o estado, operações da prova)."""
-    params, placar_treino = ajustar(modulo, ativo, treino, cfg)
+    """(registro do trader para o estado, operações da prova, pendência se ele não operou nada)."""
+    params, r_treino = ajustar(modulo, ativo, treino, cfg)
+    placar_treino = r_treino["placar"]
     r = _rodar(ativo, prova, modulo, params, cfg)
     equity = [[prova[0].t.isoformat(), float(cfg["capital"])]] + r["equity"]
     status, overfit, decisao = decidir(placar_treino, r["placar"], equity)
+    pendencia = None
+    if not placar_treino["trades"] and not r["placar"]["trades"]:
+        recusa = _recusa_mais_comum(r_treino["eventos"] + r["eventos"])
+        pendencia = f"{ativo} · {modulo.NOME}: nenhuma operação " + (
+            f"(ordens recusadas: {recusa})" if recusa else "(nenhuma ordem no período)")
     return ({"nome": modulo.NOME, "estilo": modulo.ESTILO, "status": status, "parametros": params,
              "overfit": overfit, "treino": placar_treino, "prova": r["placar"], "equity": equity,
              "diario": _diario(r["eventos"], prova[-1].t.date().isoformat()), "decisao": decisao},
-            r["operacoes"])
+            r["operacoes"], pendencia)
 
 
 def _periodo(candles):
@@ -195,7 +204,7 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
         anterior = ler_json(os.path.join(pasta_estado, "firma.json")).get("salas", {})
         # quem respondeu no ciclo anterior baixa primeiro; a espera de quem falhou corre junto com o cálculo
         ordem = sorted(salas, key=lambda a: anterior.get(a, {}).get("status") != "ok")
-        feitas, operacoes = {}, {}
+        feitas, operacoes, sem_operacao = {}, {}, {}
         for ativo, candles, erro in _baixar(ordem, historico_fn, de, ate, cfg):
             if not candles:
                 motivo = erro or f"sem candles entre {de:%d/%m/%Y} e {ate:%d/%m/%Y}"
@@ -208,9 +217,11 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
             log(f"{ativo}: {len(candles)} candles; treino {sala['periodos']['treino']['pregoes']} pregões, "
                 f"prova {sala['periodos']['prova']['pregoes']}")
             for m in salas[ativo]:
-                t, ops = _avaliar(m, ativo, treino, prova, cfg)
+                t, ops, pendencia = _avaliar(m, ativo, treino, prova, cfg)
                 sala["traders"].append(t)
                 operacoes[(ativo, m.NOME)] = ops
+                if pendencia:
+                    sem_operacao.setdefault(ativo, []).append(pendencia)
                 log(f"  {m.NOME}: {t['status']}")
             feitas[ativo] = sala
 
@@ -219,6 +230,7 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
                           for a, s in salas_estado.items() for t in s["traders"]),
                          key=lambda r: -r["prova_resultado"])
         pendencias = [f"{a}: {s['motivo']}" for a, s in salas_estado.items() if s["status"] != "ok"]
+        pendencias += [p for a in salas for p in sem_operacao.get(a, [])]
         pendencias += [f"{t['nome']} ({a}) {t['decisao']}" for a, s in salas_estado.items()
                        for t in s["traders"] if t["status"] == "pausado"]
         estado = {"gerado_em": datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds"),

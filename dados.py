@@ -241,6 +241,23 @@ def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, f
             for r in taxas]
 
 
+def no_tick(candles, tick):
+    """Preços arredondados ao tick do ativo (sem tick no config, nada muda).
+
+    A série contínua da B3 (WDO$, WIN$) vem ajustada pela rolagem, com preços fora do tick, e o trader-budget
+    recusa toda ordem fora do tick. O round() do Python empata para o par: 5432,25 com tick 0,5 vira 5432,0.
+    Máxima e mínima continuam cobrindo abertura e fechamento depois do arredondamento.
+    """
+    if not tick:
+        return candles
+    r = lambda p: round(round(p / tick) * tick, 10)
+    out = []
+    for k in candles:
+        o, c = r(k.o), r(k.c)
+        out.append(Candle(k.t, o, max(r(k.h), o, c), min(r(k.l), o, c), c, k.v, k.delta))
+    return out
+
+
 def _dias_de_sessao(de, ate, dias=(0, 1, 2, 3, 4)):
     """Dias do intervalo em que o ativo opera (`dias`: 0 = segunda ... 6 = domingo)."""
     return {de + timedelta(days=k) for k in range((ate - de).days + 1) if (de + timedelta(days=k)).weekday() in dias}
@@ -291,6 +308,7 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
             novos = baixar_mt5(simbolo, min(faltam), max(faltam), mt5, espec.get("terminal"),
                                espec.get("deslocamento_h"), espec.get("fuso_servidor", "brasilia"),
                                espec.get("timeout_s", 90))
+        novos = no_tick(novos, espec.get("tick"))
         unicos = {k.t: k for k in candles}
         unicos.update({k.t: k for k in novos})
         candles = sorted(unicos.values(), key=lambda k: k.t)

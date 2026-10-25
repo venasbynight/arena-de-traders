@@ -124,12 +124,16 @@ class TestServidor(unittest.TestCase):
             with open(caminho, "w", encoding="utf-8") as f:
                 json.dump(estado, f)
             rel = os.path.join(raiz, "relatorios")
-            for dia, arquivos in (("2026-10-24", ["gerente.html"]), ("2026-10-25", ["gerente.html", "eurusd-sofia-smc.html"])):
+            for dia, arquivos in (("2026-10-24", ["gerente.html"]),
+                                  ("2026-10-25", ["gerente.html", "eurusd-sofia-smc.html", "velho.html"])):
                 os.makedirs(os.path.join(rel, dia))
                 for a in arquivos:
                     with open(os.path.join(rel, dia, a), "w", encoding="utf-8") as f:
                         f.write(f"<html>{dia} {a}</html>")
             os.makedirs(os.path.join(rel, "rascunho"))  # pasta que não é data fica de fora
+            indice = os.path.join(rel, "2026-10-25", "index.json")  # velho.html sobrou de um ciclo anterior do dia
+            with open(indice, "w", encoding="utf-8") as f:
+                json.dump({"dia": "2026-10-25", "arquivos": ["eurusd-sofia-smc.html", "gerente.html"]}, f)
             with mock.patch.multiple(servidor, ESTADO_FIRMA=caminho, RELATORIOS=rel):
                 status, corpo = self.get("/api/firma")
                 self.assertEqual(status, 200)
@@ -137,6 +141,9 @@ class TestServidor(unittest.TestCase):
                     "dia": "2026-10-25", "arquivos": ["eurusd-sofia-smc.html", "gerente.html"]}})
                 status, corpo = self.get("/relatorios/2026-10-25/gerente.html")
                 self.assertEqual((status, corpo), (200, "<html>2026-10-25 gerente.html</html>"))
+                os.remove(indice)  # pasta sem index.json (de antes dele): vale a listagem da pasta
+                self.assertEqual(json.loads(self.get("/api/firma")[1])["relatorios"]["arquivos"],
+                                 ["eurusd-sofia-smc.html", "gerente.html", "velho.html"])
                 for fora in ("/relatorios/..%2Festado%2Ffirma.json", "/relatorios/2026-10-25/..%2F..%2Festado%2Ffirma.json",
                              "/relatorios/2026-10-25/nao-existe.html", "/relatorios/2026-10-25"):
                     self.assertEqual(self.get(fora)[0], 404, fora)
