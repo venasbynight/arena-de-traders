@@ -1,5 +1,6 @@
 """Didi Agulhada: médias 3, 8 e 20 se cruzando no mesmo candle; entra quando as bandas de Bollinger abrem, com ADX
-subindo e TRIX numa extremidade, e sai quando as bandas fecham ou a MA3 volta contra."""
+subindo e TRIX numa extremidade. Stop 3 ticks além do candle do gatilho, alvo no topo/fundo confirmado mais próximo à
+frente; a operação só termina no stop ou no alvo (Plano 7)."""
 import statistics
 from datetime import timedelta
 
@@ -17,11 +18,15 @@ ESTILO = "agulhada 3·8·20 · Bollinger abrindo · ADX e TRIX"
 # tendencia: só a favor da tendência (estudos.tendencia) do 60 (entrada no 5/15) ou do diário (entrada no 60);
 # trix_extremo: percentil (0,2 = os 20% mais baixos dos últimos 120 para a compra); 1 = só o TRIX virando a favor
 # recuo: 0 = a mercado na abertura seguinte; r > 0 = limitada no recuo r (Fibonacci) do candle que abriu as bandas
-PARAMS = {"tf": 5, "alvo_x": 3.0, "trix_extremo": 0.2, "agulhada_n": 0, "janela_bandas": 3, "adx": "sobe",
-          "recuo": 0, "saida": "bandas", "tendencia": False}
-# saida: "bandas" (sai quando as bandas fecham ou a MA3 volta contra) ou "ma3" (só quando a MA3 volta)
+# folga_stop_ticks: o stop fica esses ticks além da mínima (compra) / máxima (venda) do candle do gatilho
+# alvo_x: None = alvo no topo (compra) / fundo (venda) confirmado mais próximo à frente da entrada, pela regra de
+# topo/fundo da Sofia (estudos.pivos, n=2), e sem ele não entra; número = alvo em alvo_x vezes o risco (opção)
+# saida: "alvo" (só stop ou alvo, decisão do Diretor), "bandas" (também sai quando as bandas fecham ou a MA3 volta
+# contra) ou "ma3" (também sai quando a MA3 volta)
+PARAMS = {"tf": 5, "alvo_x": None, "trix_extremo": 0.2, "agulhada_n": 0, "janela_bandas": 3, "adx": "sobe",
+          "recuo": 0, "saida": "alvo", "tendencia": False, "folga_stop_ticks": 3}
 GRADE = {"tf": [5],  # o 15 não fez operação em nenhum ativo real e custava 2× o tempo do gerente
-          "alvo_x": [2.0, 3.0, 4.0], "trix_extremo": [0.1, 0.2, 0.3]}
+          "trix_extremo": [0.1, 0.2, 0.3]}  # sem alvo_x: o alvo é o topo/fundo (Diretor, Plano 7)
 MINIMO = 27  # TRIX(9) no candle anterior (índice 25); MA20, bandas e ADX de 8 já valem antes
 N_TRIX = 120  # valores do TRIX para o percentil da extremidade
 ADX_BAIXO = 20  # notas do Diretor: na compressão o ADX fica perto de 20 ou menos
@@ -107,7 +112,9 @@ class Trader:
 
         c0, c1 = sg(curta[-2]), sg(curta[-1])
         contra = "compra" if c0 > 0 >= c1 else "venda" if c0 < 0 <= c1 else None  # quem essa virada tira
-        if self.p["saida"] == "bandas" and largura[-1] - largura[-2] < -eps:
+        if self.p["saida"] == "alvo":
+            pass  # só stop ou alvo: nenhum sinal tira a posição
+        elif self.p["saida"] == "bandas" and largura[-1] - largura[-2] < -eps:
             d.sair = True
             d.pensamento.append("as bandas fecharam: se estou posicionado, saio na abertura do próximo candle")
         elif contra:
@@ -184,14 +191,24 @@ class Trader:
 
         sinal = 1 if compra else -1
         ref = arredondar_tick(k.c, tick)
-        stop = arredondar_tick((k.l if compra else k.h) - sinal * tick, tick)
+        stop = arredondar_tick((k.l if compra else k.h) - sinal * self.p["folga_stop_ticks"] * tick, tick)
         # recuo: limitada no Fibonacci `recuo` do candle que abriu as bandas, só no candle seguinte (as notas do
         # Diretor: entrada no pullback de 0,382 a 0,618 do impulso, ou direto no rompimento)
         r = self.p["recuo"]
         nivel = arredondar_tick(k.h - r * (k.h - k.l) if compra else k.l + r * (k.h - k.l), tick)
         limitada = r > 0 and (nivel < ref if compra else nivel > ref)
         entrada = nivel if limitada else ref
-        alvo = arredondar_tick(entrada + sinal * self.p["alvo_x"] * abs(entrada - stop), tick)
+        if self.p["alvo_x"]:
+            alvo = arredondar_tick(entrada + sinal * self.p["alvo_x"] * abs(entrada - stop), tick)
+        else:
+            # topos/fundos de candles já fechados (pivos só devolve os confirmados por n candles depois)
+            ps = [p.preco for p in estudos.pivos(cs, 2)
+                  if p.tipo == ("topo" if compra else "fundo") and (p.preco > entrada if compra else p.preco < entrada)]
+            if not ps:
+                d.pensamento.append(f"agulhada de {lado}, bandas abrindo, mas sem {'topo acima' if compra else 'fundo abaixo'}"
+                                    f" de {preco(entrada, tick)} para alvo; não entro")
+                return d
+            alvo = min(ps) if compra else max(ps)
         d.planos.append(Plano(lado, "limite" if limitada else "mercado", entrada, stop, alvo, "didi-agulhada"))
         conf = {"sobe": ", ADX subindo", "baixo": ", ADX saindo de baixo", "di": ", DI a favor", "nao": ""}[modo_adx]
         conf += ", a favor da tendência" if self.p["tendencia"] else ""

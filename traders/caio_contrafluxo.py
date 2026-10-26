@@ -18,7 +18,8 @@ ESTILO = "delta contra a tendência · S/R do dia"
 #   rejeicao    o candle do sinal passa do nível e fecha de volta do lado de cá (absorção)
 #   lado        "contra" (o Caio) ou "agressor": só diagnóstico para o Diretor, inverte o lado do trade
 # Nenhum passou na pesquisa (pesquisa/caio/resumo.md); ficam para refazer quando houver mais meses de delta.
-PARAMS = {"n": 2, "limite": {"WDO": 7500, "WIN": 10000}, "regiao_ticks": 2, "folga_ticks": 2,
+# folga_ticks: stop além do extremo; 4 desde o Plano 7 (o Diretor pediu "um pouquinho mais" que os 2 de antes)
+PARAMS = {"n": 2, "limite": {"WDO": 7500, "WIN": 10000}, "regiao_ticks": 2, "folga_ticks": 4,
           "limite_pct": None, "tendencia": "60", "confirma": False, "alvo_rr": None, "horario": None,
           "rejeicao": False, "lado": "contra"}
 GRADE = {"limite": {"WDO": [5000, 7500, 10500, 14500], "WIN": [10000, 18000, 25000, 32000, 42000]}}

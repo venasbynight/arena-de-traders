@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 
 import motor
-from testes.test_motor import dias_sinteticos
+from testes.test_motor import CFG as CFG_ANTES, dias_sinteticos  # R:R 1 e teto de 5: só a mecânica
 from tipos import Candle, Plano
 from traders import didi_agulhada, sofia_smc
 
@@ -48,6 +48,8 @@ def larguras(ws):
     return bb
 
 
+# as saídas e o alvo de antes do Plano 7, agora opções
+ANTES = {"folga_stop_ticks": 1, "alvo_x": 3.0, "saida": "bandas"}
 REAL = didi_agulhada.Trader._estudos
 
 
@@ -79,7 +81,8 @@ class TestDidi(unittest.TestCase):
         return falsos(**{"trix": lambda f: trix_extremo(self.lado_trix)(f), **troca})
 
     def wdo(self, **params):
-        return didi_agulhada.Trader("WDO", 0.5, params)
+        """Regras de entrada com as saídas de antes do Plano 7 (stop 1 tick, alvo 3× o risco, saída por sinal)."""
+        return didi_agulhada.Trader("WDO", 0.5, {**ANTES, **params})
 
     def test_agulhada_com_bandas_abrindo_entra_a_mercado_com_stop_1_tick_alem_e_alvo_3x(self):
         d = self.wdo().decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
@@ -293,15 +296,78 @@ class TestDidi(unittest.TestCase):
                                            (5407, 5408, 5406.5, 5407.5), (5407.5, 5407.5, 5402.5, 5403),
                                            (5403, 5403.5, 5400.5, 5401), (5401.5, 5402, 5400.5, 5401)]
                      + [(5401, 5401.5, 5400.5, 5401)] * 3)
-        r = motor.rodar_backtest("WDO", ONTEM_PARADO + dia2, [didi_agulhada], CFG)["traders"]["Didi Agulhada"]
+        r = motor.rodar_backtest("WDO", ONTEM_PARADO + dia2, [(didi_agulhada, ANTES)], CFG)["traders"]["Didi Agulhada"]
         op = r["operacoes"][0]
-        tr = didi_agulhada.Trader("WDO", 0.5)
+        tr = didi_agulhada.Trader("WDO", 0.5, ANTES)
         sinal = next(i for i in range(6, len(dia2)) if tr.decidir(dia2[:i + 1], ONTEM_PARADO, []).sair)
         self.assertEqual((op["entrada"], op["entrada_t"]), (5403.0, dia2[6].t.isoformat()))
         self.assertEqual((op["saida"], op["saida_t"], op["motivo_saida"]),
                          (dia2[sinal + 1].o - 0.5, dia2[sinal + 1].t.isoformat(), "sinal"))
         tipos = [e["tipo"] for e in r["eventos"]]
         self.assertLess(tipos.index("ordem"), tipos.index("entrada"))
+
+
+# um topo em 5410 ontem (máxima isolada; fechamentos iguais, então médias, bandas e TRIX não mudam) e um fundo em 5390
+TOPO, FUNDO = (5400, 5410, 5399.5, 5400), (5400, 5400.5, 5390, 5400)
+ONTEM_TOPO = velas(ONTEM, [PARADO] * 3 + [TOPO] + [PARADO] * 6 + [(5400, 5406, 5399.5, 5400)] + [PARADO] * 19)
+
+
+class TestDidiDoDiretor(unittest.TestCase):
+    """Plano 7: stop 3 ticks além do candle do gatilho, alvo no topo/fundo confirmado mais próximo à frente (regra de
+    topo/fundo da Sofia), e a operação só termina no stop ou no alvo (sem saída por sinal)."""
+
+    def setUp(self):
+        self.lado_trix = "compra"
+        p = falsos(trix=lambda f: trix_extremo(self.lado_trix)(f))
+        p.start()
+        self.addCleanup(p.stop)
+
+    def didi(self, **params):
+        """Padrão do Diretor; sem o filtro do ADX, que a máxima isolada de ONTEM_TOPO mexe (não é o que se testa aqui)."""
+        return didi_agulhada.Trader("WDO", 0.5, {"adx": "nao", **params})
+
+    def test_padrao(self):
+        self.assertEqual({k: didi_agulhada.PARAMS[k] for k in ("folga_stop_ticks", "alvo_x", "saida")},
+                         {"folga_stop_ticks": 3, "alvo_x": None, "saida": "alvo"})
+        self.assertNotIn("alvo_x", didi_agulhada.GRADE)  # o gerente não volta a pôr alvo em múltiplo do risco
+
+    def test_alvo_no_topo_mais_proximo_acima_e_stop_3_ticks_alem(self):
+        d = self.didi().decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
+        # topos 5410 e 5406 acima de 5402,5: o mais próximo; stop 5399,5 − 3 × 0,5
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 5402.5, 5398.0, 5406.0, "didi-agulhada")])
+        self.lado_trix = "venda"
+        fundo = velas(ONTEM, [PARADO] * 3 + [FUNDO] + [PARADO] * 26)
+        d = self.didi().decidir(espelho(AGULHADA_COMPRA), espelho(fundo), [])
+        self.assertEqual(d.planos, [])  # o espelho do fundo é um topo: para a venda não há fundo abaixo
+        d = self.didi().decidir(espelho(AGULHADA_COMPRA), espelho(ONTEM_TOPO), [])
+        self.assertEqual(d.planos, [Plano("venda", "mercado", 5397.5, 5402.0, 5394.0, "didi-agulhada")])
+
+    def test_folga_do_stop_configuravel(self):
+        d = self.didi(folga_stop_ticks=5).decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
+        self.assertEqual(d.planos[0].stop, 5397.0)
+
+    def test_sem_topo_a_frente_nao_entra(self):
+        d = self.didi().decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+        self.assertEqual(d.planos, [])
+        self.assertTrue(any("sem topo acima" in p for p in d.pensamento), d.pensamento)
+        # alvo_x ligado: o alvo volta a ser múltiplo do risco (opção)
+        d = self.didi(alvo_x=3.0).decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 5402.5, 5398.0, 5416.0, "didi-agulhada")])
+
+    def test_topo_ainda_sem_confirmar_nao_e_alvo(self):
+        # máxima de 5408 no penúltimo candle de hoje: só vira topo com 2 candles depois dela
+        hoje = velas(HOJE, [PARADO] * 4 + [(5400, 5408, 5399.5, 5400), (5400, 5403, 5399.5, 5402.5)])
+        d = self.didi().decidir(hoje, ONTEM_PARADO, [])
+        self.assertFalse(any(p.alvo == 5408.0 for p in d.planos))
+
+    def test_padrao_nao_sai_por_sinal(self):
+        queda = AGULHADA_COMPRA + velas(HOJE + timedelta(minutes=30), [(5402.5, 5402.5, 5395.5, 5396)])
+        self.assertEqual(self.didi().decidir(queda, ONTEM_PARADO, []).sair, False)
+        hoje = AGULHADA_COMPRA + APOS[:1]
+        with falsos(trix=lambda f: trix_extremo("compra")(f), bollinger=larguras([0.0] * A + [5.0, 4.5])):
+            self.assertEqual(self.didi().decidir(hoje, ONTEM_PARADO, []).sair, False)
+            self.assertIs(self.didi(saida="bandas").decidir(hoje, ONTEM_PARADO, []).sair,
+                          True)
 
 
 def horas(n_dias, semente=1):
@@ -336,11 +402,12 @@ class TestDidiDeVerdade(unittest.TestCase):
         """A memória do Didi (só calcula os candles novos) não muda nada: eventos, operações e série de indicadores
         iguais aos de refazer todos os estudos a cada decisão, em 5, em 15 e com candles de 60."""
         frouxo = {"trix_extremo": 1.0, "adx": "nao", "agulhada_n": 2}  # opera bastante, para comparar operações
-        for ativo, cs, params, minutos in (("WDO", dias_sinteticos(4, 143), {}, 5),
-                                           ("WDO", dias_sinteticos(4, 143), frouxo, 5),
-                                           ("WDO", dias_sinteticos(4, 220), {"tf": 15, **frouxo}, 5),
+        for ativo, cs, params, minutos in (("WDO", dias_sinteticos(4, 143), ANTES, 5),
+                                           ("WDO", dias_sinteticos(4, 143), {**ANTES, **frouxo}, 5),
+                                           ("WDO", dias_sinteticos(3, 220), frouxo, 5),  # alvo no topo/fundo
+                                           ("WDO", dias_sinteticos(4, 220), {"tf": 15, **ANTES, **frouxo}, 5),
                                            ("PETR4", horas(60, 1), frouxo, 60)):
-            rodar = lambda: motor.rodar_backtest(ativo, cs, [(didi_agulhada, params)], CFG,
+            rodar = lambda: motor.rodar_backtest(ativo, cs, [(didi_agulhada, params)], CFG_ANTES,
                                                  minutos=minutos)["traders"]["Didi Agulhada"]
             com = rodar()
             with mock.patch.object(didi_agulhada.Trader, "_estudos", sem_memoria):
@@ -376,17 +443,18 @@ class TestDidiDeVerdade(unittest.TestCase):
     def test_60_nao_ve_o_futuro(self):
         """Ações no 60: cortar os dados no meio de um pregão não muda nada do que o Didi fez antes do corte."""
         cs = horas(60, 1)
-        params = {"trix_extremo": 1.0, "adx": "nao", "agulhada_n": 2}
-        rodar = lambda dados: motor.rodar_backtest("PETR4", dados, [(didi_agulhada, params)], CFG,
-                                                   minutos=60)["traders"]["Didi Agulhada"]
-        longo = rodar(cs)
-        self.assertGreater(len(longo["operacoes"]), 3)
-        for k in range(60, len(cs) - 1, 37):
-            corte = cs[k].t.isoformat()
-            antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"
-                                 and not (e["tipo"] == "cancelada" and e["t"] == corte)]
-            curto = rodar(cs[:k + 1])
-            self.assertEqual(antes(curto["eventos"]), antes(longo["eventos"]), f"corte no candle {k}")
+        frouxo = {"trix_extremo": 1.0, "adx": "nao", "agulhada_n": 2}
+        for params, minimo in (({**ANTES, **frouxo}, 4), (frouxo, 1)):  # saídas de antes; alvo no topo/fundo
+            rodar = lambda dados: motor.rodar_backtest("PETR4", dados, [(didi_agulhada, params)], CFG_ANTES,
+                                                       minutos=60)["traders"]["Didi Agulhada"]
+            longo = rodar(cs)
+            self.assertGreaterEqual(len(longo["operacoes"]), minimo)
+            for k in range(60, len(cs) - 1, 37):
+                corte = cs[k].t.isoformat()
+                antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"
+                                     and not (e["tipo"] == "cancelada" and e["t"] == corte)]
+                curto = rodar(cs[:k + 1])
+                self.assertEqual(antes(curto["eventos"]), antes(longo["eventos"]), f"{params} corte no candle {k}")
 
     def test_gerente_e_relatorio_aceitam_tf(self):
         import gerente
@@ -426,23 +494,26 @@ class TestDidiDeVerdade(unittest.TestCase):
         self.assertNotIn("indicadores", sofia)
 
     def test_nao_ve_o_futuro(self):
-        """Cortar os dados no meio do dia 2 não muda nada do que o Didi fez antes do corte, em 5 e em 15."""
-        for params, semente in (({}, 143), ({"tf": 15}, 220)):  # sementes com ordem do Didi no dia 2
+        """Cortar os dados no meio de um dia não muda nada do que o Didi fez antes do corte, em 5 e em 15, com as
+        saídas de antes e com o alvo no topo/fundo do Plano 7."""
+        frouxo = {"trix_extremo": 1.0, "adx": "nao", "agulhada_n": 2}
+        # sementes com ordem do Didi no dia cortado (2º dia; 3º no caso do alvo no topo/fundo)
+        for params, semente, ini in ((ANTES, 143, 114), ({"tf": 15, **ANTES}, 220, 114), (frouxo, 220, 228)):
             cs = dias_sinteticos(3, semente)
-            dia2 = cs[114].t.date().isoformat()
+            dia2 = cs[ini].t.date().isoformat()
             rodar = lambda dados: motor.rodar_backtest("WDO", dados, [(didi_agulhada, params)],
-                                                       CFG)["traders"]["Didi Agulhada"]
+                                                       CFG_ANTES)["traders"]["Didi Agulhada"]
             longo = rodar(cs)
             self.assertTrue(any(e["tipo"] == "ordem" and e["t"].startswith(dia2) for e in longo["eventos"]), params)
             self.assertTrue(any(v is not None for v in longo["indicadores"]["trix"]))  # o TRIX entra no corte
             for k in range(10, 113, 9):
-                corte = cs[114 + k].t.isoformat()
+                corte = cs[ini + k].t.isoformat()
                 antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"
                                      and not (e["tipo"] == "cancelada" and e["t"] == corte)]
-                curto = rodar(cs[:114 + k + 1])
+                curto = rodar(cs[:ini + k + 1])
                 self.assertEqual(antes(curto["eventos"]), antes(longo["eventos"]), f"{params} corte no candle {k}")
                 # a série dos indicadores até o corte é a mesma (o último candle do corte vira fim do dia)
-                ate = lambda s: {c: [v for j, v in zip(s["k"], s[c]) if j < 114 + k] for c in s}
+                ate = lambda s: {c: [v for j, v in zip(s["k"], s[c]) if j < ini + k] for c in s}
                 self.assertEqual(ate(curto["indicadores"]), ate(longo["indicadores"]), f"{params} corte {k}")
 
 

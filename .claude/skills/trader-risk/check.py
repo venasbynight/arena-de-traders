@@ -152,7 +152,7 @@ def checar(ordens, cfg, dia, agora):
             else:
                 rr = ganho_pts / risco_pts
                 info["rr"] = round(rr, 2)
-                if rr < cfg["rr_minimo"]:
+                if rr < cfg["rr_minimo"] - 1e-9:  # preços no tick: R:R 3 exato não cai por erro de ponto flutuante
                     motivos.append(f"risco:retorno {rr:.2f} abaixo do mínimo {cfg['rr_minimo']}")
                 if perda > cfg["max_perda_por_trade"]:
                     motivos.append(f"perda no stop R$ {perda:.2f} acima do limite por trade "
@@ -302,13 +302,23 @@ def teste():
         t = modelo["ativos"][ativo]["tick"]
         r = lambda v: round(v, decimais_do_tick(t))
         o = {"simbolo": ativo, "ativo": ativo, "lado": "venda", "contratos": 1, "tipo": "limite", "entrada": p,
-             "stop": r(p + 20 * t), "alvo": r(p - 40 * t)}
+             "stop": r(p + 20 * t), "alvo": r(p - 60 * t)}
         res = checar([o], modelo, None, sexta)[0]
         assert res["ok"], (ativo, res["motivos"])
     pregao = {"simbolo": "PETR4", "ativo": "PETR4", "lado": "compra", "contratos": 1, "tipo": "limite",
               "entrada": 35.12, "stop": 34.92, "alvo": 35.52}
     r = checar([pregao], modelo, None, sexta.replace(hour=9, minute=30))[0]  # ação abre às 10:00
     assert not r["ok"] and any("antes de 10:00" in m for m in r["motivos"]), r
+    # regras do Diretor (Plano 7) no modelo: R:R mínimo 3; 16 contratos com stop de 1 tick no WDO passam (R$ 96)
+    assert (modelo["rr_minimo"], modelo["max_contratos"]) == (3.0, 50), (modelo["rr_minimo"], modelo["max_contratos"])
+    curto = {"simbolo": "WDOX26", "lado": "compra", "contratos": 16, "tipo": "limite",
+             "entrada": 5432.5, "stop": 5432.0, "alvo": 5434.0}
+    r = checar([curto], modelo, None, sexta)[0]
+    assert r["ok"] and r["info"]["perda_max_rs"] == 96.0, r
+    r = checar([dict(curto, alvo=5433.5)], modelo, None, sexta)[0]  # R:R 2
+    assert not r["ok"] and any("abaixo do mínimo 3.0" in m for m in r["motivos"]), r
+    r = checar([dict(curto, contratos=51, stop=5432.0)], dict(modelo, max_perda_por_trade=1000), None, sexta)[0]
+    assert not r["ok"] and any("acima do máximo 50" in m for m in r["motivos"]), r
     print("trader-risk: autoteste ok")
 
 

@@ -146,12 +146,12 @@
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     }
   },
-  "max_contratos": 5,
+  "max_contratos": 50,
   "max_perda_por_trade": 100,
   "max_perda_dia": 300,
   "max_trades_dia": 10,
   "max_stops_dia": 3,
-  "rr_minimo": 1.0,
+  "rr_minimo": 3.0,
   "sem_entrada_antes": "09:05",
   "sem_entrada_depois": "18:00",
   "zerar_ate": "18:15",
