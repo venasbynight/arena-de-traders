@@ -672,6 +672,16 @@ class TestDelta(unittest.TestCase):
         self.assertEqual({k.delta for k in por[date(2026, 9, 2)]}, {3.0})
         self.assertEqual({k.delta for k in por[date(2026, 9, 3)]}, {None})  # sem ticks: ausente, não zero
 
+    def test_baixar_candles_de_novo_nao_apaga_o_delta_guardado(self):
+        # um feriado no começo dos dias faltantes faz o candle ser baixado de novo; o delta já feito fica
+        mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1), date(2026, 9, 2)}})
+        with tempfile.TemporaryDirectory() as d:
+            dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG_DELTA, pasta=d, mt5=mt5, hoje=date(2026, 9, 10))
+            os.remove(os.path.join(d, "WDO_M5.cobertura.csv"))
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG_DELTA, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 9, 10))
+        self.assertEqual({k.delta for k in dados.por_dia(cs)[date(2026, 9, 1)]}, {3.0})
+
     def test_dia_de_hoje_nao_ganha_delta(self):
         mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1)}})
         with tempfile.TemporaryDirectory() as d:

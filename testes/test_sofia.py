@@ -39,6 +39,13 @@ class TestSofia(unittest.TestCase):
         d = self.wdo().decidir(HOJE_FVG_BAIXA, ONTEM_WDO, [])
         self.assertEqual(d.planos, [])
 
+    def test_buraco_de_uma_hora_no_5_min_nao_vira_60(self):
+        # falta de candles no meio do pregão (feed parado) não pode trocar a tendência do 60 pela do diário
+        k = HOJE_FVG_BAIXA[2]
+        buraco = HOJE_FVG_BAIXA[:2] + [Candle(k.t + timedelta(minutes=60), k.o, k.h, k.l, k.c)]
+        d = self.wdo().decidir(buraco, ONTEM_WDO, tendencia_60("baixa"))
+        self.assertIn("tendência do 60: baixa; só venda", d.pensamento)
+
     def test_venda_no_meio_do_fvg(self):
         d = self.wdo().decidir(HOJE_FVG_BAIXA, ONTEM_WDO, tendencia_60("baixa"))
         self.assertEqual(d.planos, [Plano("venda", "limite", 5433.0, 5435.5, 5420.0, "smc-fvg")])

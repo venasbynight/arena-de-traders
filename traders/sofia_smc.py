@@ -2,7 +2,6 @@
 
 No 60 minutos (ações) a tendência vem do diário, montado dos candles de 60 já fechados.
 """
-from datetime import timedelta
 
 import estudos
 from motor import preco
@@ -92,8 +91,8 @@ class Trader:
         horario = self._do_ativo("horario")
         if horario and not horario[0] <= hoje5[-1].t.strftime("%H:%M") < horario[1]:
             return Decisao(pensamento=[f"fora do meu horário ({horario[0]}–{horario[1]}); não opero"])
-        par = hoje5[-2:] if len(hoje5) >= 2 else ontem5[-2:]  # dois candles do mesmo dia: o tempo gráfico
-        no_60 = len(par) == 2 and par[1].t - par[0].t >= timedelta(minutes=60)
+        # base de 60: o motor passa o último candle também como bloco de 60 já fechado (um buraco no feed de 5 min não engana)
+        no_60 = bool(fechados60) and fechados60[-1].t == hoje5[-1].t
         contexto = diarios(fechados60, hoje5[-1].t.date()) if no_60 else fechados60
         nome_ctx = "diário" if no_60 else "60"
         tend = self._tendencia(contexto)

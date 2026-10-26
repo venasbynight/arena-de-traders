@@ -88,6 +88,12 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("sem candles", json.loads(corpo)["erro"])
 
+    def test_ativo_so_de_pesquisa_fica_fora_do_replay(self):
+        # ações e pares novos estão no config só para a pesquisa: não são salas, o replay recusa
+        status, corpo = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
+        self.assertEqual(status, 400)
+        self.assertIn("PETR4", json.loads(corpo)["erro"])
+
     def test_ativo_invalido(self):
         status, _ = self.get("/api/backtest?ativo=XPTO3&de=2026-09-01&ate=2026-09-01")
         self.assertEqual(status, 400)

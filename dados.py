@@ -407,7 +407,9 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
                                espec.get("timeout_s", 90), tf)
         novos = no_tick(novos, espec.get("tick"))
         unicos = {k.t: k for k in candles}
-        unicos.update({k.t: k for k in novos})
+        # candle baixado de novo vem sem delta: o delta já feito dos ticks fica (o dia segue marcado como feito)
+        unicos.update({k.t: k if k.delta is not None or unicos.get(k.t) is None or unicos[k.t].delta is None
+                       else replace(k, delta=unicos[k.t].delta) for k in novos})
         candles = sorted(unicos.values(), key=lambda k: k.t)
         salvar_csv(candles, arq)
         # cobre só do primeiro ao último dia que vieram de fato (o histórico do servidor pode começar depois
