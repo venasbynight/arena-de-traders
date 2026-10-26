@@ -18,13 +18,44 @@ def _wf(grade, ativo, tf, estresse):
     return harness.walk_forward(sofia_smc, grade, ativo, de, ate, tf=tf, estresse_ticks=estresse)
 
 
+def _ops(params, ativo, tf, ini, fim, estresse):
+    from traders import sofia_smc
+    return harness.avaliar(sofia_smc, params, ativo, ini, fim, estresse, tf)["operacoes"]
+
+
+def wf_carteira(grade, grupo, tf, estresse, min_trades=harness.gerente.MIN_TRADES):
+    """Walk-forward ancorado como o do harness, com as operações das ações do grupo somadas em cada bloco."""
+    from rodar import GRUPOS
+    from traders import sofia_smc
+    membros = GRUPOS[grupo]
+    cands = harness.candidatos(sofia_smc, grade, membros[0])
+    bs = harness.blocos(*harness.divisao(membros[0])["desenvolvimento"])
+    tarefas = [(c, m, tf, i, f, estresse) for c in cands for i, f in bs for m in membros]
+    with ProcessPoolExecutor(4) as ex:
+        res = iter(ex.map(_ops, *zip(*tarefas)))
+    por = [[[o for _ in membros for o in next(res)] for _ in bs] for _ in cands]
+    saida, oos = [], []
+    for k in range(1, len(bs)):
+        treinos = [harness.metricas([o for ops in por[j][:k] for o in ops]) for j in range(len(cands))]
+        validos = [j for j in range(len(cands)) if treinos[j]["trades"] >= min_trades]
+        j = max(validos, key=lambda j: harness.gerente._fator(treinos[j])) if validos else 0
+        oos += por[j][k]
+        saida.append({"teste": (bs[k][0].isoformat(), bs[k][1].isoformat()), "params": cands[j],
+                      "placar_teste": harness.metricas(por[j][k])})
+    return {"blocos": saida, "fora_da_amostra": harness.metricas(oos)}
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     grade = json.loads(sys.argv[1])
     alvos = [(a, int(tf)) for a, tf in (x.split(":") for x in sys.argv[2:])]
-    tarefas = [(grade, a, tf, e) for a, tf in alvos for e in (0, 1)]
-    with ProcessPoolExecutor(4) as ex:
-        res = list(ex.map(_wf, *zip(*tarefas)))
+    from rodar import GRUPOS
+    if any(a in GRUPOS for a, _ in alvos):  # carteira: um alvo por vez, os processos ficam dentro dela
+        res = [wf_carteira(grade, a, tf, e) for a, tf in alvos for e in (0, 1)]
+    else:
+        tarefas = [(grade, a, tf, e) for a, tf in alvos for e in (0, 1)]
+        with ProcessPoolExecutor(4) as ex:
+            res = list(ex.map(_wf, *zip(*tarefas)))
     for i, (a, tf) in enumerate(alvos):
         r0, r1 = res[2 * i], res[2 * i + 1]
         de, ate = r0["blocos"][0]["teste"][0], r0["blocos"][-1]["teste"][1]

@@ -80,3 +80,34 @@ O padrão: no WDO, no WIN e no EURUSD 5/15 é a triagem em blocos; nos outros 5 
 - **Saída parcial com stop na entrada** (das anotações): não dá para testar sem mudar o motor. O trader não sabe que está posicionado, e o motor tem uma posição com stop fixo.
 - **Ações:** o backtest negocia a ação como aproximação da call/put. A margem (1.000) e o custo (1,0) são suposições do passo A.
 - **Forex:** o desenvolvimento tem cerca de 10 meses (4 blocos). Um walk-forward com 3 blocos fora da amostra é fraco.
+
+## Ações 60 min com posição de vários dias
+O motor ganhou, por cherry-pick do commit `b27c400` do ramo do Didi, a opção de posição de vários dias. No config, as 12 ações ficam com `"zerar_no_dia": false` e `"max_pregoes": 10`. O config da worktree pegou as chaves ao carregar: conferi que PETR4 e EQTL3 trazem `(False, 10)` e que WDO e EURUSD não trazem nada. A tendência vem do diário.
+
+**Carteira "ACOES12".** As 12 ações rodam juntas, cada uma na sua conta, e as operações entram somadas nas métricas. Sozinha, nenhuma ação passa de cerca de 150 trades no desenvolvimento, e quase todas as variantes ficam abaixo de 100 por ação. A triagem é em blocos de 3 meses, com e sem 1 tick de estresse. Foram 12 conjuntos de parâmetros, mais 1 walk-forward da carteira com 6 candidatos.
+
+**Hipóteses:**
+- **H10b:** com posição de vários dias, os alvos da estrutura de 60 passam a ser alcançáveis. É verdade, mas não basta: os stops dominam.
+- **H12:** o stop colado na zona (2 ticks = R$ 0,02) não sobrevive ao ruído do 60 e ao gap da noite. Testei a folga em ticks (`folga_ticks` 10/25/50) e em amplitudes médias (regra nova `folga_atr` 0,5/1/1,5, desligada no padrão). O PF sobe com a folga e para em cerca de 0,96.
+
+| Variante (desenvolvimento, ACOES12) | Trades | Resultado | PF | c/ estresse | PF est. |
+|---|---:|---:|---:|---:|---:|
+| M0 padrão (zonas só do dia) | 280 | −4.602 | 0,60 | −7.036 | 0,48 |
+| M1 dias_zona 5 | 1.287 | −22.232 | 0,65 | −32.203 | 0,55 |
+| M2 dias_zona 5 + gatilho | 96 | −823 | 0,84 | −1.307 | 0,76 |
+| M3 dias_zona 5 + zona 1,0 | 365 | −5.476 | 0,77 | −7.868 | 0,69 |
+| M4 dias_zona 5 + folga 10 ticks | 1.115 | −14.137 | 0,80 | −22.144 | 0,71 |
+| M5 dias_zona 5 + folga 25 ticks | 834 | −2.619 | 0,94 | −6.325 | 0,87 |
+| M6 dias_zona 5 + zona 1,0 + folga 10 | 338 | −3.429 | 0,83 | −5.155 | 0,76 |
+| M7 dias_zona 5 + gatilho + folga 10 | 66 | −270 | 0,91 | −514 | 0,84 |
+| **M8 dias_zona 5 + folga 50 ticks (melhor)** | 455 | −866 | 0,96 | −1.776 | 0,91 |
+| M9 dias_zona 5 + folga_atr 0,5 / 1,0 / 1,5 | 1.018 / 740 / 464 | −7.080 / −5.166 / −5.857 | 0,88 / 0,87 / 0,76 | negativos | 0,80 / 0,79 / 0,70 |
+
+**Walk-forward da carteira** (grade: `folga_ticks` 10/25/50 × `zona_min_atr` 0/1, com `dias_zona` 5), fora da amostra: 290 trades, −1.346, PF 0,91; com estresse −2.228, PF 0,85.
+
+**Por ação na M8:**
+- Positivas: VALE3 +1.219, AXIA3 +495, PETR3 +340, EMBJ3 +113, EQTL3 +100.
+- Negativas: ITUB4 −862, RENT3 −867, BBAS3 −769, PETR4 −311, SBSP3 −212, PRIO3 −93, BBDC4 −19.
+- Todas com menos de 100 trades, ou seja, inconclusivas. Escolher as que deram certo seria olhar o resultado para escolher o ativo.
+
+**Decisão: não passou.** Nenhuma variante ficou positiva no desenvolvimento, nem sem estresse. Por isso nenhum finalista foi para a validação, e os PARAMS continuam os de antes. Com a posição de vários dias a Sofia nas ações deixa de ser um desastre (PF 0,6 → 0,96), mas não tem vantagem. A regra `folga_atr` ficou no código, desligada, com teste. O padrão continua igual ao baseline: conferi o mesmo resultado no WDO e no EURUSD.

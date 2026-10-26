@@ -16,10 +16,11 @@ ESTILO = "OB/FVG · tendência 60→5"
 # na parte de baixo do dia (entrada até mínima + desconto × amplitude do dia), venda no espelho (1 = em qualquer lugar);
 # gatilho: em vez da limitada, espera o 1º toque na zona fechar rejeitando (de volta para fora dela) e entra com ordem
 # stop no rompimento da máxima (compra) ou mínima (venda) desse candle; dias_zona: as zonas valem pelos últimos
-# dias_zona pregões (no 5 e no 15 no máximo 2, ontem e hoje; no 60 os candles de 60 fechados)
+# dias_zona pregões (no 5 e no 15 no máximo 2, ontem e hoje; no 60 os candles de 60 fechados); folga_atr: o stop
+# fica além da zona folga_ticks ticks + folga_atr amplitudes médias
 PARAMS = {"n": 2, "fvg_min": {"WDO": 1.0, "WIN": 50.0, "EURUSD": 0.0002, "BTCUSDT": 20.0}, "folga_ticks": 2,
           "zona_min_atr": 0.0, "alvo_r": 0.0, "horario": None, "entrada_frac": 0.5, "desconto": 1.0,
-          "gatilho": False, "dias_zona": 1}
+          "gatilho": False, "dias_zona": 1, "folga_atr": 0.0}
 GRADE = {"folga_ticks": [1, 2, 3]}
 N_AMPLITUDE = 14  # candles da amplitude média (máxima − mínima)
 
@@ -105,6 +106,9 @@ class Trader:
         amplitude = sum(k.h - k.l for k in ultimos) / len(ultimos)
         zona_min = (self._do_ativo("zona_min_atr") or 0.0) * amplitude
         alvo_r = self._do_ativo("alvo_r") or 0.0
+        folga_atr = (self._do_ativo("folga_atr") or 0.0) * amplitude
+        # sem folga_atr o stop fica como sempre foi (arredondar mudaria o ponto flutuante e o baseline)
+        no_tick = (lambda v: arredondar_tick(v, tick)) if folga_atr else (lambda v: v)
         frac, desconto, gatilho = (self._do_ativo(k) for k in ("entrada_frac", "desconto", "gatilho"))
         maxima, minima = max(k.h for k in hoje5), min(k.l for k in hoje5)
         # zonas dos últimos dias_zona pregões (1 = só de hoje: vencem no fim do dia)
@@ -134,12 +138,12 @@ class Trader:
             d.desenhos.append({"tipo": "zona", "lado": z.lado, "topo": z.topo, "fundo": z.fundo,
                                "de": velas[z.criada].t.isoformat(), "rotulo": rotulo})
             if lado == "compra":
-                stop = z.fundo - self.p["folga_ticks"] * tick
+                stop = no_tick(z.fundo - self.p["folga_ticks"] * tick - folga_atr)
                 minimo = entrada + alvo_r * (entrada - stop)
                 acima = [p.preco for p in pivos if p.tipo == "topo" and p.preco > minimo]
                 alvo = min(acima) if acima else None
             else:
-                stop = z.topo + self.p["folga_ticks"] * tick
+                stop = no_tick(z.topo + self.p["folga_ticks"] * tick + folga_atr)
                 minimo = entrada - alvo_r * (stop - entrada)
                 abaixo = [p.preco for p in pivos if p.tipo == "fundo" and p.preco < minimo]
                 alvo = max(abaixo) if abaixo else None

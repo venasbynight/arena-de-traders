@@ -139,6 +139,10 @@ class TestSofiaVariantes(unittest.TestCase):
         self.assertEqual(self.venda({"entrada_frac": 0.0}).planos,
                          [Plano("venda", "limite", 5431.5, 5435.5, 5420.0, "smc-fvg")])
 
+    def test_folga_em_amplitudes_no_tick(self):
+        # topo 5434,5 + 2 ticks (1,0) + 0,5 × 5,9 = 5438,45 → 5438,5
+        self.assertEqual(self.venda({"folga_atr": 0.5}).planos[0].stop, 5438.5)
+
     def test_venda_so_no_premio_do_dia(self):
         # dia de 5428 a 5438; a venda em 5433 está 5 abaixo da máxima: cabe em 0,5 × 10, não em 0,4 × 10
         self.assertEqual(len(self.venda({"desconto": 0.5}).planos), 1)
