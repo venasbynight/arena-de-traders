@@ -141,6 +141,37 @@ Isso confirma o WDO/WIN com uma amostra de anos: delta forte contra a tendência
 que pague o custo. (A inversão "operar a favor do agressor" não foi testada, porque muda a essência; fica com o
 Diretor.)
 
+## Diagnóstico: a favor do agressor (decisão do Diretor)
+
+**Isto não é o Caio e não virou padrão.** É a chave `lado="agressor"` (padrão `"contra"`), pedida para o Diretor
+decidir. Ela usa o mesmo sinal do Caio (nível do dia, delta além do limite, tendência) e entra do outro lado: comprador
+forte na resistência vira compra; vendedor forte no suporte vira venda. O stop fica além do extremo oposto do candle do
+sinal, mais a folga. O alvo é o topo/fundo seguinte do dia na direção do trade, ou um R:R fixo. Teste em
+`test_caio.py`.
+
+**Método.** Mesma regra: só desenvolvimento, estresse de 1 tick, ≥ 100 trades, platô e walk-forward. A grade de cada
+ativo é folga pequena/média/grande × alvo no topo/fundo, R:R 1,5 ou R:R 3. São 27 variantes (9 por ativo), mais 3
+walk-forwards. **Validação: nenhuma.** Nenhuma variante cumpriu todas as regras do desenvolvimento, e a regra era
+validar só nesse caso.
+
+| Ativo | Variantes positivas c/ estresse | Melhor no desenvolvimento (trades, resultado, PF; c/ estresse) | Walk-forward fora da amostra (c/ estresse) | Por que não passa |
+|---|---|---|---|---|
+| WIN (12/08–15/09) | 8 de 9 | folga 40, R:R 3: 58 tr, +1.327, PF 1,54; +1.211 (1,48) | 01–15/09: 32 tr, −40, PF 0,98; −146 (0,92) | todas com < 100 trades (a de 100 trades, folga 2 R:R 1,5, é negativa); o walk-forward perdeu |
+| WDO (29/06–15/09) | 4 de 9 | folga 10, R:R 1,5: 48 tr, +567, PF 1,33; +87 (1,04) | 01–15/09: 10 tr, +375, PF 2,67; +275 (2,04) | todas com < 100 trades; a melhor com alguma amostra (48 trades) quase zera com estresse (+87), e a vizinha (folga 6, R:R 1,5) perde −1.021 com estresse: sem platô |
+| BTCUSDT (2024-01–2026-04) | 0 de 9 | folga US$ 100, R:R 3: 1.919 tr, −2.297, PF 0,83 | 9 blocos: 1.683 tr, −2.005, PF 0,84 | negativo com amostra grande |
+
+**Leitura para o Diretor.**
+- No WIN, a favor do agressor foi positivo em quase toda a grade, com e sem estresse. É o oposto do Caio, que perdeu
+  em todas. Isso combina com o diagnóstico do Caio (depois do delta grande, o preço continua). Mas é 1 mês de dados,
+  < 100 trades por variante, e o walk-forward (treino em agosto, teste em 01–15/09) ficou no zero (PF 0,98). É indício,
+  não resultado.
+- No WDO, só vale com alvo no topo/fundo do dia (6 a 14 trades) ou com folga larga; com estresse, quase não sobra nada.
+- No BTCUSDT, com anos de dados, a favor do agressor perde **mais** que o Caio (PF 0,52–0,83 contra 0,43–0,94). Ou
+  seja: não há vantagem nem num lado nem no outro, porque o custo fixo de R$ 1 por trade come tudo.
+- Se o Diretor quiser seguir com a ideia do agressor, o próximo passo é deixar o delta do WIN acumular (cada mês dá
+  ~80 trades) e refazer `python pesquisa/caio/rodar.py agressor` e `walk_forward_agressor` com 3+ meses. Antes disso,
+  nada deve virar padrão.
+
 ## Arquivos
 
 - `pesquisa/caio/registro.csv`: todas as rodadas (desenvolvimento, walk-forward, validação), com e sem estresse.

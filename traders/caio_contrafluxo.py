@@ -16,10 +16,11 @@ ESTILO = "delta contra a tendência · S/R do dia"
 #   alvo_rr     alvo = risco × alvo_rr a partir do fechamento (None = topo/fundo oposto do dia)
 #   horario     ["HH:MM", "HH:MM"]: só sinais com o candle de decisão nessa janela (None = o pregão todo)
 #   rejeicao    o candle do sinal passa do nível e fecha de volta do lado de cá (absorção)
+#   lado        "contra" (o Caio) ou "agressor": só diagnóstico para o Diretor, inverte o lado do trade
 # Nenhum passou na pesquisa (pesquisa/caio/resumo.md); ficam para refazer quando houver mais meses de delta.
 PARAMS = {"n": 2, "limite": {"WDO": 7500, "WIN": 10000}, "regiao_ticks": 2, "folga_ticks": 2,
           "limite_pct": None, "tendencia": "60", "confirma": False, "alvo_rr": None, "horario": None,
-          "rejeicao": False}
+          "rejeicao": False, "lado": "contra"}
 GRADE = {"limite": {"WDO": [5000, 7500, 10500, 14500], "WIN": [10000, 18000, 25000, 32000, 42000]}}
 MIN_AMOSTRA_PCT = 50  # candles com delta para o percentil valer
 
@@ -95,7 +96,9 @@ class Trader:
             if conf and not (k.c < min(p.preco, s.c) if venda else k.c > max(p.preco, s.c)):
                 d.pensamento.append(f"delta {s.delta:+.0f} {nome}, mas o candle seguinte não confirmou; não entro")
                 break
-            if venda:
+            # diagnóstico do Plano 6 (não é o Caio): "agressor" entra a favor de quem agrediu, no mesmo sinal
+            vende = venda != (self.p["lado"] == "agressor")
+            if vende:
                 stop = arredondar_tick(max(p.preco, s.h, k.h) + self.p["folga_ticks"] * tick, tick)
                 alvos = [q.preco for q in pivos if q.tipo == "fundo" and q.preco < k.c]
                 alvo = max(alvos) if alvos else None
@@ -105,13 +108,14 @@ class Trader:
                 alvo = min(alvos) if alvos else None
             if self.p["alvo_rr"]:
                 alvo = arredondar_tick(k.c - self.p["alvo_rr"] * (stop - k.c), tick)
-            lado = "venda" if venda else "compra"
+            lado = "venda" if vende else "compra"
             if alvo is None:
                 d.pensamento.append(f"sinal {nome} (delta {s.delta:+.0f}), mas sem "
-                                    f"{'fundo abaixo' if venda else 'topo acima'} para alvo; não entro")
+                                    f"{'fundo abaixo' if vende else 'topo acima'} para alvo; não entro")
                 break
-            d.planos.append(Plano(lado, "mercado", k.c, stop, alvo, "caio-contrafluxo"))
-            d.desenhos.append({"tipo": "linha", "preco": alvo, "rotulo": f"{'fundo' if venda else 'topo'} · alvo"})
+            setup = "caio-agressor" if self.p["lado"] == "agressor" else "caio-contrafluxo"
+            d.planos.append(Plano(lado, "mercado", k.c, stop, alvo, setup))
+            d.desenhos.append({"tipo": "linha", "preco": alvo, "rotulo": f"{'fundo' if vende else 'topo'} · alvo"})
             d.pensamento.append(f"delta {s.delta:+.0f} {nome}: {lado} a mercado na abertura; "
                                 f"stop {preco(stop, tick)}, alvo {preco(alvo, tick)}")
             break

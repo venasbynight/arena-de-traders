@@ -183,6 +183,14 @@ class TestCaio(unittest.TestCase):
         self.assertEqual(caio_contrafluxo.Trader("BTCUSDT", 0.01, {"limite_pct": 90})._limite(ontem), 54)
         self.assertIsNone(caio_contrafluxo.Trader("BTCUSDT", 0.01)._limite(ontem))
 
+    def test_lado_agressor_e_so_diagnostico_e_inverte_o_trade(self):
+        self.assertEqual(caio_contrafluxo.PARAMS["lado"], "contra")  # o Caio continua contra o agressor
+        d = self.wdo(lado="agressor", alvo_rr=2).decidir(dia(), [], BAIXA60)
+        # mesmo sinal (comprador forte na resistência, tendência de baixa): compra; stop 2 ticks abaixo da mínima
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 5401.0, 5399.0, 5405.0, "caio-agressor")])
+        d = self.wdo(lado="agressor").decidir(espelho(dia()), [], ALTA60)
+        self.assertEqual((d.planos[0].lado, d.planos[0].stop, d.planos[0].alvo), ("venda", 5401.0, 5395.0))
+
     def test_rejeicao_exige_passar_do_nivel_e_fechar_de_volta(self):
         self.assertEqual(self.wdo(rejeicao=True).decidir(dia(), [], BAIXA60).planos, [])  # máxima 5404,5 < 5405
         d = self.wdo(rejeicao=True).decidir(dia(5400.5, 5406, 5400, 5401), [], BAIXA60)

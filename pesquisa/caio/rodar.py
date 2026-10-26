@@ -110,7 +110,26 @@ def btc2():
     return v
 
 
-GRUPOS = {"ablacao": ablacao, "rodada2": rodada2, "rodada3": rodada3, "btc1": btc1, "btc2": btc2}
+# Diagnóstico para o Diretor (não é o Caio): o mesmo sinal, operado a favor do agressor. Grade: folga pequena,
+# média e grande do ativo × alvo no topo/fundo do dia ou R:R 1,5 / 3.
+AGRESSOR = {"WDO": ({}, (2, 6, 10)), "WIN": ({}, (2, 20, 40)), "BTCUSDT": (BTC, (1000, 10000, 20000))}
+
+
+GRADE_WF_AGR = {"WDO": {"lado": ["agressor"], "folga_ticks": [2, 6, 10], "alvo_rr": [None, 1.5, 3]},
+                "WIN": {"lado": ["agressor"], "folga_ticks": [2, 20, 40], "alvo_rr": [None, 1.5, 3]},
+                # BTC: sem o alvo no topo/fundo (100–500 trades em 28 meses), para caber no tempo
+                "BTCUSDT": {"lado": ["agressor"], "limite_pct": [95], "regiao_ticks": [3000],
+                            "folga_ticks": [1000, 10000, 20000], "alvo_rr": [1.5, 3]}}
+
+
+def agressor():
+    return [(f"agressor folga {f} rr {rr}", a, {**base, "lado": "agressor", "folga_ticks": f, "alvo_rr": rr})
+            for a in ("BTCUSDT", "WDO", "WIN") for base, folgas in [AGRESSOR[a]] for f in folgas
+            for rr in (None, 1.5, 3)]
+
+
+GRUPOS = {"ablacao": ablacao, "rodada2": rodada2, "rodada3": rodada3, "btc1": btc1, "btc2": btc2,
+          "agressor": agressor}
 # grade do walk-forward: as dimensões que mexeram no PF (ablação e rodadas 2-3), no máximo 3 valores cada
 GRADE_WF = {"WDO": {"folga_ticks": [2, 6, 10], "tendencia": ["60", "dia"], "limite": [5000, 7500]},
             "WIN": {"folga_ticks": [2, 20, 40], "tendencia": ["60", "ambos"], "limite": [7500, 10000]},
@@ -118,22 +137,24 @@ GRADE_WF = {"WDO": {"folga_ticks": [2, 6, 10], "tendencia": ["60", "dia"], "limi
                         "limite_pct": [95, 98]}}
 
 
-def _wf(ativo, meses, estresse):
+def _wf(ativo, meses, estresse, agressor=False):
     de, ate = H.divisao(ativo, C.NOME)["desenvolvimento"]
+    grade = GRADE_WF_AGR[ativo] if agressor else GRADE_WF[ativo]
     mt = 20 if ativo in ("WDO", "WIN") else 50  # WDO/WIN nunca chegam aos 50 do gerente
-    return H.walk_forward(C, GRADE_WF[ativo], ativo, de, ate, bloco_meses=meses, estresse_ticks=estresse, min_trades=mt)
+    return H.walk_forward(C, grade, ativo, de, ate, bloco_meses=meses, estresse_ticks=estresse, min_trades=mt)
 
 
-def walk_forward(ativos=(("WDO", 3), ("WIN", 1))):
+def walk_forward(ativos=(("WDO", 3), ("WIN", 1)), agressor=False):
     """WDO em blocos de 3 meses (1 bloco de teste: 01-15/09) e WIN em blocos de 1 mês (3 meses não dá teste)."""
-    tarefas = [(a, m, e) for a, m in ativos for e in (0, 1)]
+    tarefas = [(a, m, e, agressor) for a, m in ativos for e in (0, 1)]
     with ProcessPoolExecutor(max_workers=4) as ex:
         rs = list(ex.map(_wf, *zip(*tarefas)))
     for i in range(0, len(rs), 2):
-        (ativo, meses, _), w, we = tarefas[i], rs[i], rs[i + 1]
+        (ativo, meses, _, _), w, we = tarefas[i], rs[i], rs[i + 1]
         cab = lambda x: {**x["fora_da_amostra"], "params": [b["params"] for b in x["blocos"]], "ativo": ativo,
                          "tf": 5, "de": x["blocos"][0]["teste"][0], "ate": x["blocos"][-1]["teste"][1]}
-        lin = H.linha(f"walk-forward {meses} meses, {w['candidatos']} candidatos", cab(w), cab(we),
+        lin = H.linha(f"{'agressor ' if agressor else ''}walk-forward {meses} meses, {w['candidatos']} candidatos",
+                      cab(w), cab(we),
                       nota=f"min_trades {20 if ativo in ('WDO', 'WIN') else 50}; "
                            f"fora da amostra: {len(w['blocos'])} bloco(s)")
         H.registrar("caio", lin)
@@ -178,6 +199,8 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     if sys.argv[1] == "walk_forward":
         walk_forward()
+    elif sys.argv[1] == "walk_forward_agressor":
+        walk_forward((("BTCUSDT", 3), ("WDO", 3), ("WIN", 1)), agressor=True)
     elif sys.argv[1] == "walk_forward_btc":
         walk_forward((("BTCUSDT", 3),))
     elif sys.argv[1] == "validacao":
