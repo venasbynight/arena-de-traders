@@ -130,18 +130,71 @@ class TestCaio(unittest.TestCase):
         """Cortar os dados no meio do dia 2 não muda nada do que o Caio fez antes do corte."""
         rr = random.Random(3)
         cs = [replace(k, delta=float(rr.choice([0, 0, 0, 1, -1]) * rr.randint(0, 900))) for k in dias_sinteticos(3, 5)]
-        rodar = lambda dados: motor.rodar_backtest("WDO", dados, [(caio_contrafluxo, {"limite": 300})],
-                                                   CFG)["traders"]["Caio Contrafluxo"]
-        longo = rodar(cs)
-        self.assertTrue(any(e["tipo"] == "entrada" for e in longo["eventos"]))
-        for k in range(10, 113, 9):
-            corte = cs[114 + k].t.isoformat()
-            antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"]
-            curto = rodar(cs[:114 + k + 1])
-            self.assertEqual(antes(curto["eventos"]), antes(longo["eventos"]), f"corte no candle {k}")
+        for params in ({"limite": 300},
+                       {"limite": 300, "limite_pct": 50, "tendencia": "dia", "alvo_rr": 2}):
+            rodar = lambda dados: motor.rodar_backtest("WDO", dados, [(caio_contrafluxo, params)],
+                                                       CFG)["traders"]["Caio Contrafluxo"]
+            longo = rodar(cs)
+            self.assertTrue(any(e["tipo"] == "entrada" for e in longo["eventos"]), params)
+            for k in range(10, 113, 9):
+                corte = cs[114 + k].t.isoformat()
+                antes = lambda evs: [e for e in evs if e["t"] <= corte and e.get("motivo") != "zeragem"]
+                curto = rodar(cs[:114 + k + 1])
+                self.assertEqual(antes(curto["eventos"]), antes(longo["eventos"]), f"corte no candle {k}, {params}")
         s = longo["indicadores"]
         self.assertEqual(set(s), {"k", "t", "delta", "limite"})
         self.assertEqual(s["delta"][0], cs[0].delta)
+
+    # --- chaves da pesquisa do Plano 6 (desligadas no padrão) ---
+
+    def test_tendencia_do_dia_e_ambos(self):
+        abre_acima = velas(HOJE, [(5402, 5402, 5399, 5400, 0)] + BASE[1:] + [(*SINAL, 600)])
+        self.assertEqual(self.wdo(tendencia="dia").decidir(abre_acima, [], []).planos[0].lado, "venda")
+        self.assertEqual(self.wdo(tendencia="dia").decidir(dia(), [], BAIXA60).planos, [])  # fecha acima da abertura
+        self.assertEqual(self.wdo(tendencia="ambos").decidir(abre_acima, [], []).planos, [])
+        self.assertEqual(self.wdo(tendencia="ambos").decidir(abre_acima, [], BAIXA60).planos[0].lado, "venda")
+
+    def test_confirma_espera_o_candle_seguinte(self):
+        caio = lambda: self.wdo(confirma=True)
+        self.assertEqual(caio().decidir(dia(), [], BAIXA60).planos, [])
+        seguinte = lambda *k: dia() + velas(dia()[-1].t + timedelta(minutes=5), [(*k, 0)])
+        d = caio().decidir(seguinte(5401, 5402, 5399, 5399.5), [], BAIXA60)
+        self.assertEqual(d.planos, [Plano("venda", "mercado", 5399.5, 5406.0, 5394.0, "caio-contrafluxo")])
+        d = caio().decidir(seguinte(5401, 5403, 5400.5, 5402), [], BAIXA60)
+        self.assertEqual(d.planos, [])
+        self.assertTrue(any("não confirmou" in linha for linha in d.pensamento), d.pensamento)
+
+    def test_alvo_por_risco_retorno(self):
+        self.assertEqual(self.wdo(alvo_rr=2).decidir(dia(), [], BAIXA60).planos[0].alvo, 5391.0)  # 5401 − 2 × 5
+
+    def test_horario(self):
+        self.assertEqual(self.wdo(horario=["10:00", "17:00"]).decidir(dia(), [], BAIXA60).planos, [])  # sinal 09:40
+        self.assertEqual(len(self.wdo(horario=["09:00", "10:00"]).decidir(dia(), [], BAIXA60).planos), 1)
+
+    def test_limite_pelo_percentil_de_ontem_e_hoje(self):
+        ontem = velas(HOJE - timedelta(days=1), [(5400, 5401, 5399, 5400, i) for i in range(1, 61)])
+        caio = self.wdo(limite_pct=90)
+        self.assertEqual(caio._limite(ontem + dia()[:-1]), 53)  # 8 zeros de hoje + 1..60 de ontem
+        self.assertEqual(len(caio.decidir(dia(), ontem, BAIXA60).planos), 1)
+        self.assertEqual(caio.decidir(dia(delta=53), ontem, BAIXA60).planos, [])
+        d = self.wdo(limite_pct=90).decidir(dia(), [], BAIXA60)  # menos de 50 candles com delta
+        self.assertEqual(d.planos, [])
+        # com percentil, ativo sem limite fixo (BTCUSDT) também opera
+        self.assertEqual(caio_contrafluxo.Trader("BTCUSDT", 0.01, {"limite_pct": 90})._limite(ontem), 54)
+        self.assertIsNone(caio_contrafluxo.Trader("BTCUSDT", 0.01)._limite(ontem))
+
+    def test_lado_agressor_e_so_diagnostico_e_inverte_o_trade(self):
+        self.assertEqual(caio_contrafluxo.PARAMS["lado"], "contra")  # o Caio continua contra o agressor
+        d = self.wdo(lado="agressor", alvo_rr=2).decidir(dia(), [], BAIXA60)
+        # mesmo sinal (comprador forte na resistência, tendência de baixa): compra; stop 2 ticks abaixo da mínima
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 5401.0, 5399.0, 5405.0, "caio-agressor")])
+        d = self.wdo(lado="agressor").decidir(espelho(dia()), [], ALTA60)
+        self.assertEqual((d.planos[0].lado, d.planos[0].stop, d.planos[0].alvo), ("venda", 5401.0, 5395.0))
+
+    def test_rejeicao_exige_passar_do_nivel_e_fechar_de_volta(self):
+        self.assertEqual(self.wdo(rejeicao=True).decidir(dia(), [], BAIXA60).planos, [])  # máxima 5404,5 < 5405
+        d = self.wdo(rejeicao=True).decidir(dia(5400.5, 5406, 5400, 5401), [], BAIXA60)
+        self.assertEqual((d.planos[0].lado, d.planos[0].stop), ("venda", 5407.0))
 
     def test_gerente_testa_a_grade_do_ativo(self):
         import gerente

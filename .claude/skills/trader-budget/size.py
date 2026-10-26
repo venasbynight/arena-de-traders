@@ -213,6 +213,19 @@ def teste():
     assert not no_tick(111856.935, 0.01)  # meio tick continua fora
     # preços escritos com as casas do tick (o :g cortava o BTC em 6 algarismos: 111856.93 virava 111857)
     assert [decimais_do_tick(t) for t in (0.5, 5.0, 0.00001, 0.01)] == [1, 0, 5, 2]
+    # os ativos do modelo de config (os 7 do Forex e as ações da sala de opções) dimensionam com o tick e o ponto_rs dele
+    modelo = json.loads(Path(__file__).with_name("config.example.json").read_text(encoding="utf-8"))
+    for ativo, p in {"USDJPY": 156.878, "GBPUSD": 1.33809, "USDCHF": 0.82381, "AUDUSD": 0.70289, "USDCAD": 1.40059,
+                     "NZDUSD": 0.57017, "PETR4": 35.12, "EQTL3": 30.5}.items():
+        t = modelo["ativos"][ativo]["tick"]
+        r = lambda v: round(v, decimais_do_tick(t))
+        o = dimensionar({"simbolo": ativo, "ativo": ativo, "lado": "compra", "entrada": p, "stop": r(p - 20 * t),
+                         "alvo": r(p + 40 * t)}, modelo, "2026-10-24")[0]
+        assert o["contratos"] >= 1, (ativo, o)
+    # PETR4 (lote de 100): 0,20 x R$ 100 + R$ 2 de custo = R$ 22 por lote; R$ 100 / 22 = 4 lotes
+    petr = dimensionar({"simbolo": "PETR4", "ativo": "PETR4", "lado": "compra", "entrada": 35.12, "stop": 34.92,
+                        "alvo": 35.52}, modelo, "2026-10-24")[0]
+    assert (petr["contratos"], petr["plano"]["perda_max_rs"]) == (4, 88.0), petr
     print("trader-budget: autoteste ok")
 
 

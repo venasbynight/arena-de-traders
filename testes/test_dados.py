@@ -187,10 +187,24 @@ class TestBinance(unittest.TestCase):
         ms_0300_utc = int((datetime(2026, 10, 20, 3) - datetime(1970, 1, 1)).total_seconds() * 1000)
         self.assertEqual(int(falso.pedidos[0]["startTime"]), ms_0300_utc)
         self.assertEqual(int(falso.pedidos[1]["startTime"]), ms_0300_utc + 1000 * 300000)
-        # abertura 03:00 UTC = 00:00 em Brasília; volume base, sem delta
-        self.assertEqual(cs[0], Candle(datetime(2026, 10, 20, 0, 0), 100.5, 102.5, 99.5, 101.5, 3.25, None))
+        # abertura 03:00 UTC = 00:00 em Brasília; volume base; delta = 2 × taker buy (1,0) − volume (3,25)
+        self.assertEqual(cs[0], Candle(datetime(2026, 10, 20, 0, 0), 100.5, 102.5, 99.5, 101.5, 3.25, -1.25))
         self.assertEqual(cs[-1].t, datetime(2026, 10, 23, 23, 55))
         self.assertEqual([k.t for k in cs], sorted({k.t for k in cs}))
+
+    def test_binance_guarda_o_delta_no_cache_e_cache_antigo_fica_ausente(self):
+        with tempfile.TemporaryDirectory() as d:
+            dados.salvar_csv([Candle(datetime(2026, 10, 19, 0, 0), 1.0, 2.0, 0.5, 1.5, 7.0, None)],
+                             os.path.join(d, "BTCUSDT_M5.csv"))
+            with open(os.path.join(d, "BTCUSDT_M5.cobertura.csv"), "w", encoding="utf-8") as f:
+                f.write("2026-10-19,2026-10-19\n")
+            cs = dados.historico("BTCUSDT", date(2026, 10, 19), date(2026, 10, 20), CFG, pasta=d,
+                                 abrir_url=BinanceFalso(), hoje=date(2026, 10, 25))
+            de_novo = dados.historico("BTCUSDT", date(2026, 10, 19), date(2026, 10, 20), CFG, pasta=d,
+                                      abrir_url=erro_http(503), hoje=date(2026, 10, 25))  # já no cache
+        self.assertEqual(cs, de_novo)
+        self.assertIsNone(cs[0].delta)
+        self.assertEqual({k.delta for k in cs[1:]}, {-1.25})
 
     def test_binance_429_vira_erro_dados(self):
         with tempfile.TemporaryDirectory() as d:
@@ -657,6 +671,16 @@ class TestDelta(unittest.TestCase):
         self.assertEqual({k.delta for k in por[date(2026, 9, 1)]}, {3.0})  # compra 5 − venda 2
         self.assertEqual({k.delta for k in por[date(2026, 9, 2)]}, {3.0})
         self.assertEqual({k.delta for k in por[date(2026, 9, 3)]}, {None})  # sem ticks: ausente, não zero
+
+    def test_baixar_candles_de_novo_nao_apaga_o_delta_guardado(self):
+        # um feriado no começo dos dias faltantes faz o candle ser baixado de novo; o delta já feito fica
+        mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1), date(2026, 9, 2)}})
+        with tempfile.TemporaryDirectory() as d:
+            dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG_DELTA, pasta=d, mt5=mt5, hoje=date(2026, 9, 10))
+            os.remove(os.path.join(d, "WDO_M5.cobertura.csv"))
+            cs = dados.historico("WDO", date(2026, 9, 1), date(2026, 9, 3), CFG_DELTA, pasta=d, mt5=mt5,
+                                 hoje=date(2026, 9, 10))
+        self.assertEqual({k.delta for k in dados.por_dia(cs)[date(2026, 9, 1)]}, {3.0})
 
     def test_dia_de_hoje_nao_ganha_delta(self):
         mt5 = Mt5ComTicks({"WDO$": {date(2026, 9, 1)}})

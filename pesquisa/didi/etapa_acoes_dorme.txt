@@ -1,0 +1,35 @@
+#0 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 0.2}
+#1 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#2 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#3 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#4 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#5 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#6 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#7 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#8 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#9 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#10 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#11 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#12 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#13 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#14 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#15 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#16 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+ACOES12  60  #0  4  -26.0  0.59  -48.0  0.37  1/12 ações + c/ estresse
+ACOES12  60  #1  61  116.0  1.06  -242.0  0.88  4/12 ações + c/ estresse
+ACOES12  60  #2  400  -6817.0  0.53  -9367.0  0.42  0/12 ações + c/ estresse
+ACOES12  60  #3  61  -230.0  0.91  -586.0  0.8  4/12 ações + c/ estresse
+ACOES12  60  #4  400  -8004.0  0.59  -10672.0  0.5  2/12 ações + c/ estresse
+ACOES12  60  #5  101  -907.0  0.76  -1589.0  0.63  4/12 ações + c/ estresse
+ACOES12  60  #6  589  -9163.0  0.57  -13130.0  0.46  0/12 ações + c/ estresse
+ACOES12  60  #7  101  -1087.0  0.77  -1757.0  0.67  4/12 ações + c/ estresse
+ACOES12  60  #8  589  -9191.0  0.67  -13241.0  0.57  0/12 ações + c/ estresse
+ACOES12  60  #9  26  -13.0  0.98  -183.0  0.78  2/12 ações + c/ estresse
+ACOES12  60  #10  158  -2766.0  0.53  -3763.0  0.43  0/12 ações + c/ estresse
+ACOES12  60  #11  26  -257.0  0.77  -427.0  0.66  3/12 ações + c/ estresse
+ACOES12  60  #12  158  -2162.0  0.71  -3161.0  0.62  4/12 ações + c/ estresse
+ACOES12  60  #13  36  -42.0  0.96  -294.0  0.77  3/12 ações + c/ estresse
+ACOES12  60  #14  210  -3406.0  0.56  -4811.0  0.45  0/12 ações + c/ estresse
+ACOES12  60  #15  36  -210.0  0.86  -462.0  0.72  5/12 ações + c/ estresse
+ACOES12  60  #16  210  -2715.0  0.72  -4125.0  0.62  3/12 ações + c/ estresse
+ACOES12  60  WF  338  -5851.0  0.62  -8203.0  0.53  [8, 8, 8, 8, 8, 5, 5, 1, 1]

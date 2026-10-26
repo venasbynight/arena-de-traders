@@ -71,8 +71,8 @@ class TestServidor(unittest.TestCase):
             status, corpo = self.get(f"/api/backtest?ativo={ativo}&de=2026-09-01&ate=2026-09-01")
             self.assertEqual(status, 200, corpo)
             self.assertEqual(json.loads(corpo)["ativo"], ativo)
-        status, corpo = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
-        self.assertIn("PETR4", json.loads(corpo)["erro"])
+        status, corpo = self.get("/api/backtest?ativo=XPTO3&de=2026-09-01&ate=2026-09-01")
+        self.assertIn("XPTO3", json.loads(corpo)["erro"])
 
     def test_backtest_so_com_os_traders_da_sala(self):
         # o Caio precisa do delta da B3: entra no WDO e no WIN, não no EURUSD nem no BTCUSDT
@@ -88,8 +88,14 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("sem candles", json.loads(corpo)["erro"])
 
+    def test_ativo_so_de_pesquisa_fica_fora_do_replay(self):
+        # ações e pares novos estão no config só para a pesquisa: não são salas, o replay recusa
+        status, corpo = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
+        self.assertEqual(status, 400)
+        self.assertIn("PETR4", json.loads(corpo)["erro"])
+
     def test_ativo_invalido(self):
-        status, _ = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
+        status, _ = self.get("/api/backtest?ativo=XPTO3&de=2026-09-01&ate=2026-09-01")
         self.assertEqual(status, 400)
 
     def test_datas_invertidas(self):

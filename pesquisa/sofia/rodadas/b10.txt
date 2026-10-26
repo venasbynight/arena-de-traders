@@ -1,0 +1,3 @@
+H1 zona_min_atr=1.5                      BTCUSDT  5   514      -404 PF 0.7 | est      -404 PF 0.7 negativa [-25, -73, -70, -15, -53, -52, -40, -88, 46, -34]
+H7 gatilho z0.5                          BTCUSDT  5   189      -392 PF 0.55 | est      -392 PF 0.55 negativa [-69, -31, -21, 34, -8, -68, -97, -109, -10, -13]
+118 s

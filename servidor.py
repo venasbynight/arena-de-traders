@@ -129,9 +129,9 @@ class Arena(BaseHTTPRequestHandler):
         except (OSError, ValueError) as e:
             return self._enviar(500, {"erro": f"não consegui ler trader/config.json: {e}"})
         ativo = q.get("ativo", [""])[0]
-        if ativo not in cfg.get("ativos", {}):
-            return self._enviar(400, {"erro": f"ativo {ativo or '(vazio)'} não está em trader/config.json; "
-                                              f"use {', '.join(cfg.get('ativos', {}))}"})
+        if ativo not in cfg.get("ativos", {}) or ativo not in traders.SALAS:  # ações e pares novos: só pesquisa
+            return self._enviar(400, {"erro": f"ativo {ativo or '(vazio)'} não tem sala na firma; "
+                                              f"use {', '.join(a for a in traders.SALAS if a in cfg.get('ativos', {}))}"})
         try:
             de, ate = date.fromisoformat(q["de"][0]), date.fromisoformat(q["ate"][0])
         except (KeyError, ValueError):

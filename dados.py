@@ -94,9 +94,10 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
                 raise ErroDados(f"a Binance recusou o pedido de {simbolo} (HTTP {e.code}): {msg}")
         except (OSError, http.client.HTTPException, ValueError) as e:  # rede, resposta cortada, JSON ruim
             raise ErroDados(f"Binance indisponível agora ({getattr(e, 'reason', e)}); tente de novo em alguns minutos")
-        for k in klines:
+        for k in klines:  # delta = compra agressora (taker buy, k[9]) − venda agressora (volume − taker buy)
             out.append(Candle(datetime.fromtimestamp(k[0] / 1000, timezone.utc).replace(tzinfo=None) - brasilia,
-                              float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
+                              float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5]),
+                              2 * float(k[9]) - float(k[5])))
         if len(klines) < 1000:
             break
         inicio = klines[-1][0] + 300000  # próxima página começa depois do último candle recebido
@@ -143,18 +144,27 @@ def _conversores(fuso_servidor, deslocamento_h):
     raise ErroDados(f"fuso_servidor '{fuso_servidor}' desconhecido; use 'brasilia' ou 'europa' em trader/config.json")
 
 
-def _consultar_mt5(mt5, simbolo, inicio, fim, terminal):
+BLOCO_DIAS_MT5 = 180  # 300 dias de 5 min passaram no teste de 26/10/2026; 365 não
+TEMPOS_MT5 = {5: ("M5", "TIMEFRAME_M5"), 60: ("H1", "TIMEFRAME_H1")}  # tf em minutos: sufixo do cache, constante do MT5
+
+
+def _consultar_mt5(mt5, simbolo, inicio, fim, terminal, tf=5):
     """Fala com o MT5 (`mt5` é o módulo MetaTrader5 ou um falso) e devolve as taxas como lista de dicts."""
     if not (mt5.initialize(path=terminal) if terminal else mt5.initialize()):
         raise ErroDados(f"não consegui falar com o MetaTrader 5: abra o MT5 e faça login ({mt5.last_error()})")
     try:
         if not mt5.symbol_select(simbolo, True):
             raise ErroDados(f"símbolo {simbolo} não encontrado no MT5; ajuste 'simbolo' em trader/config.json")
-        taxas = mt5.copy_rates_range(simbolo, mt5.TIMEFRAME_M5, inicio, fim)
-        if taxas is None:
-            raise ErroDados(f"o MT5 não devolveu candles de {simbolo}: {mt5.last_error()}")
-        return [{c: float(r[c]) for c in ("time", "open", "high", "low", "close", "real_volume", "tick_volume")}
-                for r in taxas]
+        out, de = [], inicio
+        while de <= fim:  # em blocos: a Genial responde "Invalid params" a um ano de 5 min de uma vez
+            ate = min(fim, de + timedelta(days=BLOCO_DIAS_MT5, seconds=-1))
+            taxas = mt5.copy_rates_range(simbolo, getattr(mt5, TEMPOS_MT5[tf][1]), de, ate)
+            if taxas is None:
+                raise ErroDados(f"o MT5 não devolveu candles de {simbolo}: {mt5.last_error()}")
+            out += [{c: float(r[c]) for c in ("time", "open", "high", "low", "close", "real_volume", "tick_volume")}
+                    for r in taxas]
+            de = ate + timedelta(seconds=1)
+        return out
     finally:
         mt5.shutdown()  # solta este terminal; o próximo ativo pode usar outro
 
@@ -255,7 +265,7 @@ def _filho_mt5(pasta):
                                  p["deslocamento_h"])
         else:
             r = _consultar_mt5(mt5, p["simbolo"], datetime.fromisoformat(p["inicio"]),
-                               datetime.fromisoformat(p["fim"]), p["terminal"])
+                               datetime.fromisoformat(p["fim"]), p["terminal"], p.get("tf", 5))
         saida = {"resultado": r}
     except ErroDados as e:
         saida = {"erro": str(e)}
@@ -297,8 +307,8 @@ def _consultar_mt5_isolado(pedido, timeout_s):
 
 
 def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, fuso_servidor="brasilia",
-               timeout_s=90):
-    """Candles de 5 min de `de` até `ate` (inclusive) do MT5 aberto e logado pelo usuário, em horário de Brasília.
+               timeout_s=90, tf=5):
+    """Candles de `tf` min (5 ou 60) de `de` até `ate` (inclusive) do MT5 aberto e logado pelo usuário, em horário de Brasília.
 
     `terminal` é o terminal64.exe a usar (vários MT5 podem estar abertos). `fuso_servidor` diz como o servidor
     da corretora marca a hora ("brasilia" na Genial, "europa" no MetaQuotes) e `deslocamento_h` é o config
@@ -314,9 +324,9 @@ def baixar_mt5(simbolo, de, ate, mt5=None, terminal=None, deslocamento_h=None, f
     fim = para_servidor(brasilia + timedelta(days=(ate - de).days + 1) - timedelta(seconds=1)).replace(tzinfo=timezone.utc)
     if mt5 is None:
         taxas = _consultar_mt5_isolado({"simbolo": simbolo, "inicio": inicio.isoformat(), "fim": fim.isoformat(),
-                                        "terminal": terminal}, timeout_s)
+                                        "terminal": terminal, "tf": tf}, timeout_s)
     else:
-        taxas = _consultar_mt5(mt5, simbolo, inicio, fim, terminal)
+        taxas = _consultar_mt5(mt5, simbolo, inicio, fim, terminal, tf)
     # O MT5 grava o horário do servidor como se fosse UTC. Medido em 25/10/2026: o MetaQuotes-Demo é UTC+3 no
     # verão europeu (NFP de 02/10 às 15:30 do servidor = 09:30 em Brasília) e UTC+2 no inverno; a Genial é Brasília.
     # Forex não tem volume real (tudo 0): aí vale o volume de ticks. Com volume real na série (B3) ele vale
@@ -371,9 +381,10 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
     if fonte not in ("mt5", "binance"):
         raise ErroDados(f"fonte '{fonte}' desconhecida em {ativo}; use 'mt5' ou 'binance' em trader/config.json")
     dias = espec.get("sessao", {}).get("dias", (0, 1, 2, 3, 4))
+    tf = espec.get("tf", 5)  # ações da sala de opções: 60 (cache <ativo>_H1.csv)
     os.makedirs(pasta, exist_ok=True)
-    arq = os.path.join(pasta, f"{ativo}_M5.csv")
-    arq_cob = os.path.join(pasta, f"{ativo}_M5.cobertura.csv")
+    arq = os.path.join(pasta, f"{ativo}_{TEMPOS_MT5[tf][0]}.csv")
+    arq_cob = os.path.join(pasta, f"{ativo}_{TEMPOS_MT5[tf][0]}.cobertura.csv")
     candles = ler_csv(arq) if os.path.exists(arq) else []
     cobertos = set()
     if os.path.exists(arq_cob):
@@ -393,10 +404,12 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
         else:
             novos = baixar_mt5(simbolo, min(faltam), max(faltam), mt5, espec.get("terminal"),
                                espec.get("deslocamento_h"), espec.get("fuso_servidor", "brasilia"),
-                               espec.get("timeout_s", 90))
+                               espec.get("timeout_s", 90), tf)
         novos = no_tick(novos, espec.get("tick"))
         unicos = {k.t: k for k in candles}
-        unicos.update({k.t: k for k in novos})
+        # candle baixado de novo vem sem delta: o delta já feito dos ticks fica (o dia segue marcado como feito)
+        unicos.update({k.t: k if k.delta is not None or unicos.get(k.t) is None or unicos[k.t].delta is None
+                       else replace(k, delta=unicos[k.t].delta) for k in novos})
         candles = sorted(unicos.values(), key=lambda k: k.t)
         salvar_csv(candles, arq)
         # cobre só do primeiro ao último dia que vieram de fato (o histórico do servidor pode começar depois
@@ -408,7 +421,8 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
             if fim >= ini:
                 with open(arq_cob, "a", encoding="utf-8") as f:
                     f.write(f"{ini.isoformat()},{fim.isoformat()}\n")
-    candles = _completar_delta(ativo, espec, candles, de, ate, pasta, arq, mt5, hoje)
+    if fonte == "mt5":  # na Binance o delta vem no próprio kline (cache antigo sem ele: ausente)
+        candles = _completar_delta(ativo, espec, candles, de, ate, pasta, arq, mt5, hoje)
     # o cache de antes do arredondamento também sai no tick (no tick, no_tick não muda nada)
     return no_tick([k for k in candles if de <= k.t.date() <= ate and k.t.weekday() in dias], espec.get("tick"))
 

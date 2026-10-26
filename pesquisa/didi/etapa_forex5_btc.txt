@@ -1,0 +1,63 @@
+#0 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 0.2}
+#1 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#2 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#3 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#4 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#5 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#6 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+USDJPY  5  #0  6  -39.8  0.05  -41.86  0.04
+USDJPY  5  #1  89  -126.0  0.7  -156.27  0.65
+USDJPY  5  #2  145  -159.46  0.75  -209.08  0.7
+USDJPY  5  #3  721  -633.83  0.77  -881.69  0.71
+USDJPY  5  #4  78  -41.05  0.88  -67.76  0.82
+USDJPY  5  #5  357  -262.42  0.82  -385.08  0.75
+USDJPY  5  #6  239  -392.79  0.73  -474.78  0.68
+USDJPY  5  WF  272  -435.65  0.67  -529.4  0.61  [6, 3, 4]
+GBPUSD  5  #0  5  -28.69  0.22  -31.39  0.18
+GBPUSD  5  #1  90  -178.56  0.69  -226.19  0.63
+GBPUSD  5  #2  155  -245.62  0.72  -328.35  0.65
+GBPUSD  5  #3  709  -600.42  0.83  -981.87  0.74
+GBPUSD  5  #4  70  -246.41  0.41  -284.21  0.36
+GBPUSD  5  #5  342  -259.73  0.84  -444.3  0.75
+GBPUSD  5  #6  248  91.24  1.05  -42.58  0.98
+GBPUSD  5  WF  343  154.08  1.08  -30.7  0.98  [3, 6, 6]
+USDCHF  5  #0  1  -1.16  0.0  -1.81  0.0
+USDCHF  5  #1  90  -95.09  0.79  -153.1  0.69
+USDCHF  5  #2  154  -191.98  0.74  -291.98  0.64
+USDCHF  5  #3  749  -857.51  0.73  -1347.43  0.62
+USDCHF  5  #4  77  -25.96  0.92  -76.22  0.78
+USDCHF  5  #5  391  -122.62  0.92  -378.81  0.77
+USDCHF  5  #6  246  -265.39  0.8  -426.31  0.71
+USDCHF  5  WF  214  -398.4  0.6  -538.29  0.5  [6, 5, 1]
+AUDUSD  5  #0  4  -29.54  0.0  -31.7  0.0
+AUDUSD  5  #1  99  -416.7  0.23  -470.16  0.19
+AUDUSD  5  #2  143  -393.07  0.39  -470.29  0.33
+AUDUSD  5  #3  760  -960.77  0.64  -1371.17  0.54
+AUDUSD  5  #4  74  -209.8  0.38  -249.76  0.32
+AUDUSD  5  #5  407  -643.33  0.56  -863.11  0.47
+AUDUSD  5  #6  280  -716.99  0.51  -868.19  0.45
+AUDUSD  5  WF  590  -760.75  0.64  -1079.35  0.54  [3, 3, 3]
+USDCAD  5  #0  1  -0.69  0.0  -1.08  0.0
+USDCAD  5  #1  91  -43.39  0.87  -78.47  0.78
+USDCAD  5  #2  146  -108.87  0.78  -165.16  0.69
+USDCAD  5  #3  727  -843.69  0.62  -1123.72  0.54
+USDCAD  5  #4  75  -44.23  0.82  -73.18  0.72
+USDCAD  5  #5  381  -456.9  0.61  -603.76  0.52
+USDCAD  5  #6  257  -377.95  0.63  -476.98  0.56
+USDCAD  5  WF  248  -401.24  0.49  -496.78  0.42  [3, 1, 1]
+NZDUSD  5  #0  2  -6.4  0.0  -7.48  0.0
+NZDUSD  5  #1  87  -192.0  0.48  -238.98  0.41
+NZDUSD  5  #2  145  -156.74  0.67  -235.04  0.55
+NZDUSD  5  #3  741  -837.87  0.64  -1238.01  0.52
+NZDUSD  5  #4  69  -83.64  0.67  -120.9  0.56
+NZDUSD  5  #5  381  -484.53  0.62  -690.27  0.52
+NZDUSD  5  #6  252  -391.41  0.69  -527.49  0.61
+NZDUSD  5  WF  205  -334.16  0.56  -444.86  0.47  [5, 6, 2]
+BTCUSDT  5  #0  6  -16.94  0.04  -16.94  0.04
+BTCUSDT  5  #1  269  -163.62  0.74  -163.8  0.74
+BTCUSDT  5  #2  515  -341.36  0.69  -341.66  0.69
+BTCUSDT  5  #3  2777  -2583.41  0.54  -2584.88  0.54
+BTCUSDT  5  #4  232  -139.97  0.69  -140.11  0.69
+BTCUSDT  5  #5  1391  -1285.48  0.54  -1286.14  0.54
+BTCUSDT  5  #6  943  -772.67  0.68  -773.2  0.68
+BTCUSDT  5  WF  504  -423.64  0.67  -423.93  0.67  [6, 4, 6, 6, 4, 4, 1, 6, 1]

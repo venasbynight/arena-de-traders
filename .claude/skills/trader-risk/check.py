@@ -293,6 +293,22 @@ def teste():
     bloqueia([inc], "sem margem_por_contrato ou custo_por_contrato")
     sai = dict(inc, lado="venda", tipo="mercado", saida=True)
     assert checar([sai], cfg, None, domingo)[0]["ok"]  # nem o domingo bloqueia a saída
+    # os ativos do modelo de config (os 7 do Forex e as ações da sala de opções) passam com o tick e a sessão dele
+    modelo = json.loads((Path(__file__).parent.parent / "trader-budget" / "config.example.json").read_text(encoding="utf-8"))
+    novos = {"USDJPY": 156.878, "GBPUSD": 1.33809, "USDCHF": 0.82381, "AUDUSD": 0.70289, "USDCAD": 1.40059,
+             "NZDUSD": 0.57017, **{a: 30.0 for a, e in modelo["ativos"].items() if e.get("tf") == 60}}
+    assert len(novos) == 18, novos
+    for ativo, p in novos.items():
+        t = modelo["ativos"][ativo]["tick"]
+        r = lambda v: round(v, decimais_do_tick(t))
+        o = {"simbolo": ativo, "ativo": ativo, "lado": "venda", "contratos": 1, "tipo": "limite", "entrada": p,
+             "stop": r(p + 20 * t), "alvo": r(p - 40 * t)}
+        res = checar([o], modelo, None, sexta)[0]
+        assert res["ok"], (ativo, res["motivos"])
+    pregao = {"simbolo": "PETR4", "ativo": "PETR4", "lado": "compra", "contratos": 1, "tipo": "limite",
+              "entrada": 35.12, "stop": 34.92, "alvo": 35.52}
+    r = checar([pregao], modelo, None, sexta.replace(hour=9, minute=30))[0]  # ação abre às 10:00
+    assert not r["ok"] and any("antes de 10:00" in m for m in r["motivos"]), r
     print("trader-risk: autoteste ok")
 
 

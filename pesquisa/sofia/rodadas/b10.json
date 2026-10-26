@@ -1,0 +1,1 @@
+[{"variante": "H1 zona_min_atr=1.5", "params": {"zona_min_atr": 1.5}, "alvos": [["BTCUSDT", 5]]}, {"variante": "H7 gatilho z0.5", "params": {"gatilho": true, "zona_min_atr": 0.5}, "alvos": [["BTCUSDT", 5]]}]
