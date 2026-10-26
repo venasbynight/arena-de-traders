@@ -1,4 +1,4 @@
-"""Atalho da área de trabalho: sobe o servidor da Arena (se ainda não estiver no ar) e abre a página no Opera.
+"""Atalho da área de trabalho: sobe o servidor do TradeQuarters (se ainda não estiver no ar) e abre a página no Opera.
 
 Roda com pythonw (sem janela). Nunca sobe um segundo servidor: no Windows dois processos conseguem abrir a mesma porta.
 """

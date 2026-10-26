@@ -4,7 +4,7 @@
    o gráfico e a coluna da direita não esticam a linha pelo conteúdo (contain:size): rolam por dentro */
 body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:56px minmax(360px,1fr) 56px;min-height:100vh}
 header{grid-column:1/3;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
-.logo{font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:8px}.logo img{width:26px;height:26px;display:block}.logo span{color:var(--acc)}
+.logo{font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:8px}.logo img{width:26px;height:26px;display:block}.logo span{color:#1de9b6}
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{padding:6px 14px;color:var(--mut);background:none;border:0;font:inherit;cursor:pointer}
 .seg button.sel{background:var(--acc);color:#fff}.seg button:disabled{cursor:not-allowed;opacity:.5}

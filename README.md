@@ -1,4 +1,4 @@
-# Arena de Traders
+# TradeQuarters
 
 Laboratório local onde robôs de regras fixas ("traders") operam o mesmo mercado em
 contas simuladas, lado a lado, em backtest. Uma sala de operações web reproduz o

@@ -370,7 +370,7 @@ if __name__ == "__main__":
     if sys.stdout:  # pythonw não tem console
         sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     srv = criar_servidor()
-    print("Arena de Traders em http://localhost:8765  (Ctrl+C para parar)", flush=True)
+    print("TradeQuarters em http://localhost:8765  (Ctrl+C para parar)", flush=True)
     if "--sem-gerente" not in sys.argv:
         gerente_diario()
     if "--sem-navegador" not in sys.argv:
