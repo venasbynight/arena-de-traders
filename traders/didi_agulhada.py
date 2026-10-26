@@ -1,6 +1,6 @@
-"""Didi Agulhada: médias 3, 8 e 20 se cruzando no mesmo candle; entra quando as bandas de Bollinger abrem, com ADX
-subindo e TRIX numa extremidade. Stop 3 ticks além do candle do gatilho, alvo no topo/fundo confirmado mais próximo à
-frente; a operação só termina no stop ou no alvo (Plano 7)."""
+"""Didi Agulhada: médias 3, 8 e 20 se cruzando; entra quando as bandas de Bollinger abrem, com ADX subindo de baixo e
+TRIX numa extremidade. Stop 3 ticks além do candle do gatilho; sai quando as bandas fecham e o ADX cai no mesmo candle
+(o "alvo" do Diretor, Plano 7)."""
 import statistics
 from datetime import timedelta
 
@@ -19,20 +19,24 @@ ESTILO = "agulhada 3·8·20 · Bollinger abrindo · ADX e TRIX"
 # trix_extremo: percentil (0,2 = os 20% mais baixos dos últimos 120 para a compra); 1 = só o TRIX virando a favor
 # recuo: 0 = a mercado na abertura seguinte; r > 0 = limitada no recuo r (Fibonacci) do candle que abriu as bandas
 # folga_stop_ticks: o stop fica esses ticks além da mínima (compra) / máxima (venda) do candle do gatilho
-# alvo_x: None = alvo no topo (compra) / fundo (venda) confirmado mais próximo à frente da entrada, pela regra de
-# topo/fundo da Sofia (estudos.pivos, n=2), e sem ele não entra; número = alvo em alvo_x vezes o risco (opção)
-# saida: "alvo" (só stop ou alvo, decisão do Diretor), "bandas" (também sai quando as bandas fecham ou a MA3 volta
-# contra) ou "ma3" (também sai quando a MA3 volta)
+# alvo_x: número = take-profit em alvo_x vezes o risco (opção); alvo_pivo: take-profit no topo (compra) / fundo
+# (venda) confirmado mais próximo à frente, pela regra de topo/fundo da Sofia (estudos.pivos, n=2), e sem ele não entra
+# (opção); nenhum dos dois (padrão) = sem take-profit: o plano leva ALVO_REFERENCIA_X vezes o risco só para o risco
+# conferir (Plano.alvo_ativo False) e a saída é pelo sinal
+# saida: "bb_e_adx" (Diretor: a largura das bandas e o ADX caem no mesmo candle), "bb_ou_adx" (qualquer dos dois),
+# "alvo" (só stop ou alvo), "bandas" (bandas fechando ou MA3 voltando contra) ou "ma3" (só a MA3 voltando)
 # adx "sobe_de_baixo" (prints do Diretor): ADX subindo no candle do gatilho e vindo da parte de baixo da faixa — o
 # mínimo dos últimos 5 valores ≤ percentil adx_pct dos últimos N_TRIX; o DI não é exigido
 # Padrão = Diretor (2026-10-26, prints): cruzamentos até 3 candles, bandas até 4 depois, TRIX nos 30% das pontas
 PARAMS = {"tf": 5, "alvo_x": None, "trix_extremo": 0.3, "agulhada_n": 3, "janela_bandas": 4, "adx": "sobe_de_baixo",
-          "adx_pct": 0.3, "recuo": 0, "saida": "alvo", "tendencia": False, "folga_stop_ticks": 3}
+          "adx_pct": 0.3, "recuo": 0, "saida": "bb_e_adx", "tendencia": False, "folga_stop_ticks": 3,
+          "alvo_pivo": False}
 # só o tempo gráfico: alvo, stop e filtros são regras do Diretor, o gerente não os troca
 GRADE = {"tf": [5]}  # o 15 não fez operação em nenhum ativo real e custava 2× o tempo do gerente
 MINIMO = 27  # TRIX(9) no candle anterior (índice 25); MA20, bandas e ADX de 8 já valem antes
 N_TRIX = 120  # valores do TRIX para o percentil da extremidade
 ADX_BAIXO = 20  # notas do Diretor: na compressão o ADX fica perto de 20 ou menos
+ALVO_REFERENCIA_X = 3.0  # alvo só de referência (R:R mínimo do Diretor) quando a saída é pelo sinal
 N_ADX_BAIXO = 5  # "sobe_de_baixo": candles (o do gatilho e os 4 antes) em que o ADX tem de ter passado pela parte baixa
 
 
@@ -116,9 +120,17 @@ class Trader:
 
         c0, c1 = sg(curta[-2]), sg(curta[-1])
         contra = "compra" if c0 > 0 >= c1 else "venda" if c0 < 0 <= c1 else None  # quem essa virada tira
-        if self.p["saida"] == "alvo":
+        saida = self.p["saida"]
+        fechou = largura[-1] - largura[-2] < -eps
+        caiu = adx[-1] is not None and adx[-2] is not None and adx[-1] < adx[-2]
+        if saida in ("bb_e_adx", "bb_ou_adx"):
+            if (fechou and caiu) if saida == "bb_e_adx" else (fechou or caiu):
+                d.sair = True
+                motivo = " e ".join(x for x, v in (("as bandas fecharam", fechou), ("o ADX caiu", caiu)) if v)
+                d.pensamento.append(f"{motivo}: se estou posicionado, saio na abertura do próximo candle")
+        elif saida == "alvo":
             pass  # só stop ou alvo: nenhum sinal tira a posição
-        elif self.p["saida"] == "bandas" and largura[-1] - largura[-2] < -eps:
+        elif saida == "bandas" and fechou:
             d.sair = True
             d.pensamento.append("as bandas fecharam: se estou posicionado, saio na abertura do próximo candle")
         elif contra:
@@ -209,8 +221,14 @@ class Trader:
         nivel = arredondar_tick(k.h - r * (k.h - k.l) if compra else k.l + r * (k.h - k.l), tick)
         limitada = r > 0 and (nivel < ref if compra else nivel > ref)
         entrada = nivel if limitada else ref
+        ativo, sem_tp = True, ""
         if self.p["alvo_x"]:
             alvo = arredondar_tick(entrada + sinal * self.p["alvo_x"] * abs(entrada - stop), tick)
+        elif not self.p["alvo_pivo"]:
+            ativo = False
+            alvo = arredondar_tick(entrada + sinal * ALVO_REFERENCIA_X * abs(entrada - stop), tick)
+            sem_tp = (f"; sem alvo fixo: saio quando as bandas fecharem "
+                      f"{'ou' if self.p['saida'] == 'bb_ou_adx' else 'e'} o ADX cair")
         else:
             # topos/fundos de candles já fechados (pivos só devolve os confirmados por n candles depois)
             ps = [p.preco for p in estudos.pivos(cs, 2)
@@ -220,7 +238,8 @@ class Trader:
                                     f" de {preco(entrada, tick)} para alvo; não entro")
                 return d
             alvo = min(ps) if compra else max(ps)
-        d.planos.append(Plano(lado, "limite" if limitada else "mercado", entrada, stop, alvo, "didi-agulhada"))
+        d.planos.append(Plano(lado, "limite" if limitada else "mercado", entrada, stop, alvo, "didi-agulhada",
+                              alvo_ativo=ativo))
         conf = {"sobe": ", ADX subindo", "baixo": ", ADX saindo de baixo", "di": ", DI a favor", "nao": "",
                 "sobe_de_baixo": ", ADX subindo de baixo"}[modo_adx]
         conf += ", a favor da tendência" if self.p["tendencia"] else ""
@@ -228,5 +247,6 @@ class Trader:
         como = (f"limitada em {preco(entrada, tick)} (recuo de {r:g} do candle) no próximo candle" if limitada else
                 f"a mercado na abertura do próximo candle (fechou em {preco(ref, tick)})")
         d.pensamento.append(f"agulhada de {lado}, bandas abrindo{conf}: {lado} {como}; stop {preco(stop, tick)}, "
-                            f"alvo {preco(alvo, tick)}")
+                            + (f"alvo {preco(alvo, tick)}" if ativo else
+                               f"referência {preco(alvo, tick)} para o risco{sem_tp}"))
         return d

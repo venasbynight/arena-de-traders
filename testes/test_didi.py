@@ -314,8 +314,9 @@ ONTEM_TOPO = velas(ONTEM, [PARADO] * 3 + [TOPO] + [PARADO] * 6 + [(5400, 5406, 5
 
 
 class TestDidiDoDiretor(unittest.TestCase):
-    """Plano 7: stop 3 ticks além do candle do gatilho, alvo no topo/fundo confirmado mais próximo à frente (regra de
-    topo/fundo da Sofia), e a operação só termina no stop ou no alvo (sem saída por sinal)."""
+    """Plano 7: stop 3 ticks além do candle do gatilho; o alvo é o sinal do Diretor (bandas fechando e ADX caindo no
+    mesmo candle), sem take-profit: o plano leva um alvo de referência (3× o risco) só para o risco conferir. O alvo no
+    topo/fundo confirmado à frente (regra da Sofia) ficou como opção (alvo_pivo)."""
 
     def setUp(self):
         self.lado_trix = "compra"
@@ -327,9 +328,13 @@ class TestDidiDoDiretor(unittest.TestCase):
         """Padrão do Diretor; sem o filtro do ADX, que a máxima isolada de ONTEM_TOPO mexe (não é o que se testa aqui)."""
         return didi_agulhada.Trader("WDO", 0.5, {"adx": "nao", **params})
 
+    def pivo(self, **params):
+        """A opção do alvo no topo/fundo, só stop ou alvo (o padrão de antes dos prints da saída)."""
+        return self.didi(alvo_pivo=True, saida="alvo", **params)
+
     def test_padrao(self):
-        self.assertEqual({k: didi_agulhada.PARAMS[k] for k in ("folga_stop_ticks", "alvo_x", "saida")},
-                         {"folga_stop_ticks": 3, "alvo_x": None, "saida": "alvo"})
+        self.assertEqual({k: didi_agulhada.PARAMS[k] for k in ("folga_stop_ticks", "alvo_x", "alvo_pivo", "saida")},
+                         {"folga_stop_ticks": 3, "alvo_x": None, "alvo_pivo": False, "saida": "bb_e_adx"})
         # prints do Diretor: cruzamentos até 3 candles, bandas até 4 depois, ADX subindo vindo de baixo, TRIX 30%
         self.assertEqual({k: didi_agulhada.PARAMS[k] for k in ("agulhada_n", "janela_bandas", "adx", "adx_pct",
                                                                "trix_extremo")},
@@ -357,41 +362,63 @@ class TestDidiDoDiretor(unittest.TestCase):
             self.assertEqual(d.planos, [])
             self.assertTrue(any("ADX não sobe" in p for p in d.pensamento), d.pensamento)
 
+    def test_padrao_sem_take_profit_com_alvo_de_referencia_3x(self):
+        # stop 5399,5 − 3 ticks = 5398; risco 4,5 → referência 5402,5 + 13,5 = 5416, que o motor não executa
+        d = self.didi().decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 5402.5, 5398.0, 5416.0, "didi-agulhada",
+                                          alvo_ativo=False)])
+        self.assertTrue(any("bandas fecharem e o ADX cair" in p for p in d.pensamento), d.pensamento)
+
+    def test_sai_quando_as_bandas_fecham_e_o_adx_cai_no_mesmo_candle(self):
+        hoje = AGULHADA_COMPRA + APOS[:1]
+        n = len(ONTEM_PARADO) + len(hoje)
+        adx = lambda a, b: ([None] * (n - 2) + [a, b], [None] * n, [None] * n)
+        fecha, abre = larguras([0.0] * A + [5.0, 4.5]), larguras([0.0] * A + [5.0, 5.5])
+        casos = ((fecha, (25.0, 24.0), True, True), (fecha, (24.0, 25.0), False, True),
+                 (abre, (25.0, 24.0), False, True), (abre, (24.0, 25.0), False, False))
+        for bb, (a, b), ambos, um in casos:
+            with falsos(trix=lambda f: trix_extremo("compra")(f), bollinger=bb, adx=adx(a, b)):
+                self.assertIs(self.didi().decidir(hoje, ONTEM_PARADO, []).sair, ambos, (a, b))
+                self.assertIs(self.didi(saida="bb_ou_adx").decidir(hoje, ONTEM_PARADO, []).sair, um, (a, b))
+        with falsos(trix=lambda f: trix_extremo("compra")(f), bollinger=fecha, adx=adx(25.0, 24.0)):
+            self.assertTrue(any("fecharam" in p and "ADX" in p for p in
+                                self.didi().decidir(hoje, ONTEM_PARADO, []).pensamento))
+
     def test_alvo_no_topo_mais_proximo_acima_e_stop_3_ticks_alem(self):
-        d = self.didi().decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
+        d = self.pivo().decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
         # topos 5410 e 5406 acima de 5402,5: o mais próximo; stop 5399,5 − 3 × 0,5
         self.assertEqual(d.planos, [Plano("compra", "mercado", 5402.5, 5398.0, 5406.0, "didi-agulhada")])
         self.lado_trix = "venda"
         fundo = velas(ONTEM, [PARADO] * 3 + [FUNDO] + [PARADO] * 26)
-        d = self.didi().decidir(espelho(AGULHADA_COMPRA), espelho(fundo), [])
+        d = self.pivo().decidir(espelho(AGULHADA_COMPRA), espelho(fundo), [])
         self.assertEqual(d.planos, [])  # o espelho do fundo é um topo: para a venda não há fundo abaixo
-        d = self.didi().decidir(espelho(AGULHADA_COMPRA), espelho(ONTEM_TOPO), [])
+        d = self.pivo().decidir(espelho(AGULHADA_COMPRA), espelho(ONTEM_TOPO), [])
         self.assertEqual(d.planos, [Plano("venda", "mercado", 5397.5, 5402.0, 5394.0, "didi-agulhada")])
 
     def test_folga_do_stop_configuravel(self):
-        d = self.didi(folga_stop_ticks=5).decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
+        d = self.pivo(folga_stop_ticks=5).decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
         self.assertEqual(d.planos[0].stop, 5397.0)
 
     def test_sem_topo_a_frente_nao_entra(self):
-        d = self.didi().decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+        d = self.pivo().decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
         self.assertEqual(d.planos, [])
         self.assertTrue(any("sem topo acima" in p for p in d.pensamento), d.pensamento)
-        # alvo_x ligado: o alvo volta a ser múltiplo do risco (opção)
+        # alvo_x ligado: o alvo volta a ser múltiplo do risco, executado (opção)
         d = self.didi(alvo_x=3.0).decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
         self.assertEqual(d.planos, [Plano("compra", "mercado", 5402.5, 5398.0, 5416.0, "didi-agulhada")])
 
     def test_topo_ainda_sem_confirmar_nao_e_alvo(self):
         # máxima de 5408 no penúltimo candle de hoje: só vira topo com 2 candles depois dela
         hoje = velas(HOJE, [PARADO] * 4 + [(5400, 5408, 5399.5, 5400), (5400, 5403, 5399.5, 5402.5)])
-        d = self.didi().decidir(hoje, ONTEM_PARADO, [])
+        d = self.pivo().decidir(hoje, ONTEM_PARADO, [])
         self.assertFalse(any(p.alvo == 5408.0 for p in d.planos))
 
-    def test_padrao_nao_sai_por_sinal(self):
+    def test_saida_alvo_nao_sai_por_sinal(self):
         queda = AGULHADA_COMPRA + velas(HOJE + timedelta(minutes=30), [(5402.5, 5402.5, 5395.5, 5396)])
-        self.assertEqual(self.didi().decidir(queda, ONTEM_PARADO, []).sair, False)
+        self.assertEqual(self.pivo().decidir(queda, ONTEM_PARADO, []).sair, False)
         hoje = AGULHADA_COMPRA + APOS[:1]
         with falsos(trix=lambda f: trix_extremo("compra")(f), bollinger=larguras([0.0] * A + [5.0, 4.5])):
-            self.assertEqual(self.didi().decidir(hoje, ONTEM_PARADO, []).sair, False)
+            self.assertEqual(self.pivo().decidir(hoje, ONTEM_PARADO, []).sair, False)
             self.assertIs(self.didi(saida="bandas").decidir(hoje, ONTEM_PARADO, []).sair,
                           True)
 

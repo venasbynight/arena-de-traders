@@ -252,6 +252,21 @@ class TestRegrasDoDiretor(unittest.TestCase):
         self.assertEqual(ev[0]["tipo"], "block")
         self.assertIn("abaixo do mínimo 3.0", ev[0]["motivos"][0])
 
+    def test_alvo_de_referencia_nao_vira_take_profit(self):
+        """Plano com alvo_ativo=False (Didi, saída por sinal): o alvo só serve para o risco conferir; o motor não sai
+        nele, só no stop, no sinal ou na zeragem."""
+        self.assertTrue(Plano("compra", "limite", 1.0, 0.9, 1.3, "x").alvo_ativo)  # padrão: alvo de verdade
+        c = motor.Conta("Teste", "WDO", EXEMPLO_CFG)
+        ev = c.colocar([Plano("compra", "limite", 5430.0, 5426.0, 5442.0, "teste", alvo_ativo=False)], T, "WDO$")
+        self.assertEqual(ev[0]["alvo"], None)
+        ev = c.executar_candle(vela(1, 5432, 5433, 5429.5, 5431), False)
+        self.assertEqual((ev[0]["tipo"], ev[0]["alvo"]), ("entrada", None))
+        self.assertEqual(c.executar_candle(vela(2, 5431, 5450, 5430, 5449), False), [])  # passou do 5442: segue
+        c.colocar([], T + timedelta(minutes=15), "WDO$", sair=True)
+        c.executar_candle(vela(3, 5449, 5450, 5447, 5448), False)
+        op = c.operacoes[-1]
+        self.assertEqual((op["saida"], op["motivo_saida"]), (5448.5, "sinal"))
+
     def test_margem_do_saldo_limita(self):
         c = motor.Conta("Teste", "EURUSD", EXEMPLO_CFG)
         # 1 pip de stop no EURUSD = R$ 0,64 por contrato → 156 pela perda, mas R$ 5.000 / 200 = 25 pela margem

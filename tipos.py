@@ -40,6 +40,7 @@ class Plano:
     alvo: float
     setup: str
     validade: int = 1  # ordem stop: candles de 5 min em que vale; não executou, cancela
+    alvo_ativo: bool = True  # False: o alvo é só referência para o risco (saída por sinal); o motor não sai nele
 
 
 @dataclass

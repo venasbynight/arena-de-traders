@@ -26,3 +26,15 @@ Regra nova do padrão do Didi, por cima do Plano 7 (alvo no próximo topo/fundo 
 3. ADX(8): "só precisa estar subindo, e tem que estar mais abaixo" — subindo no candle do gatilho e vindo da parte baixa da faixa: o mínimo do ADX nos últimos 5 candles ≤ percentil 30 dos últimos 120 valores (leitura numérica do controlador para "mais abaixo"; parâmetro `adx_pct`, padrão 0,3). O DI não é mais exigido (`adx` = "sobe_de_baixo").
 4. TRIX(9): "não precisa estar tão no extremo, uns 30% na área mais alta e mais baixa" — compra com o TRIX ≤ percentil 30 dos últimos 120 e subindo; venda ≥ percentil 70 e caindo (`trix_extremo` = 0,3).
 Os prints confirmam a direção: na venda o TRIX estava na área de cima virando para baixo; o ADX subia vindo de baixo. Relatório: funil do Didi no WDO 5 min (agulhadas → bandas abriram → ADX → TRIX → R:R ≥ 3 → trades) no desenvolvimento e trades por pregão.
+
+## Saída do Didi (Diretor, 2026-10-26)
+"No Didi eu quero que o alvo do trade seja quando o Bollinger fecha a boca e quando o ADX abaixa, aponta para baixo." → saída por sinal no fechamento do primeiro candle depois da entrada em que a largura do Bollinger e o ADX caem em relação ao candle anterior; sai na abertura seguinte. Stop 3 ticks além do candle do gatilho; sem alvo fixo.
+- Ruling: o Didi fica fora do R:R mínimo de 3 (não dá para medir antes com saída por sinal); o plano leva um alvo de referência (3 × risco) só para o controle de risco rodar, e o motor não o executa. O relatório mostra o R:R realizado.
+- Ruling: as duas condições no mesmo candle; "qualquer uma" vai como sensibilidade.
+
+### Saída do Didi (Diretor, 2026-10-26)
+"No Didi eu quero que o alvo do trade seja quando o Bollinger fecha a boca e quando o ADX abaixa, aponta para baixo." Substitui o alvo no próximo topo/fundo (que fica como opção `alvo_pivo`). O Didi sai pelo sinal: no fechamento do primeiro candle depois da entrada em que a largura do Bollinger(8,2) é menor que no candle anterior **e** o ADX(8) é menor que no anterior → sai na abertura seguinte (1 tick pior, como a saída por sinal do motor). Stop 3 ticks além do candle do gatilho; sem take-profit (`saida` = "bb_e_adx").
+
+Rulings do controlador:
+- (a) O "R:R ≥ 3" do Diretor não dá para conferir antes numa saída por sinal: o Didi fica isento do R:R mínimo. O plano que vai para o dimensionamento/risco leva um alvo de referência (3 × o risco) só para o risco rodar; o motor não o executa como take-profit (`Plano.alvo_ativo` = False; o padrão True mantém Sofia e Caio como estão). O relatório mostra o R:R realizado do Didi (ganho médio / perda média, % de trades ≥ 3R).
+- (b) As duas condições no mesmo candle; sensibilidade com "qualquer das duas" (`saida` = "bb_ou_adx").

@@ -121,9 +121,11 @@ class Conta:
                 continue
             if p.tipo == "stop":
                 ordem = {**ordem, "tipo": "stop", "validade": p.validade}
+            if not p.alvo_ativo:  # alvo só de referência (o risco já conferiu): a posição não tem take-profit
+                ordem = {**ordem, "alvo": None}
             self.pendentes.append(ordem)
             eventos.append(self._ev(agora, "ordem", lado=p.lado, tipo_ordem=p.tipo, contratos=ordem["contratos"],
-                                    entrada=p.entrada, stop=p.stop, alvo=p.alvo, setup=p.setup))
+                                    entrada=p.entrada, stop=p.stop, alvo=ordem["alvo"], setup=p.setup))
         return eventos
 
     def executar_candle(self, c, ultimo_do_dia):
@@ -201,14 +203,14 @@ class Conta:
                 return self._sair(c.o - tick, c.t, "stop")
             if c.l <= p["stop"]:  # a mercado que abriu abaixo do stop sai 1 tick abaixo da entrada, nunca no lucro
                 return self._sair(min(p["stop"], p["entrada"]) - tick, c.t, "stop")
-            if not candle_da_entrada and c.h >= p["alvo"] + tick:
+            if not candle_da_entrada and p["alvo"] is not None and c.h >= p["alvo"] + tick:
                 return self._sair(p["alvo"], c.t, "alvo")
         else:
             if not candle_da_entrada and c.o >= p["stop"]:
                 return self._sair(c.o + tick, c.t, "stop")
             if c.h >= p["stop"]:
                 return self._sair(max(p["stop"], p["entrada"]) + tick, c.t, "stop")
-            if not candle_da_entrada and c.l <= p["alvo"] - tick:
+            if not candle_da_entrada and p["alvo"] is not None and c.l <= p["alvo"] - tick:
                 return self._sair(p["alvo"], c.t, "alvo")
         return []
 
