@@ -19,3 +19,9 @@
 - `pesquisa/` com harness, divisão, registros e um resumo por trader.
 - Código dos traders ajustado (com testes) e ciclo do gerente rodado.
 - Relatório em HTML para o Diretor: o que foi testado, o que funcionou, o que não funcionou, números dentro e fora da amostra, e o que fazer a seguir.
+
+## Tempos gráficos (decisão do Diretor, 2026-10-26)
+- Forex (7 principais): 5 min **e** 15 min.
+- BTCUSDT: 5 min. WDO e WIN: 5 min.
+- Ações e opções: 60 min, nas ações mais líquidas da B3. Sem preço histórico de opção, o backtest opera a própria ação como aproximação da direção da call/put; o relatório deixa isso explícito.
+- O contexto maior de cada trader escala com o tempo gráfico de entrada (ex.: Sofia entra no 5 com tendência do 60; no 15 com tendência do 60; no 60 com tendência do diário).

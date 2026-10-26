@@ -469,9 +469,10 @@ class TestMotorParaOGerente(unittest.TestCase):
                 self.assertEqual(json.load(f), cfg)  # gravado no disco
             self.assertEqual(motor.carregar_config(caminho), cfg)  # segunda leitura não muda nada
         self.assertEqual((cfg["capital"], cfg["usd_brl"]), (7000, 5.4))
-        self.assertEqual(sorted(cfg["ativos"]), ["BTCUSDT", "EURUSD", "WDO", "WIN"])
         with open(motor.EXEMPLO_CONFIG, encoding="utf-8") as f:
             exemplo = json.load(f)["ativos"]
+        self.assertEqual(sorted(cfg["ativos"]), sorted(exemplo))  # WDO, WIN, BTCUSDT, os 7 do Forex e as ações
+        self.assertTrue({"BTCUSDT", "EURUSD", "WDO", "WIN", "USDJPY", "PETR4"} <= set(cfg["ativos"]))
         wdo = cfg["ativos"]["WDO"]  # o antigo ganha terminal, sessao etc. do modelo e guarda margem e custo
         self.assertEqual(wdo, {**exemplo["WDO"], "margem_por_contrato": 150, "custo_por_contrato": 0.5})
         self.assertEqual((wdo["terminal"], wdo["sessao"]), (exemplo["WDO"]["terminal"], exemplo["WDO"]["sessao"]))

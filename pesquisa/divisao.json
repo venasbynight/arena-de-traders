@@ -1,0 +1,345 @@
+{
+ "_nota": "Divisão fixa do Plano 6, gravada antes de qualquer teste (2026-10-26). desenvolvimento e validacao são intervalos fechados [de, ate] de datas de pregão em Brasília. A validação só é olhada no fim, uma vez por variante finalista (no máximo 3 por trader x ativo x tf); o harness recusa avaliar dentro dela sem validacao=True. tf = tempos gráficos a testar (minutos dos candles base).",
+ "ativos": {
+  "WDO": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5
+   ],
+   "por_trader": {
+    "Caio Contrafluxo": {
+     "desenvolvimento": [
+      "2026-06-29",
+      "2026-09-15"
+     ],
+     "validacao": [
+      "2026-09-16",
+      "2026-10-23"
+     ],
+     "confianca": "baixa",
+     "nota": "o delta só existe a partir de 2026-06-29 (ticks do MT5 da Genial); antes disso o Caio não opera"
+    }
+   }
+  },
+  "WIN": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5
+   ],
+   "por_trader": {
+    "Caio Contrafluxo": {
+     "desenvolvimento": [
+      "2026-08-12",
+      "2026-09-15"
+     ],
+     "validacao": [
+      "2026-09-16",
+      "2026-10-23"
+     ],
+     "confianca": "baixa",
+     "nota": "o delta só existe a partir de 2026-08-12 (ticks do MT5 da Genial); antes disso o Caio não opera"
+    }
+   }
+  },
+  "BTCUSDT": {
+   "desenvolvimento": [
+    "2024-01-01",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-25"
+   ],
+   "tf": [
+    5
+   ]
+  },
+  "EURUSD": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "USDJPY": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "GBPUSD": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "USDCHF": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "AUDUSD": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "USDCAD": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "NZDUSD": {
+   "desenvolvimento": [
+    "2025-06-23",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    5,
+    15
+   ],
+   "nota": "MetaQuotes-Demo entrega 99 mil candles de 5 min (limite de barras do terminal): o histórico começa em 18-20/06/2025; o desenvolvimento começa no primeiro pregão inteiro"
+  },
+  "PETR4": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "VALE3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "ITUB4": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "BBDC4": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "AXIA3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "BBAS3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "SBSP3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "PETR3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "EMBJ3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "PRIO3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "RENT3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  },
+  "EQTL3": {
+   "desenvolvimento": [
+    "2024-01-02",
+    "2026-04-30"
+   ],
+   "validacao": [
+    "2026-05-01",
+    "2026-10-23"
+   ],
+   "tf": [
+    60
+   ],
+   "nota": "ação negociada como aproximação da direção da call/put (sem preço de opções)"
+  }
+ }
+}

@@ -70,10 +70,13 @@ def carregar_config(caminho="trader/config.json"):
 
 
 class Conta:
-    def __init__(self, nome, ativo, cfg):
+    def __init__(self, nome, ativo, cfg, estresse_ticks=0):
         self.nome, self.ativo, self.cfg = nome, ativo, cfg
         spec = size.especificacao(ativo, cfg)  # Recusa se o ativo não está em cfg["ativos"]
         self.tick, self.ponto_rs, self.custo = spec["tick"], spec["ponto_rs"], spec["custo_por_contrato"]
+        # teste de estresse: cada entrada e cada saída executa `estresse_ticks` ticks pior (só no resultado;
+        # os preços e o caminho das ordens ficam os mesmos)
+        self.deslize = estresse_ticks * self.tick
         self.saldo = float(cfg["capital"])
         self.pendentes, self.posicao, self.sair = [], None, False
         self.dia = {"data": None, "trades": 0, "stops": 0, "resultado": 0.0, "posicao_aberta": False}
@@ -207,7 +210,7 @@ class Conta:
     def _sair(self, preco, t, motivo):
         p = self.posicao
         sinal = 1 if p["lado"] == "compra" else -1
-        resultado = round((preco - p["entrada"]) * sinal * self.ponto_rs * p["contratos"]
+        resultado = round(((preco - p["entrada"]) * sinal - 2 * self.deslize) * self.ponto_rs * p["contratos"]
                           - 2 * self.custo * p["contratos"], 2)
         self.operacoes.append({"entrada_t": p["entrada_t"].isoformat(), "saida_t": t.isoformat(), "lado": p["lado"],
                                "contratos": p["contratos"], "entrada": p["entrada"], "saida": preco,
@@ -240,10 +243,12 @@ def placar(operacoes):
             "confianca": "baixa" if n < 50 else "média" if n < 200 else "alta"}
 
 
-def rodar_backtest(ativo, candles5, modulos_traders, cfg):
+def rodar_backtest(ativo, candles5, modulos_traders, cfg, minutos=5, estresse_ticks=0):
     """Roda os traders candle a candle; cada um só vê candles já fechados.
 
     Cada item de `modulos_traders` é o módulo do trader ou `(módulo, params)`; params None = os PARAMS do módulo.
+    `minutos`: tempo gráfico dos candles base (5 por padrão; 15 ou 60 na pesquisa), que vale para a hora da
+    decisão e para saber quando o bloco de 60 fechou. `estresse_ticks`: deslizamento extra em entrada e saída.
     """
     from datetime import timedelta
     from dados import agrupar, por_dia
@@ -252,7 +257,7 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
     simbolo = ativo  # as skills leem o ativo de plano["ativo"]; o símbolo da corretora não importa aqui
     c60 = agrupar(candles5, 60)
     pares = [m if isinstance(m, tuple) else (m, None) for m in modulos_traders]
-    mesa = [(m, m.Trader(ativo, espec["tick"], params, espec["sessao"]), Conta(m.NOME, ativo, cfg))
+    mesa = [(m, m.Trader(ativo, espec["tick"], params, espec["sessao"]), Conta(m.NOME, ativo, cfg, estresse_ticks))
             for m, params in pares]
     eventos = {m.NOME: [] for m, _ in pares}
     ultimo = {m.NOME: {} for m, _ in pares}  # para não repetir o mesmo estudo/ordem a cada candle
@@ -275,10 +280,10 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg):
             if fim_do_dia:
                 continue
             # bloco de 60 fechado: já passou o último candle de 5 min dele, ou é de um dia anterior
-            while k60 < len(c60) and (c60[k60].t + timedelta(minutes=55) <= c.t or c60[k60].t.date() < c.t.date()):
+            while k60 < len(c60) and (c60[k60].t + timedelta(minutes=60 - minutos) <= c.t or c60[k60].t.date() < c.t.date()):
                 k60 += 1
             fechados60 = c60[max(0, k60 - 200):k60]  # ponytail: 200 candles de 60 bastam para a estrutura
-            agora = c.t + timedelta(minutes=5)
+            agora = c.t + timedelta(minutes=minutos)
             for m, trader, conta in mesa:
                 d = trader.decidir(hoje[:i + 1], ontem5, fechados60)
                 evs = conta.colocar(d.planos, agora, simbolo, d.sair)

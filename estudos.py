@@ -4,13 +4,15 @@ from tipos import Pivo, Zona
 
 def pivos(candles, n=2):
     """Topos e fundos com n candles de cada lado; cada um só vale a partir de i + n."""
-    out = []
+    out, hs, ls = [], [k.h for k in candles], [k.l for k in candles]
     for i in range(n, len(candles) - n):
-        viz = candles[i - n:i] + candles[i + 1:i + n + 1]
-        if all(candles[i].h > k.h for k in viz):
-            out.append(Pivo(i, i + n, "topo", candles[i].h))
-        if all(candles[i].l < k.l for k in viz):
-            out.append(Pivo(i, i + n, "fundo", candles[i].l))
+        # maior que o máximo dos vizinhos = maior que cada um; os dois do lado primeiro, que quase sempre já
+        # decidem (o all() com gerador era 75% do tempo da Sofia)
+        h, l = hs[i], ls[i]
+        if h > hs[i - 1] and h > hs[i + 1] and h > max(hs[i - n:i]) and h > max(hs[i + 1:i + n + 1]):
+            out.append(Pivo(i, i + n, "topo", h))
+        if l < ls[i - 1] and l < ls[i + 1] and l < min(ls[i - n:i]) and l < min(ls[i + 1:i + n + 1]):
+            out.append(Pivo(i, i + n, "fundo", l))
     return out
 
 

@@ -332,9 +332,10 @@ def ciclo(cfg, hoje, historico_fn=dados.historico, salas=traders.SALAS, raiz="."
                       "dia": hoje.isoformat(),
                       "premissas": {"capital": cfg["capital"], "usd_brl": cfg.get("usd_brl"), "janela_dias": JANELA_DIAS,
                                     "prova_pregoes": PROVA_PREGOES,
-                                    # tick (casas dos preços nos relatórios) e ponto_rs fixo de cada ativo do config
+                                    # tick (casas dos preços nos relatórios) e ponto_rs fixo de cada sala; os
+                                    # ativos só de pesquisa (Forex novo, ações) ficam fora
                                     "ativos": {a: {"tick": e.get("tick"), "ponto_rs": e.get("ponto_rs")}
-                                               for a, e in cfg.get("ativos", {}).items()}},
+                                               for a, e in cfg.get("ativos", {}).items() if a in salas}},
                       "salas": {**salas_estado, "OPCOES": _opcoes()}, "ranking": ranking, "pendencias": pendencias}
 
             caminho_params = os.path.join(pasta_estado, "parametros.json")
