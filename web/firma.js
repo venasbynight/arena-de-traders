@@ -470,14 +470,15 @@ function construirParede(par) {
       pecaParede(par, s, f, 0.9, 2.2, M.vidro, { grossura: 0.03, colide: true });
       pecaParede(par, s - 0.06, f + 0.06, 0.86, 0.92, M.moldura, { grossura: t + 0.1 });  // peitoril
       pecaParede(par, s - 0.06, f + 0.06, 2.18, 2.26, M.moldura, { grossura: t + 0.04 });
-      pecaParede(par, s - 0.06, s, 0.9, 2.2, M.moldura, { grossura: t + 0.04 });
-      pecaParede(par, f, f + 0.06, 0.9, 2.2, M.moldura, { grossura: t + 0.04 });
+      // moldura e batente avançam 1 cm para dentro do vão: face no mesmo plano da ponta da parede pisca (z-fighting)
+      pecaParede(par, s - 0.06, s + 0.01, 0.9, 2.2, M.moldura, { grossura: t + 0.04 });
+      pecaParede(par, f - 0.01, f + 0.06, 0.9, 2.2, M.moldura, { grossura: t + 0.04 });
       pecaParede(par, ab.em - 0.025, ab.em + 0.025, 0.9, 2.2, M.moldura, { grossura: 0.06 });
     } else {
       pecaParede(par, s, f, 2.1, H, M.parede);
-      pecaParede(par, s - 0.07, s, 0, 2.17, M.batente, { grossura: t + 0.05 });
-      pecaParede(par, f, f + 0.07, 0, 2.17, M.batente, { grossura: t + 0.05 });
-      pecaParede(par, s - 0.07, f + 0.07, 2.1, 2.17, M.batente, { grossura: t + 0.05 });
+      pecaParede(par, s - 0.07, s + 0.01, 0, 2.17, M.batente, { grossura: t + 0.05 });
+      pecaParede(par, f - 0.01, f + 0.07, 0, 2.17, M.batente, { grossura: t + 0.05 });
+      pecaParede(par, s - 0.07, f + 0.07, 2.09, 2.17, M.batente, { grossura: t + 0.05 });
       if (ab.tipo === "entrada") {
         pecaParede(par, s, f, 0, 2.1, mat("#6e4a2f", { roughness: 0.5 }), { grossura: 0.06, colide: true });
         pecaParede(par, s + 0.2, f - 0.2, 1.0, 1.9, M.vidro, { grossura: 0.08 });
@@ -641,6 +642,7 @@ function cadeiraVisita(g, x, z, rot) {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) caixa(c, 0.035, 0.45, 0.035, M.cromo, sx * 0.2, 0.225, sz * 0.2);
   caixa(c, 0.48, 0.07, 0.46, mat("#7a2f3b", { roughness: 0.9 }), 0, 0.48, 0);
   caixa(c, 0.46, 0.42, 0.06, mat("#7a2f3b", { roughness: 0.9 }), 0, 0.74, -0.21);
+  return c;
 }
 
 function planta(pai, x, z, alta = true) {
@@ -690,6 +692,7 @@ function sofa(pai, x, z, rot, cor) {
   for (const s of [-1, 1]) caixa(g, 0.2, 0.58, 0.86, m, s * 0.95, 0.33, 0);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) caixa(g, 0.05, 0.08, 0.05, M.madeiraEscura, sx * 0.92, 0.04, sz * 0.36);
   caixa(g, 0.38, 0.32, 0.1, mat("#f0b429", { roughness: 0.95 }), -0.6, 0.6, -0.16).rotation.z = 0.15;
+  return g;
 }
 
 function mesaCentro(pai, x, z) {
@@ -1048,7 +1051,6 @@ const PALETAS = [
   { pele: "#a86f4c", cabelo: "#2a2a2a", camisa: "#8a6bd8", calca: "#22303f" },
 ];
 const CABELO = { "Sofia SMC": "longo" };   // quem não está aqui usa "curto"
-const animados = [];  // bonecos parados com respiração e digitação (o diretor); os funcionários andam (ver "funcionários")
 
 // boneco articulado (≈1,85 m em pé): origem no chão sob o quadril, olhando para +z. Nasce sentado à mesa
 // (quadril a 0,575 m, coxas na horizontal); `posar` troca a pose (em pé, andando, sofá, café...).
@@ -1128,14 +1130,6 @@ function boneco(pal, { cabelo = "curto", terno = null, gravata = "#b8323a" } = {
   }
   g.userData = { quadril, pernas, tronco, ombros, cotovelos, maos, contornos, fase: rnd() * 6.28, topo: 1.465 };
   return g;
-}
-
-function animarBonecos(t) {
-  for (const b of animados) {
-    const { tronco, ombros, fase } = b.userData;
-    tronco.scale.y = 1 + 0.012 * Math.sin(t * 2 * Math.PI / 3.5 + fase);     // respiração
-    ombros.forEach((o, i) => (o.position.y = 0.42 + 0.01 * Math.sin(t * 2 * Math.PI + fase + i * Math.PI)));  // digitando: ±1 cm, 1 s
-  }
 }
 
 // plumbob verde sobre o trader selecionado
@@ -1289,10 +1283,10 @@ telaRankingVerso.rotation.y = Math.PI;
 telaRankingVerso.position.z = -0.046;
 quadro.add(telaRankingVerso);
 
-sofa(predio, -4.4, -3.3, 0, "#5f7d95");
+const sofaHall = sofa(predio, -4.4, -3.3, 0, "#5f7d95");
 mesaCentro(predio, -4.4, -2.2);
 tapete(predio, -4.4, -2.5, 2.6, 1.7);
-cadeiraVisita(predio, -2.9, -2.3, -Math.PI / 2);
+const visitas = [cadeiraVisita(predio, -2.9, -2.3, -Math.PI / 2)];
 bebedouro(predio, -5.55, 3.5);
 planta(predio, -5.45, -1.0);
 planta(predio, -5.45, 1.0, false);
@@ -1312,12 +1306,13 @@ teclado(mesaDiretor, -0.3, -0.2);
 trofeu(mesaDiretor, 0.75, 0.75, 0.15, 0.9);
 caneca(mesaDiretor, 0.45, -0.15, "#f0b429");
 cadeira(mesaDiretor, 0, -0.85, 0, true);
-cadeiraVisita(predio, dir.x - 0.55, dir.z - 0.55, Math.PI / 2);
-cadeiraVisita(predio, dir.x - 0.55, dir.z + 0.55, Math.PI / 2);
+visitas.push(cadeiraVisita(predio, dir.x - 0.55, dir.z - 0.55, Math.PI / 2), cadeiraVisita(predio, dir.x - 0.55, dir.z + 0.55, Math.PI / 2));
+// o Diretor (você) anda como os funcionários (ver "funcionários"): `eu` é uma pessoa sem rotina, movida pelo clique e pelo V
 const diretor = boneco({ pele: "#e8b896", cabelo: "#2b1d14", camisa: "#e9ecef", calca: "#2f2f35" }, { terno: "#2f2f35", gravata: "#4c8dff" });
-animados.push(diretor);
-diretor.position.set(0, 0, -0.85);
-mesaDiretor.add(diretor);
+const eu = { chave: "diretor", raiz: new THREE.Group(), b: diretor, mini: new THREE.Object3D(), balao: new THREE.Object3D(), props: {},
+  rota: [], destino: null, fase: 0 };
+eu.raiz.add(diretor);
+cena.add(eu.raiz);
 diretor.userData.alvo = "gerente";
 clicaveis.push(diretor);
 telaDiretor.userData.alvo = "relatorios";   // o monitor da Diretoria abre os relatórios do dia
@@ -1325,16 +1320,15 @@ clicaveis.push(telaDiretor);
 estante(predio, dir.x + 1.6, dir.z - dir.d / 2 + 0.3, 0);
 planta(predio, dir.x + dir.w / 2 - 0.45, dir.z + dir.d / 2 - 0.45);
 planta(predio, dir.x - dir.w / 2 + 0.5, dir.z - dir.d / 2 + 0.5, false);
-sofa(predio, dir.x - 1.6, dir.z + dir.d / 2 - 0.55, Math.PI, "#7a2f3b");
+const sofaDiretoria = sofa(predio, dir.x - 1.6, dir.z + dir.d / 2 - 0.55, Math.PI, "#7a2f3b");
 mesaCentro(predio, dir.x - 1.6, dir.z + 1.4);
 quadroParede(dir.x + dir.w / 2, 1.6, dir.z - 1.7, [1, 0], 0.9, 0.6, ARTES[1]);
 quadroParede(dir.x + dir.w / 2, 1.6, dir.z + 1.7, [1, 0], 0.9, 0.6, ARTES[2]);
 luminaria(dir.x - 1.5, dir.z); luminaria(dir.x + 1.5, dir.z);
 luzSala(dir.x, dir.z, 7);
-const rotDiretor = rotulo("Diretor (você)", "Diretoria", "#e6edf3", dir.cor);
-rotDiretor.position.set(0, 1.98, -0.85);
+const rotDiretor = eu.rot = rotulo("Diretor (você)", "Diretoria", "#e6edf3", dir.cor);
 Object.assign(rotDiretor.userData, { alvo: "gerente", boneco: diretor });
-mesaDiretor.add(rotDiretor);
+eu.raiz.add(rotDiretor);
 clicaveis.push(rotDiretor);
 const rotDiretoria = rotulo("Diretoria", "sala do diretor", "#8b98a5", dir.cor);
 rotDiretoria.position.set(dir.porta[0] - 0.5, 2.2, dir.porta[1]);
@@ -1381,11 +1375,9 @@ VAGAS_DESCANSO.push(
 tapete(predio, -11, 0, 9.2, 1.5, 0, texPassadeira);
 piso(predio, 0.7, 1.3, mat("#4a3f35", { roughness: 1 }), null, -15.5, 0.016, 0);   // capacho
 cabideiro(predio, -15.5, -1.25);
-banco(predio, -14.2, -3.62, 0);
-banco(predio, -14.2, 3.62, Math.PI);
+const bancos = [banco(predio, -14.2, -3.62, 0), banco(predio, -14.2, 3.62, Math.PI)];
 planta(predio, -15.45, -3.5); planta(predio, -15.45, 3.5);
-poltrona(predio, -8.05, -3.25, 0.5, "#e0a930");
-poltrona(predio, -6.75, -3.25, -0.5, "#e0a930");
+const poltronas = [poltrona(predio, -8.05, -3.25, 0.5, "#e0a930"), poltrona(predio, -6.75, -3.25, -0.5, "#e0a930")];
 cilindro(predio, 0.22, 0.22, 0.03, M.madeira, -7.4, 0.55, -3.6, 20);   // mesinha entre as poltronas
 cilindro(predio, 0.03, 0.03, 0.54, M.metal, -7.4, 0.27, -3.6, 8);
 cilindro(predio, 0.14, 0.15, 0.02, M.metal, -7.4, 0.01, -3.6, 14);
@@ -1405,6 +1397,18 @@ luzSala(-11, 0, 6);
 // pares frente a frente (a olha para b e vice-versa); na mesa alta cada um fica a 0,62 m do centro, sem mesa a 0,45
 const par = (x, z, meio = 0.45) => [{ pos: [+(x - meio).toFixed(2), z], rot: 1.571 }, { pos: [+(x + meio).toFixed(2), z], rot: -1.571 }];
 VAGAS_CONVERSA.push(par(-14.0, -1.9, 0.62), par(-9.6, 2.0, 0.62), par(-9.6, -2.2));
+
+// onde o Diretor senta com um clique (as cadeiras das mesas de trabalho ficam para os traders); assento = altura do
+// quadril. Os lugares do descanso guardam a chave da vaga ("d3"): quem está lá (ou indo para lá) ocupa para os dois lados.
+const lugar = (g, x, z, assento, texto) => ({ ...vaga("lugar", g, x, z, 0, "sentado"), assento, texto });
+const LUGARES = [
+  { ...lugar(mesaDiretor, 0, -0.85, 0.575, "Diretoria"), pose: "digitando" },
+  ...[sofaHall, sofaDiretoria].flatMap(g => [-0.47, 0.47].map(x => lugar(g, x, 0.02, 0.535, "no sofá"))),
+  ...visitas.map(g => lugar(g, 0, 0, 0.6, "na cadeira")),
+  ...bancos.flatMap(g => [-0.35, 0.35].map(x => lugar(g, x, 0, 0.62, "no banco"))),
+  ...poltronas.map(g => lugar(g, 0, 0.02, 0.535, "na poltrona")),
+].map((l, i) => ({ chave: `a${i}`, ...l })).concat(VAGAS_DESCANSO.flatMap((v, i) => v.pose !== "sentado" ? [] :
+  [{ ...v, chave: `d${i}`, assento: v.tipo === "sofa" ? 0.535 : 0.48, texto: v.tipo === "sofa" ? "no sofá" : "no pufe" }]));
 
 // ---------------------------------------------------------------- texturas que dependem do estado
 const brl = v => (v < 0 ? "−" : v > 0 ? "+" : "") + "R$ " + Math.abs(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
@@ -1585,7 +1589,7 @@ function cavalete(x, z, ativo) {
 
 // ---------------------------------------------------------------- fusão dos estáticos
 // Funde mobília, pisos e área externa por material: ~1.500 malhas viram poucas dezenas de chamadas
-// de desenho. Ficam de fora o que muda: telas, bonecos (animados) e quadros (somem com o recorte).
+// de desenho. Ficam de fora o que muda: telas, bonecos e quadros (somem com o recorte).
 // `destino` recebe as malhas fundidas (no espaço local dele): a cena, ou uma cadeira móvel fundida em si mesma.
 function fundirEstaticos(raizes, manter, destino = cena) {
   const porMaterial = new Map(), fundidas = [];
@@ -1843,6 +1847,7 @@ function removerPessoa(p) {
   pessoas.delete(p.chave);
 }
 function legenda(p) {   // o rótulo mostra a atividade real; andando para o descanso, "aguardando tarefa"
+  if (p === eu) return retextar(p.rot, "Diretor (você)", p.rota.length ? "andando" : p.destino?.texto || "em pé", "#e6edf3", dir.cor);
   const d = p.destino || { chave: "", texto: "aguardando tarefa" }, andando = p.rota.length > 0;
   const pausado = p.alvo?.status === "pausado" && d.chave !== "mesa";
   const texto = andando && d.chave !== "mesa" ? "aguardando tarefa" : d.texto;
@@ -1921,6 +1926,10 @@ function arrumarRotulos(dt, fp, distancia) {
 }
 
 // a gente da firma no estado novo: cria quem chegou, atualiza a ficha de quem ficou e tira quem saiu
+eu.destino = LUGARES[0];
+eu.raiz.position.set(eu.destino.pos[0], 0, eu.destino.pos[1]);
+eu.raiz.rotation.y = eu.destino.rot;
+posar(eu, eu.destino.pose, eu.destino.assento);
 const gerente = criarPessoa("gerente", { pele: "#d9a37c", cabelo: "#4a4a4a", camisa: "#e9ecef", calca: "#25324a" }, { terno: "#25324a" });
 definirAlvo(gerente, "gerente", "Gerente", "#4c8dff");
 gerente.mesa = mesaDoGerente;
@@ -1975,7 +1984,7 @@ function distribuir() {
   const pares = new Map();   // par do corredor → quantos ficaram nele; quem ficou sozinho escolhe de novo
   for (const d of destinos.values()) if (d.par !== undefined) pares.set(d.par >> 1, (pares.get(d.par >> 1) || 0) + 1);
   for (const [p, d] of destinos) if (d.par !== undefined && pares.get(d.par >> 1) === 1) { destinos.delete(p); pares.delete(d.par >> 1); }
-  const ocupada = new Set([...destinos.values()].map(d => d.chave));
+  const ocupada = new Set([...destinos.values(), eu.destino].map(d => d?.chave));
   const novos = ociosos.filter(p => !destinos.has(p)).sort((a, b) => (b.chave === "gerente") - (a.chave === "gerente") || (a.chave < b.chave ? -1 : 1));
   const papo = novos.filter(p => p.alvo.status !== "pausado" && sorteio(p) % 3 === 0);
   const paresLivres = VAGAS_CONVERSA.map((_, i) => i).filter(i => !pares.has(i) && !inalcancaveis.has(`c${2 * i}`) && !inalcancaveis.has(`c${2 * i + 1}`));
@@ -2012,7 +2021,7 @@ function irPara(p, d) {
   if (mesmo) { p.destino = d; return legenda(p); }
   p.balao.visible = false;
   p.chegando = false;
-  if (p.novo || INSTANTANEO) {   // quem acabou de aparecer (ou ?instantaneo=1) já está no lugar
+  if (p.novo || (INSTANTANEO && p !== eu)) {   // quem acabou de aparecer (ou ?instantaneo=1) já está no lugar; o Diretor sempre anda
     p.novo = false;
     p.destino = d;
     p.raiz.position.set(d.pos[0], 0, d.pos[1]);
@@ -2043,7 +2052,7 @@ function girar(p, alvo, dt) {
   return dif;
 }
 function atualizarPessoas(dt, t) {
-  for (const p of pessoas.values()) {
+  for (const p of [eu, ...pessoas.values()]) {
     const u = p.b.userData, d = p.destino;
     u.tronco.scale.y = 1 + 0.012 * Math.sin(t * 2 * Math.PI / 3.5 + u.fase);   // respiração
     if (p.mesa) {   // cadeira puxada só para quem vai sentar; quem não trabalha deixa a mesa arrumada
@@ -2093,15 +2102,16 @@ function atualizarPessoas(dt, t) {
     }
   }
 }
-// estado da rotina para testes: firma.pessoas() → [{chave, texto, pos, andando}]
-const resumoPessoas = () => [...pessoas.values()].map(p => ({ chave: p.chave, texto: p.rot.userData.texto, destino: p.destino?.chave,
-  pos: [+p.raiz.position.x.toFixed(2), +p.raiz.position.z.toFixed(2)], andando: p.rota.length > 0 }));
+// estado da rotina para testes: firma.pessoas() → [{chave, texto, pos, andando, pose}]; firma.diretor() → o mesmo do Diretor
+const resumo = p => ({ chave: p.chave, texto: p.rot.userData.texto, destino: p.destino?.chave,
+  pos: [+p.raiz.position.x.toFixed(2), +p.raiz.position.z.toFixed(2)], andando: p.rota.length > 0, pose: p.pose });
+const resumoPessoas = () => [...pessoas.values()].map(resumo);
 
 // ---------------------------------------------------------------- estado → cena
 let modoAtual = "cima";   // "cima" | "fp"; firma.modo = ... aplica a troca inteira
 const firma = window.firma = {
   estado: null, abrirPainel, salas, vagas: { descanso: VAGAS_DESCANSO, conversa: VAGAS_CONVERSA },
-  pessoas: resumoPessoas,
+  pessoas: resumoPessoas, diretor: () => resumo(eu),
   rotas: { caminho, mesaGerente: mesaDoGerente.vaga },   // teste de rotas (todas as vagas alcançáveis, nenhuma parede cruzada)
   simularAtividade(json) { ativ.simulada = json ?? null; if (equipeConhecida) distribuir(); return atividadeAgora(); },   // null volta ao real
   get modo() { return modoAtual; },
@@ -2115,7 +2125,6 @@ function limparDinamicos() {
     o.traverse(x => {
       if (x.material?.map && x.material !== M.telaApagada) { x.material.map.dispose(); x.material.dispose(); }
     });
-    const i = animados.indexOf(o); if (i >= 0) animados.splice(i, 1);
     const k = clicaveis.indexOf(o); if (k >= 0) clicaveis.splice(k, 1);
     const r = rotulos.indexOf(o); if (r >= 0) rotulos.splice(r, 1);
   }
@@ -2410,8 +2419,24 @@ renderer.domElement.addEventListener("pointerup", e => {
   inicioClique = null;
   if (firma.modo === "fp") { if (!olhar.isLocked) travar(); return; }   // em primeira pessoa o clique só trava o mouse
   const o = alvoSob(e);
-  if (o) interagir(o);
+  if (o) interagir(o); else irAte();
 });
+
+// Clique no chão (câmera de cima): o Diretor anda até lá pela mesma grade dos funcionários; numa cadeira ou num
+// sofá livre (LUGARES), vai e senta. Usa o raio que alvoSob acabou de lançar; paredes de pé seguram o clique.
+const alvosChao = [...malhasFixas, ...cadeirasMoveis, ...new Set(pecas.map(pc => pc.im).filter(Boolean))];
+function irAte() {
+  const hit = raio.intersectObjects(alvosChao, true)[0];
+  if (!hit) return;
+  const { x, y, z } = hit.point, perto = l => Math.hypot(l.pos[0] - x, l.pos[1] - z);
+  const ocupados = new Set([...pessoas.values()].map(p => p.destino?.chave));   // lugar do descanso com trader: o vizinho livre serve
+  const l = y > 0.15 && LUGARES.filter(l => perto(l) < 0.55 && !ocupados.has(l.chave)).sort((a, b) => perto(a) - perto(b))[0];
+  if (l) return irPara(eu, l);
+  const c = celulaLivre(x, z);   // chão (ou móvel, parede, lugar ocupado): a célula livre mais perto do ponto
+  if (c < 0) return;
+  const pos = pontoDe(c);
+  irPara(eu, { chave: `livre:${pos}`, pos, rot: eu.raiz.rotation.y, pose: "em_pe", texto: "em pé" });
+}
 
 // trader → ficha; gerente/diretor → resumo; monitor da Diretoria → relatórios. O plumbob só vai em boneco.
 function interagir(o) {
@@ -2424,7 +2449,6 @@ function interagir(o) {
 // V alterna com a câmera de cima. O mouse olha (PointerLockControls); WASD anda a 3 m/s (Shift 5 m/s) com
 // colisão só nas paredes (COLISORES), eixo por eixo para deslizar rente a elas; E interage com o que está na mira.
 const OLHO = 1.7, RAIO = 0.3, ANDAR = 3, CORRER = 5, ALCANCE = 2.5;
-const INICIO = [dir.x + 2.4, dir.z, 90, -8];   // x, z, yaw°, pitch°: atrás da mesa do diretor, olhando a porta
 const olhar = new PointerLockControls(camera, renderer.domElement), giro = new THREE.Euler(0, 0, 0, "YXZ");
 olhar.minPolarAngle = 10 * GRAU;
 olhar.maxPolarAngle = 170 * GRAU;
@@ -2456,7 +2480,7 @@ renderer.domElement.addEventListener("pointermove", e => {
 });
 
 const camCima = { pos: new THREE.Vector3(), alvo: new THREE.Vector3() };
-let poseFp = null;   // onde a primeira pessoa parou; null = ainda não entrou (começa na Diretoria)
+let pitchFp = -8;   // graus; a primeira pessoa volta com o mesmo olhar para cima/baixo
 function trocarModo(m) {
   if (m === modoAtual || !modos[m]) return;
   const fp = (modoAtual = m) === "fp";
@@ -2471,18 +2495,33 @@ function trocarModo(m) {
     document.activeElement?.blur?.();   // tira o foco do relatório embutido, senão o WASD vai para ele
     camCima.pos.copy(camera.position);
     camCima.alvo.copy(controles.target);
-    if (poseFp) { camera.position.copy(poseFp.pos); camera.quaternion.copy(poseFp.quat); }
-    else teleportar(...INICIO);
+    // você entra no boneco: onde ele está, olhando para onde ele olha (sentado, levanta para a célula livre mais perto)
+    const { x, z } = eu.raiz.position, sentado = POSES[eu.pose]?.q, c = sentado ? celulaLivre(x, z) : -1;
+    const [px, pz] = c >= 0 ? pontoDe(c) : [x, z];
+    teleportar(px, pz, (eu.raiz.rotation.y + Math.PI) / GRAU, pitchFp);
+    pararDiretor(px, pz, eu.raiz.rotation.y);
   } else {
-    poseFp = { pos: camera.position.clone(), quat: camera.quaternion.clone() };
+    // o boneco fica onde você parou, em pé, de frente para onde você olhava; a câmera de cima vai até ele
+    giro.setFromQuaternion(camera.quaternion);
+    pitchFp = giro.x / GRAU;
+    pararDiretor(camera.position.x, camera.position.z, giro.y + Math.PI);
     if (olhar.isLocked) olhar.unlock();
-    camera.position.copy(camCima.pos);
-    controles.target.copy(camCima.alvo);
+    controles.target.set(camera.position.x, 0, camera.position.z);
+    camera.position.copy(controles.target).add(desloc.subVectors(camCima.pos, camCima.alvo));
     controles.update();
   }
   voltar.hidden = true;
   mirar(null);
   marcarSobre(null);
+}
+
+function pararDiretor(x, z, rot) {   // em pé em (x, z), sem rota
+  eu.rota = []; eu.chegando = false;
+  eu.raiz.position.set(x, 0, z);
+  eu.raiz.rotation.y = rot;
+  eu.destino = { chave: "livre", pos: [x, z], rot, pose: "em_pe", texto: "em pé" };
+  posar(eu, "em_pe");
+  legenda(eu);
 }
 
 function teleportar(x, z, yaw = 0, pitch = 0) {   // graus; yaw 0 = norte (−z), 90 = oeste (−x)
@@ -2616,7 +2655,6 @@ renderer.setAnimationLoop(() => {
   const bruto = relogio.getDelta(), dt = Math.min(bruto, 0.1), t = relogio.elapsedTime;
   modos[firma.modo]?.(dt);
   atualizarParedes();
-  animarBonecos(t);
   atualizarPessoas(Math.min(bruto, 1), t);   // com a tela travando, quem anda não fica para trás
   if (plumbob.visible) { plumbob.rotation.y = t * 1.5; plumbob.position.y = (selecionado?.userData.topo ?? 1.465) + 0.255 + 0.04 * Math.sin(t * 2.5); }
   // rótulos crescem um pouco com a distância para continuarem legíveis na visão geral; em primeira pessoa
