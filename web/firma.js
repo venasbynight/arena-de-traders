@@ -1494,14 +1494,14 @@ const ext = new THREE.Group();
 ext.position.y = CHAO_FORA;
 fora.add(ext);
 // caminhos de pedra: do caminho da entrada, um vai para o sul até a cafeteria e outro para o norte até a praça
-piso(ext, 1.4, 22.7, matCalcada, 1.2, -20.6, 0.004, 12.25);
+piso(ext, 1.4, 109.1, matCalcada, 1.2, -20.6, 0.004, 55.45);   // passa em frente ao café e segue até o fim da rua
 piso(ext, 1.4, 21.1, matCalcada, 1.2, -20.6, 0.004, -11.45);
 piso(ext, 8.7, 1.4, matCalcada, 1.2, -16.95, 0.004, -22);
 
 // Café do Pregão, ao sul: quiosque com o balcão virado para a rua (oeste), toldo listrado, vitrine, máquina de espresso e
 // cardápio; no deck, entre o quiosque e a rua, mesinhas com cadeiras e guarda-sóis. O telhado só aparece na primeira pessoa (de cima, aberto como no Sims).
-piso(ext, 12.7, 7, new THREE.MeshStandardMaterial({ map: texTaco, roughness: 0.6 }), 1.6, -13.55, 0.008, 23.6);
-const quiosque = grupo(ext, -8.5, 23.6, -Math.PI / 2);   // frente (+z local) para o oeste
+piso(ext, 12.7, 7, new THREE.MeshStandardMaterial({ map: texTaco, roughness: 0.6 }), 1.6, -13.55, 0.008, 18.1);
+const quiosque = grupo(ext, -8.5, 18.1, -Math.PI / 2);   // frente (+z local) para o oeste
 {
   const parede = mat("#f3e6d3", { roughness: 0.9 }), verde = mat("#2f6b4f", { roughness: 0.7 });
   caixa(quiosque, 5, 2.7, 0.2, parede, 0, 1.35, -1.1);
@@ -1533,13 +1533,13 @@ const quiosque = grupo(ext, -8.5, 23.6, -Math.PI / 2);   // frente (+z local) pa
     for (let k = 0; k < 8; k++) { g.fillStyle = k % 2 ? "#f4f1ea" : "#2f6b4f"; g.fillRect(k * w / 8, 0, w / 8, h); }
   }) });
   caixa(quiosque, 5.2, 0.04, 1.3, toldo, 0, 2.5, 1.65).rotation.x = 0.35;
-  caixa(forro, 2.7, 0.15, 5.3, parede, -8.5, 2.78 + CHAO_FORA, 23.6).castShadow = false;   // telhado (só na primeira pessoa)
+  caixa(forro, 2.7, 0.15, 5.3, parede, -8.5, 2.78 + CHAO_FORA, 18.1).castShadow = false;   // telhado (só na primeira pessoa)
 }
 const rotCafe = rotulo("Café do Pregão", "espresso · pão de queijo", "#c9a96e", "#2f6b4f");
-rotCafe.position.set(-8.5, 3.4, 23.6);
+rotCafe.position.set(-8.5, 3.4, 18.1);
 fora.add(rotCafe);
 const cadeirasCafe = [];
-for (const [x, z, guardaSol] of [[-17.5, 22.0, true], [-14.6, 25.3, false], [-12.3, 22.1, true]]) {
+for (const [x, z, guardaSol] of [[-17.5, 16.5, true], [-14.6, 19.8, false], [-12.3, 16.6, true]]) {
   cilindro(ext, 0.24, 0.26, 0.03, M.metal, x, 0.015, z, 18);
   cilindro(ext, 0.03, 0.03, 0.72, M.cromo, x, 0.37, z, 10);
   cilindro(ext, 0.4, 0.4, 0.035, mat("#f4f1ea", { roughness: 0.5 }), x, 0.74, z, 24);
@@ -1549,7 +1549,7 @@ for (const [x, z, guardaSol] of [[-17.5, 22.0, true], [-14.6, 25.3, false], [-12
   cilindro(ext, 0.025, 0.025, 2.3, M.cromo, x, 1.55, z, 8);
   cilindro(ext, 0.03, 1.25, 0.35, mat("#e26d5a", { roughness: 0.9 }), x, 2.6, z, 8);
 }
-for (const [x, z] of [[-19.4, 20.5], [-19.4, 26.7], [-7.7, 26.7], [-7.7, 20.5]]) planta(ext, x, z, z > 23);
+for (const [x, z] of [[-19.4, 15.0], [-19.4, 21.2], [-7.7, 21.2], [-7.7, 15.0]]) planta(ext, x, z, z > 17.5);
 
 // Praça ao norte: chafariz no meio, quatro bancos virados para ele, postes e canteiros
 const PRACA = [-8, -22];
@@ -1589,7 +1589,7 @@ const LUGARES_FORA = [
 ].map((l, i) => ({ chave: `f${i}`, ...l }));
 const PONTOS_NPC = [
   ...LUGARES_FORA,
-  ...[23.0, 24.3].map((z, i) => ({ chave: `fb${i}`, pos: [-10.1, z], rot: Math.PI / 2, pose: "caneca" })),   // no balcão
+  ...[17.5, 18.8].map((z, i) => ({ chave: `fb${i}`, pos: [-10.1, z], rot: Math.PI / 2, pose: "caneca" })),   // no balcão
   { chave: "fc0", pos: [PRACA[0] - 1.9, PRACA[1]], rot: Math.PI / 2, pose: "em_pe" },                 // na beira do chafariz
   { chave: "fc1", pos: [PRACA[0] + 1.9, PRACA[1] + 0.4], rot: -Math.PI / 2, pose: "em_pe" },
   { chave: "fr0", pos: [-23.2, -5], rot: 0, pose: "em_pe" }, { chave: "fr1", pos: [-23.2, 9], rot: Math.PI, pose: "em_pe" },   // calçada
