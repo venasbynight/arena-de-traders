@@ -10,7 +10,7 @@ ESTILO = "delta contra a tendência · S/R do dia"
 # em 25/10/2026: WDO 5134, 7706, 10507, 14301 (83 pregões, 29/06 a 23/10); WIN 17949, 24943, 32326, 42248 (51
 # pregões, 12/08 a 23/10), arredondados. WIN parte dos 10.000 da regra; WDO, do percentil 90.
 # Pesquisa (Plano 6), todos desligados no padrão:
-#   limite_pct  percentil do |delta| de ontem + hoje antes do sinal no lugar do limite fixo (None = fixo)
+#   limite_pct  percentil do |delta| de ontem + hoje antes do sinal, no lugar do limite fixo (None = fixo)
 #   tendencia   "60" (regra da Sofia no 60), "dia" (fechamento contra a abertura do dia) ou "ambos"
 #   confirma    espera o candle seguinte ao sinal fechar abaixo do nível e do fechamento do sinal (venda; espelho)
 #   alvo_rr     alvo = risco × alvo_rr a partir do fechamento (None = topo/fundo oposto do dia)
@@ -34,8 +34,8 @@ class Trader:
         lim = self.p["limite"]
         lim = lim.get(self.ativo) if isinstance(lim, dict) else lim
         pct = self.p["limite_pct"]
-        if lim is None or pct is None:
-            return lim
+        if pct is None:
+            return lim  # None: ativo sem limite de delta, não opera
         vs = sorted(abs(k.delta) for k in anteriores if k.delta is not None)
         return vs[int(pct / 100 * (len(vs) - 1))] if len(vs) >= MIN_AMOSTRA_PCT else None
 

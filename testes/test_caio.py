@@ -179,6 +179,9 @@ class TestCaio(unittest.TestCase):
         self.assertEqual(caio.decidir(dia(delta=53), ontem, BAIXA60).planos, [])
         d = self.wdo(limite_pct=90).decidir(dia(), [], BAIXA60)  # menos de 50 candles com delta
         self.assertEqual(d.planos, [])
+        # com percentil, ativo sem limite fixo (BTCUSDT) também opera
+        self.assertEqual(caio_contrafluxo.Trader("BTCUSDT", 0.01, {"limite_pct": 90})._limite(ontem), 54)
+        self.assertIsNone(caio_contrafluxo.Trader("BTCUSDT", 0.01)._limite(ontem))
 
     def test_rejeicao_exige_passar_do_nivel_e_fechar_de_volta(self):
         self.assertEqual(self.wdo(rejeicao=True).decidir(dia(), [], BAIXA60).planos, [])  # máxima 5404,5 < 5405

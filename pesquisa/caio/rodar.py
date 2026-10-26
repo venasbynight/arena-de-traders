@@ -84,20 +84,49 @@ def rodada3():
     return v
 
 
-GRUPOS = {"ablacao": ablacao, "rodada2": rodada2, "rodada3": rodada3}
+# BTCUSDT (delta = taker buy da Binance, desde 2024): tick de US$ 0,01, então região e folga precisam de outra
+# escala (candle de 5 min mediano: US$ 109). Base: limite pelo percentil 95, região US$ 30, folga US$ 10.
+BTC = {"limite_pct": 95, "regiao_ticks": 3000, "folga_ticks": 1000}
+
+
+def btc1():
+    """Base do BTC e uma mudança por vez (as mesmas hipóteses do WDO/WIN, menos horário)."""
+    v = [("btc base", "BTCUSDT", BTC)]
+    v += [(f"btc limite_pct {x}", "BTCUSDT", {**BTC, "limite_pct": x}) for x in (90, 98)]
+    v += [("btc regiao 1000", "BTCUSDT", {**BTC, "regiao_ticks": 1000})]
+    v += [(f"btc folga {x}", "BTCUSDT", {**BTC, "folga_ticks": x}) for x in (5000, 10000)]
+    v += [(f"btc tendencia {x}", "BTCUSDT", {**BTC, "tendencia": x}) for x in ("dia", "ambos")]
+    v += [("btc confirma", "BTCUSDT", {**BTC, "confirma": True}), ("btc rejeicao", "BTCUSDT", {**BTC, "rejeicao": True})]
+    v += [(f"btc alvo_rr {x}", "BTCUSDT", {**BTC, "alvo_rr": x}) for x in (2, 3)]
+    return v
+
+
+def btc2():
+    """O custo fixo (R$ 1 por trade com 5 contratos) come o pouco que sobra; stop e alvo mais longos diluem o custo."""
+    v = [("btc folga 10000 alvo_rr 3", "BTCUSDT", {**BTC, "folga_ticks": 10000, "alvo_rr": 3})]
+    v += [("btc folga 20000", "BTCUSDT", {**BTC, "folga_ticks": 20000})]
+    v += [("btc folga 20000 alvo_rr 3", "BTCUSDT", {**BTC, "folga_ticks": 20000, "alvo_rr": 3})]
+    v += [("btc folga 20000 alvo_rr 3 pct 98", "BTCUSDT", {**BTC, "folga_ticks": 20000, "alvo_rr": 3, "limite_pct": 98})]
+    return v
+
+
+GRUPOS = {"ablacao": ablacao, "rodada2": rodada2, "rodada3": rodada3, "btc1": btc1, "btc2": btc2}
 # grade do walk-forward: as dimensões que mexeram no PF (ablação e rodadas 2-3), no máximo 3 valores cada
 GRADE_WF = {"WDO": {"folga_ticks": [2, 6, 10], "tendencia": ["60", "dia"], "limite": [5000, 7500]},
-            "WIN": {"folga_ticks": [2, 20, 40], "tendencia": ["60", "ambos"], "limite": [7500, 10000]}}
+            "WIN": {"folga_ticks": [2, 20, 40], "tendencia": ["60", "ambos"], "limite": [7500, 10000]},
+            "BTCUSDT": {"regiao_ticks": [3000], "folga_ticks": [1000, 10000, 20000], "alvo_rr": [None, 3],
+                        "limite_pct": [95, 98]}}
 
 
 def _wf(ativo, meses, estresse):
     de, ate = H.divisao(ativo, C.NOME)["desenvolvimento"]
-    return H.walk_forward(C, GRADE_WF[ativo], ativo, de, ate, bloco_meses=meses, estresse_ticks=estresse, min_trades=20)
+    mt = 20 if ativo in ("WDO", "WIN") else 50  # WDO/WIN nunca chegam aos 50 do gerente
+    return H.walk_forward(C, GRADE_WF[ativo], ativo, de, ate, bloco_meses=meses, estresse_ticks=estresse, min_trades=mt)
 
 
-def walk_forward():
+def walk_forward(ativos=(("WDO", 3), ("WIN", 1))):
     """WDO em blocos de 3 meses (1 bloco de teste: 01-15/09) e WIN em blocos de 1 mês (3 meses não dá teste)."""
-    tarefas = [(a, m, e) for a, m in (("WDO", 3), ("WIN", 1)) for e in (0, 1)]
+    tarefas = [(a, m, e) for a, m in ativos for e in (0, 1)]
     with ProcessPoolExecutor(max_workers=4) as ex:
         rs = list(ex.map(_wf, *zip(*tarefas)))
     for i in range(0, len(rs), 2):
@@ -105,7 +134,8 @@ def walk_forward():
         cab = lambda x: {**x["fora_da_amostra"], "params": [b["params"] for b in x["blocos"]], "ativo": ativo,
                          "tf": 5, "de": x["blocos"][0]["teste"][0], "ate": x["blocos"][-1]["teste"][1]}
         lin = H.linha(f"walk-forward {meses} meses, {w['candidatos']} candidatos", cab(w), cab(we),
-                      nota=f"min_trades 20; fora da amostra só {len(w['blocos'])} bloco(s)")
+                      nota=f"min_trades {20 if ativo in ('WDO', 'WIN') else 50}; "
+                           f"fora da amostra: {len(w['blocos'])} bloco(s)")
         H.registrar("caio", lin)
         for b in w["blocos"]:
             print(ativo, "treino", b["treino"], "teste", b["teste"], b["params"],
@@ -123,16 +153,20 @@ FINALISTAS = [("baseline (PARAMS atuais)", "WDO", None),
               ("folga 40 tend ambos lim 7500", "WIN", {"folga_ticks": 40, "tendencia": "ambos", "limite": 7500})]
 
 
+FINALISTAS_BTC = [("btc base", "BTCUSDT", BTC),
+                  ("btc folga 10000 alvo_rr 3", "BTCUSDT", {**BTC, "folga_ticks": 10000, "alvo_rr": 3})]
+
+
 def _val(ativo, params, estresse):
     de, ate = H.divisao(ativo, C.NOME)["validacao"]
     return H.avaliar(C, params, ativo, de, ate, estresse, validacao=True)
 
 
-def validacao():
+def validacao(finalistas=FINALISTAS):
     """Uma vez por finalista (com e sem estresse); não se ajusta nada depois."""
     # em série: o harness grava pesquisa/validacao.csv a cada chamada e 4 processos perderam linhas (Windows)
-    rs = [_val(a, None if x is None else _params(a, x), e) for _, a, x in FINALISTAS for e in (0, 1)]
-    for i, (nome, ativo, _) in enumerate(FINALISTAS):
+    rs = [_val(a, None if x is None else _params(a, x), e) for _, a, x in finalistas for e in (0, 1)]
+    for i, (nome, ativo, _) in enumerate(finalistas):
         r, re_ = rs[2 * i], rs[2 * i + 1]
         lin = H.linha(f"VALIDAÇÃO {nome}", r, re_, nota="validacao", validacao=True)
         H.registrar("caio", lin)
@@ -144,7 +178,11 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     if sys.argv[1] == "walk_forward":
         walk_forward()
+    elif sys.argv[1] == "walk_forward_btc":
+        walk_forward((("BTCUSDT", 3),))
     elif sys.argv[1] == "validacao":
         validacao()
+    elif sys.argv[1] == "validacao_btc":
+        validacao(FINALISTAS_BTC)
     else:
         rodar(GRUPOS[sys.argv[1]](), nota=sys.argv[1])

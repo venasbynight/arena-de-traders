@@ -1,6 +1,6 @@
 # Caio Contrafluxo: pesquisa do Plano 6
 
-**Resultado: nada passou. Confiança baixa.** O padrão do trader (PARAMS) continua o mesmo no WDO e no WIN.
+**Resultado: nada passou. Confiança baixa no WDO/WIN (poucas semanas de delta); no BTCUSDT (anos de delta, seção no fim) o resultado é negativo com amostra grande.** O padrão do trader (PARAMS) continua o mesmo no WDO e no WIN, e o Caio não entra no BTC.
 
 ## Dados
 
@@ -84,9 +84,67 @@ que 1 tick por lado.
 - Caminho para amostra grande: o BTCUSDT tem volume de agressor (taker buy) nos klines da Binance desde 2024. Com isso
   daria para testar a mesma ideia em anos de dados em vez de semanas, mas exige código novo de delta.
 
+## BTCUSDT (extensão pedida pelo coordenador)
+
+**Resultado: nada passou, e aqui a amostra é grande (1.000 a 2.600 trades no desenvolvimento): a conclusão é
+"negativa", não "inconclusiva".** O Caio continua fora da sala do BTC (`traders.SALAS` não mudou) e os `PARAMS`
+continuam sem BTC.
+
+**Delta do BTC.** Os klines da Binance trazem o volume de compra agressora (taker buy, coluna 9). Então
+delta = 2 × taker buy − volume, em BTC por candle de 5 min. `dados.baixar_binance` agora grava esse delta, e o
+`_completar_delta` (o caminho dos ticks do MT5) só roda para a fonte MT5; um cache antigo da Binance sem a coluna fica
+com delta ausente. Teste novo em `test_dados.py`. Baixei de novo o BTCUSDT 5 min de 2024-01-01 a 2026-10-25 (klines
+públicos, sem chave, um mês por chamada com pausa de 1 s, ~5 min no total). Todos os 296 mil candles têm delta. O sinal
+do delta bate com a direção do candle em 73% dos casos.
+
+**Escala.** O tick do BTC é US$ 0,01 e o candle mediano de 5 min tem US$ 109, então a região e a folga de "2 ticks" não
+fazem sentido. Base do BTC: limite pelo percentil 95 do |delta| de ontem + hoje (no BTC, um "dia" tem 288 candles),
+região de US$ 30 (3.000 ticks), folga de US$ 10 (1.000 ticks). Mudança no trader: com `limite_pct` ligado, o limite
+fixo não é mais exigido; antes, um ativo sem limite fixo, como o BTC, não operava.
+
+**Custo.** O config dá ao BTC 1 contrato = 0,001 BTC, 5 contratos sempre, e custo de R$ 0,10 por contrato por lado:
+R$ 1,00 por trade. Isso equivale a US$ 37 de movimento por trade, um terço do candle mediano. O estresse de 1 tick
+(US$ 0,01) quase não muda nada. O custo real da Binance (0,1% por lado) seria ainda maior que o do config.
+
+**Desenvolvimento** (2024-01-01 a 2026-04-30; mesmas hipóteses do WDO/WIN, menos horário; grupos `btc1` e `btc2`):
+
+| Variante | Trades | Resultado | PF | Leitura |
+|---|---:|---:|---:|---|
+| base (p95, região US$ 30, folga US$ 10) | 1.794 | −1.597 | 0,55 | sem custo daria +197 (R$ 0,11 por trade) |
+| percentil 90 / 98 | 2.645 / 872 | −2.209 / −906 | 0,55 / 0,53 | |
+| região US$ 10 | 1.772 | −1.607 | 0,54 | |
+| folga US$ 50 / US$ 100 / US$ 200 | 1.486 / 1.214 / 789 | −1.524 / −1.040 / −651 | 0,62 / 0,76 / 0,84 | mais folga ajuda, como no WDO/WIN |
+| tendência do dia / ambos | 1.214 / 1.024 | −1.113 / −952 | 0,51 / 0,52 | |
+| confirmação no candle seguinte | 275 | −364 | 0,60 | |
+| rejeição | 576 | −819 | 0,43 | |
+| alvo R:R 2 / 3 | 2.414 / 2.341 | −2.144 / −1.460 | 0,59 / 0,73 | |
+| **folga US$ 100 + alvo R:R 3** | 2.223 | −505 | **0,94** | melhor; sem custo daria +1.718 (R$ 0,77 por trade) |
+| folga US$ 200 + alvo R:R 3 | 2.022 | −754 | 0,94 | |
+| folga US$ 200 + alvo R:R 3 + p98 | 1.101 | −1.093 | 0,84 | |
+
+Com estresse, todos ficam iguais até o centavo (o pior é −R$ 1). Foram 16 variantes no desenvolvimento.
+
+**Walk-forward** (blocos de 3 meses, 12 candidatos: folga US$ 10/100/200 × alvo topo-fundo/R:R 3 × p95/p98; mínimo
+de 50 trades no treino). O treino nunca passa de PF 1,10. Ele escolhe quase sempre folga longa com R:R 3. Fora da
+amostra: 9 blocos, 1.815 trades, −588, PF 0,93; só 3 blocos positivos.
+
+**Validação** (2026-05-01 a 2026-10-25, em série, 2 finalistas):
+
+| Variante | Dev: trades | Dev: resultado | Dev: PF | Dev c/ estresse (PF) | Val: trades | Val: resultado | Val: PF | Val c/ estresse (PF) | Veredito |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| base (p95, região US$ 30, folga US$ 10) | 1.794 | −1.597 | 0,55 | −1.598 (0,55) | 366 | −194 | 0,68 | −195 (0,68) | não passou |
+| folga US$ 100 + alvo R:R 3 | 2.223 | −505 | 0,94 | −506 (0,94) | 478 | −226 | 0,87 | −226 (0,87) | não passou |
+
+**Leitura.** No BTC o sinal do Caio fica perto de zero antes do custo: lucro bruto de R$ 0,11 a 0,77 por trade, contra
+R$ 1,00 de custo. Com stop e alvo mais longos o bruto por trade cresce e o custo fixo pesa menos, mas não o bastante.
+Isso confirma o WDO/WIN com uma amostra de anos: delta forte contra a tendência num nível do dia não prevê reversão
+que pague o custo. (A inversão "operar a favor do agressor" não foi testada, porque muda a essência; fica com o
+Diretor.)
+
 ## Arquivos
 
 - `pesquisa/caio/registro.csv`: todas as rodadas (desenvolvimento, walk-forward, validação), com e sem estresse.
 - `pesquisa/caio/rodar.py`: os grupos de variantes, o walk-forward e a validação.
+- `dados.py` e `testes/test_dados.py`: delta do BTCUSDT pelo taker buy dos klines da Binance.
 - `traders/caio_contrafluxo.py` e `testes/test_caio.py`: as chaves novas e os testes, incluindo "não ver o futuro" com
   as chaves ligadas.
