@@ -1,0 +1,67 @@
+[
+ {
+  "etapa": "validacao_sofia_EURUSD_15",
+  "parte": "validacao",
+  "variante": "depois",
+  "trader": "sofia",
+  "ativo": "EURUSD",
+  "tf": 15,
+  "params": {},
+  "cfg": {},
+  "veredito": "negativa",
+  "sem": {
+   "resultado": -1477.09,
+   "trades": 65,
+   "acerto": 0.03076923076923077,
+   "fator_lucro": 0.1,
+   "drawdown": -1546.53,
+   "pior_dia": -120.65,
+   "confianca": "média",
+   "payoff": 3.22,
+   "seq_perdas": 40,
+   "sessoes": 126,
+   "r_medio": -0.9,
+   "pct_3r": 0.031,
+   "r_ganho_medio": 4.15,
+   "r_perda_media": -1.06,
+   "trades_por_sessao": 0.516,
+   "contratos_medio": 20.6,
+   "custo": 133.9,
+   "saidas": {
+    "stop": 63,
+    "alvo": 2
+   },
+   "ordem": 434,
+   "block_rr": 2658,
+   "block_tamanho": 0,
+   "block_outro": 66
+  },
+  "com": {
+   "resultado": -1601.96,
+   "trades": 65,
+   "acerto": 0.03076923076923077,
+   "fator_lucro": 0.09,
+   "drawdown": -1662.21,
+   "pior_dia": -125.85,
+   "confianca": "média",
+   "payoff": 2.79,
+   "seq_perdas": 40,
+   "sessoes": 126,
+   "r_medio": -0.9,
+   "pct_3r": 0.031,
+   "r_ganho_medio": 4.15,
+   "r_perda_media": -1.06,
+   "trades_por_sessao": 0.516,
+   "contratos_medio": 20.25,
+   "custo": 131.6,
+   "saidas": {
+    "stop": 63,
+    "alvo": 2
+   },
+   "ordem": 434,
+   "block_rr": 2658,
+   "block_tamanho": 0,
+   "block_outro": 66
+  }
+ }
+]

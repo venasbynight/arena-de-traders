@@ -1,0 +1,17 @@
+/* desenhos do ao vivo e do backtest (web/desenho.js): grupo de linhas que abre ao lado, barra do desenho selecionado e caixa de texto */
+.ferr svg circle{fill:currentColor;stroke:none}
+.ferr .grupo{position:relative}
+.ferr .abre{position:absolute;right:-4px;bottom:-1px;width:11px;height:11px;border-radius:3px;opacity:.75}
+.ferr .abre svg{width:6px;height:6px;fill:currentColor;stroke:none}.ferr .abre:hover{opacity:1}
+.ferr-menu{position:fixed;z-index:50;display:flex;flex-direction:column;min-width:210px;padding:6px 0;background:var(--pop);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.45)}.ferr-menu[hidden]{display:none}
+.ferr-menu button{display:flex;align-items:center;gap:12px;padding:7px 14px;border:0;background:none;color:var(--txt);font:inherit;text-align:left;cursor:pointer}
+.ferr-menu button:hover{background:var(--hover)}.ferr-menu button.sel{color:var(--brand)}
+.ferr-menu svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.ferr-menu circle{fill:currentColor;stroke:none}
+.d-barra{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--pop);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.d-barra button{display:grid;place-items:center;white-space:nowrap;height:26px;min-width:26px;padding:0 6px;border:0;border-radius:6px;background:none;color:var(--txt);font:600 11.5px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+.d-barra button:hover,.d-barra button.sel{background:var(--hover)}.d-barra [data-apagar]:hover{color:var(--dn)}
+.d-barra button[data-cor]{width:18px;height:18px;min-width:0;padding:0;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--pop)}
+.d-barra button[data-cor].sel{box-shadow:0 0 0 2px var(--pop),0 0 0 3.5px var(--txt)}
+.d-barra svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.d-barra i{width:1px;height:18px;margin:0 3px;background:var(--line)}
+.d-texto{position:absolute;z-index:8;min-width:160px;padding:2px 6px;font:600 13px "Segoe UI",system-ui,sans-serif;color:var(--txt);background:var(--pop);border:1px solid var(--acc);border-radius:4px;outline:0}

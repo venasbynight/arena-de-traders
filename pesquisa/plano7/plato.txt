@@ -1,0 +1,3 @@
+sofia folga 1                EURUSD   15   204 tr    1010.63 PF 1.18 payoff 4.69 acerto 0.20 | est     440.48 PF 1.07 | tr/sessão 0.911 contr 25.0 rr-bloq 5637 positiva
+sofia folga 3                EURUSD   15   175 tr    1228.36 PF 1.23 payoff 4.75 acerto 0.21 | est     714.16 PF 1.13 | tr/sessão 0.781 contr 25.66 rr-bloq 5800 positiva
+13 s

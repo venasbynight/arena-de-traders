@@ -1,0 +1,4 @@
+antes (Plano 6) agulhadas 208 → bandas_abriram 220 → passou_adx 157 → passou_trix 6 → plano 6 → ordem 5 → trades 5 | 582 sessões, 0.009 tr/sessão
+depois (Diretor) agulhadas 1566 → bandas_abriram 1505 → passou_adx 784 → passou_trix 81 → plano 81 → ordem 64 → trades 64 | 582 sessões, 0.11 tr/sessão
+depois, TRIX 0,2 agulhadas 1566 → bandas_abriram 1505 → passou_adx 784 → passou_trix 24 → plano 24 → ordem 18 → trades 18 | 582 sessões, 0.031 tr/sessão
+depois, TRIX 1,0 agulhadas 1566 → bandas_abriram 1505 → passou_adx 784 → passou_trix 711 → plano 711 → ordem 568 → trades 568 | 582 sessões, 0.976 tr/sessão

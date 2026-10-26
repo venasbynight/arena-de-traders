@@ -10,7 +10,7 @@ body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sa
 
 .hud{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:14px;padding:0 18px;
   background:rgba(18,24,33,.88);border-bottom:1px solid var(--line);backdrop-filter:blur(6px);z-index:5}
-.logo{font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:8px}.logo img{width:26px;height:26px;display:block}.logo span{color:var(--acc)}.logo em{font-style:normal;color:var(--mut);font-weight:500}
+.logo{font-weight:700;font-size:18px;display:inline-flex;align-items:center;gap:10px}.logo img{width:34px;height:34px;display:block}.logo .nome{width:auto;height:22px}.logo em{font-style:normal;color:var(--mut);font-weight:500}
 .pill{padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mut);font-size:12px}
 .pill.warn{border-color:var(--warn);color:var(--warn)}
 .btn{margin-left:auto;height:32px;display:inline-flex;align-items:center;border-radius:16px;background:#1a2431;color:var(--txt);
@@ -21,9 +21,31 @@ body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sa
   background:rgba(18,24,33,.95);color:var(--warn);z-index:6}
 #aviso a{color:var(--acc)}
 
-#dica{position:fixed;left:16px;bottom:14px;padding:7px 12px;border-radius:999px;background:rgba(18,24,33,.85);
-  border:1px solid var(--line);color:var(--mut);font-size:12px;z-index:5}
+/* tutorial de controles: cartão com cada comando ilustrado; fechado, só o botão "Controles" */
+#dica{--brand:#1de9b6;position:fixed;left:16px;bottom:14px;width:max-content;max-width:calc(100vw - 32px);border-radius:14px;
+  background:rgba(18,24,33,.9);border:1px solid var(--line);color:var(--mut);font-size:12.5px;z-index:5;
+  box-shadow:0 10px 28px rgba(0,0,0,.35);backdrop-filter:blur(6px);transition:border-color .2s}
+#dica.aberta{border-color:color-mix(in srgb,var(--brand) 35%,var(--line))}
+#dica-botao{display:flex;align-items:center;gap:8px;width:100%;padding:8px 14px 8px 10px;border:0;background:none;color:var(--txt);
+  font:600 12.5px "Segoe UI",system-ui,sans-serif;cursor:pointer;border-radius:14px}
+#dica-botao:hover{color:var(--brand)}#dica-botao:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+#dica-botao svg{width:20px;height:20px;color:var(--brand);flex:none}
+#dica.aberta #dica-botao{border-bottom:1px solid var(--line);border-radius:14px 14px 0 0}
+#dica-corpo{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+#dica.aberta #dica-corpo{grid-template-rows:1fr}
+#dica-corpo>div{overflow:hidden}
+#dica ul{list-style:none;padding:6px 14px 10px;width:390px;max-width:100%}
+#dica li{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;padding:5px 0}
+#dica li+li{border-top:1px solid rgba(31,42,54,.6)}
 #dica b{color:var(--txt);font-weight:600}
+#dica .ico{display:flex;align-items:center;justify-content:center;gap:4px;color:var(--txt)}
+#dica .ico svg.m{width:22px;height:30px}#dica .ico svg.s{width:18px;height:18px;color:var(--mut)}
+kbd{display:inline-grid;place-items:center;min-width:21px;height:21px;padding:0 4px;border-radius:5px;background:#1a2431;color:var(--txt);
+  border:1px solid #2c3a4a;border-bottom-width:3px;font:700 11px "Segoe UI",system-ui,sans-serif}
+kbd.largo{min-width:34px}
+#dica li kbd:not(.ico kbd){height:19px;min-width:19px;margin:0 2px;font-size:10px}
+.botao-porta{width:16px;height:22px;border-radius:4px;background:#2b2f36;border:1px solid #3c4450;display:grid;place-items:center}
+.botao-porta::after{content:"";width:9px;height:9px;border-radius:50%;background:#3ddc5a;box-shadow:0 0 8px #3ddc5a}
 body.fp .so-cima,body:not(.fp) .so-fp{display:none}
 
 /* primeira pessoa */

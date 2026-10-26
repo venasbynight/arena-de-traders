@@ -758,5 +758,28 @@ class TestDelta(unittest.TestCase):
         self.assertEqual(r, {"2026-10-20": ["WDO$", {"2026-10-20T09:00:00": 4, "2026-10-20T09:05:00": -6}]})
 
 
+class TestTerminalAbertoPelaArena(unittest.TestCase):
+    """A arena só fecha o terminal que ela abriu, depois de MT5_OCIOSO_S sem uso e se a janela continua minimizada."""
+
+    def fechar(self, abertos, minimizados, todos=False):
+        with mock.patch.dict(dados._abertos, abertos, clear=True), \
+             mock.patch.object(dados, "_minimizado", lambda pid: pid in minimizados), \
+             mock.patch.object(dados.subprocess, "run") as run:
+            dados.fechar_terminais_ociosos(todos)
+            return sorted(c.args[0][2] for c in run.call_args_list), dict(dados._abertos)
+
+    def test_fecha_so_o_ocioso_e_minimizado(self):
+        velho = time.monotonic() - dados.MT5_OCIOSO_S - 1
+        fechados, ficam = self.fechar({"a.exe": [1, velho], "b.exe": [2, time.monotonic()], "c.exe": [3, velho]},
+                                      minimizados={1, 2})
+        self.assertEqual(fechados, ["1"])                 # c.exe foi restaurado (você está usando): fica aberto
+        self.assertEqual(list(ficam), ["b.exe"])          # e sai da lista; b.exe ainda está em uso
+
+    def test_na_saida_fecha_todos_os_minimizados(self):
+        fechados, ficam = self.fechar({"a.exe": [1, time.monotonic()], "b.exe": [2, time.monotonic()]}, minimizados={2},
+                                      todos=True)
+        self.assertEqual((fechados, ficam), (["2"], {}))
+
+
 if __name__ == "__main__":
     unittest.main()

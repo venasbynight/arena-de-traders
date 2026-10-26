@@ -95,7 +95,7 @@ def dimensionar(plano, cfg, hoje, limite=None):
     if ganho_pts <= 0:
         raise Recusa("alvo do lado errado da entrada (o movimento já aconteceu?)")
     rr = ganho_pts / risco_pts
-    if rr < cfg["rr_minimo"]:
+    if rr < cfg["rr_minimo"] - 1e-9:  # preços no tick: R:R 3 exato não cai por erro de ponto flutuante
         raise Recusa(f"risco:retorno {rr:.2f} abaixo do mínimo {cfg['rr_minimo']}")
 
     perda_contrato = risco_pts * spec["ponto_rs"] + 2 * spec["custo_por_contrato"]
@@ -220,12 +220,28 @@ def teste():
         t = modelo["ativos"][ativo]["tick"]
         r = lambda v: round(v, decimais_do_tick(t))
         o = dimensionar({"simbolo": ativo, "ativo": ativo, "lado": "compra", "entrada": p, "stop": r(p - 20 * t),
-                         "alvo": r(p + 40 * t)}, modelo, "2026-10-24")[0]
+                         "alvo": r(p + 60 * t)}, modelo, "2026-10-24")[0]
         assert o["contratos"] >= 1, (ativo, o)
     # PETR4 (lote de 100): 0,20 x R$ 100 + R$ 2 de custo = R$ 22 por lote; R$ 100 / 22 = 4 lotes
     petr = dimensionar({"simbolo": "PETR4", "ativo": "PETR4", "lado": "compra", "entrada": 35.12, "stop": 34.92,
-                        "alvo": 35.52}, modelo, "2026-10-24")[0]
+                        "alvo": 35.72}, modelo, "2026-10-24")[0]
     assert (petr["contratos"], petr["plano"]["perda_max_rs"]) == (4, 88.0), petr
+    # regras do Diretor (Plano 7): R:R mínimo 3 e a perda máxima por trade decide, sem o teto de 5 contratos
+    assert (modelo["rr_minimo"], modelo["max_contratos"]) == (3.0, 50), modelo["rr_minimo"]
+    curto = {"simbolo": "WDOX26", "lado": "compra", "entrada": 5432.5, "stop": 5432.0, "alvo": 5434.0}
+    # stop de 1 tick: 0,5 x R$ 10 + R$ 1 de custo = R$ 6 por contrato; R$ 100 / 6 = 16 contratos (antes o teto dava 5)
+    ordem, limites, decide = dimensionar(curto, modelo, "2026-10-24")
+    assert (ordem["contratos"], decide) == (16, "perda máxima por trade"), (ordem["contratos"], decide)
+    # stop de 1 tick no EURUSD: 0,00001 x 5400 + 0,10 = R$ 0,154; a margem (R$ 5.000 / 200 = 25) decide antes
+    eu = {"simbolo": "EURUSD", "ativo": "EURUSD", "lado": "compra", "entrada": 1.085, "stop": 1.08499, "alvo": 1.08503}
+    assert dimensionar(eu, modelo, "2026-10-24")[1:] == (
+        {"perda máxima por trade": 649, "margem do capital": 25, "máximo de contratos": 50}, "margem do capital")
+    # R:R 2 não entra
+    try:
+        dimensionar(dict(curto, alvo=5433.5), modelo, "2026-10-24")
+        raise AssertionError("devia recusar R:R 2 com mínimo 3")
+    except Recusa as e:
+        assert "abaixo do mínimo 3.0" in str(e), str(e)
     print("trader-budget: autoteste ok")
 
 

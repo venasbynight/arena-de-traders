@@ -13,7 +13,10 @@ from tipos import Candle, Plano
 from traders import caio_contrafluxo, didi_agulhada, sofia_smc
 
 EXEMPLO = os.path.join(os.path.dirname(__file__), "..", ".claude", "skills", "trader-budget", "config.example.json")
-CFG = json.load(open(EXEMPLO, encoding="utf-8"))
+EXEMPLO_CFG = json.load(open(EXEMPLO, encoding="utf-8"))
+# mecânica do motor com os limites antigos (R:R 1, teto de 5): os planos daqui têm R:R 2–2,5; as regras do Diretor
+# (R:R 3, sem teto de 5) estão em TestRegrasDoDiretor e nos autotestes das skills
+CFG = {**EXEMPLO_CFG, "rr_minimo": 1.0, "max_contratos": 5}
 HOJE = datetime(2026, 9, 2, 9, 0)
 
 
@@ -46,7 +49,8 @@ def dia(*sinal, delta=600):
 
 class TestCaio(unittest.TestCase):
     def wdo(self, **params):
-        return caio_contrafluxo.Trader("WDO", 0.5, {"limite": 500, **params})
+        # os números destes testes são do stop de 2 ticks de antes do Plano 7; o padrão de 4 tem teste próprio
+        return caio_contrafluxo.Trader("WDO", 0.5, {"limite": 500, "folga_ticks": 2, **params})
 
     def test_venda_na_resistencia_com_delta_comprador_em_tendencia_de_baixa(self):
         d = self.wdo().decidir(dia(), [], BAIXA60)
@@ -54,6 +58,12 @@ class TestCaio(unittest.TestCase):
         self.assertEqual(d.planos, [Plano("venda", "mercado", 5401.0, 5406.0, 5394.0, "caio-contrafluxo")])
         self.assertIn({"tipo": "indicadores", "t": dia()[-1].t.isoformat(), "delta": 600, "limite": 500}, d.desenhos)
         self.assertIn({"tipo": "linha", "preco": 5394.0, "rotulo": "fundo · alvo"}, d.desenhos)
+
+    def test_stop_padrao_4_ticks_alem_do_extremo(self):
+        # Plano 7: o Diretor pediu "um pouquinho mais" de stop (era 2 ticks)
+        self.assertEqual(caio_contrafluxo.PARAMS["folga_ticks"], 4)
+        d = caio_contrafluxo.Trader("WDO", 0.5, {"limite": 500}).decidir(dia(), [], BAIXA60)
+        self.assertEqual(d.planos, [Plano("venda", "mercado", 5401.0, 5407.0, 5394.0, "caio-contrafluxo")])
 
     def test_stop_alem_da_maxima_do_sinal_quando_ela_passa_do_topo(self):
         d = self.wdo().decidir(dia(5400.5, 5407, 5400, 5401), [], BAIXA60)

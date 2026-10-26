@@ -1,0 +1,2 @@
+sofia depois                 EURUSD   15    65 tr   -1477.09 PF 0.1 payoff 3.22 acerto 0.03 | est   -1601.96 PF 0.09 | tr/sessão 0.516 contr 20.6 rr-bloq 2658 negativa
+13 s

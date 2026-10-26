@@ -3,4 +3,5 @@ from traders import caio_contrafluxo, didi_agulhada, sofia_smc
 
 TODOS = [sofia_smc, didi_agulhada, caio_contrafluxo]
 # o Caio precisa do delta (agressor dos negócios): só a B3 tem; EURUSD não tem agressor real e BTC fica para depois
-SALAS = {"WDO": TODOS, "WIN": TODOS, "EURUSD": TODOS[:2], "BTCUSDT": TODOS[:2]}
+SEM_DELTA = TODOS[:2]  # quem opera sem o agressor: os demais ativos do config (ações, forex, cripto) no backtest
+SALAS = {"WDO": TODOS, "WIN": TODOS, "EURUSD": SEM_DELTA, "BTCUSDT": SEM_DELTA}
