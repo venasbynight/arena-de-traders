@@ -134,6 +134,26 @@ class TestIndicadores(unittest.TestCase):
         trix = estudos.trix([10.0] * 30)
         self.assertEqual((trix[24], trix[25], trix[-1]), (None, 0.0, 0.0))
 
+    def test_valores_iguais_aos_de_antes_das_classes(self):
+        """Valores exatos (repr) das funções de lista de antes das classes candle a candle, num passeio de 3 dias."""
+        from testes.test_motor import dias_sinteticos
+        cs = dias_sinteticos(3, 22)
+        f = [k.c for k in cs]
+        adx, mais, _ = estudos.adx(cs, 8)
+        self.assertEqual((estudos.trix(f)[-1], adx[-1], mais[-1], estudos.bollinger(f, 8, 2)[0][-1],
+                          estudos.didi(f)[1][-1], sum(estudos.trix(f)[25:]), sum(adx[15:])),
+                         (-0.010453711360655475, 43.80534276115605, 9.163758560198973, 5445.481071321407,
+                          2.175000000000182, 0.7228260991312232, 12631.02834841473))
+
+    def test_classes_candle_a_candle_iguais_as_listas(self):
+        from testes.test_motor import dias_sinteticos
+        cs = dias_sinteticos(2, 5)
+        t, a, b = estudos.Trix(9), estudos.Adx(8), estudos.Bandas(8, 2)
+        self.assertEqual([t(k.c) for k in cs], estudos.trix([k.c for k in cs]))
+        self.assertEqual([list(x) for x in zip(*[a(k) for k in cs])], [list(x) for x in estudos.adx(cs, 8)])
+        self.assertEqual([list(x) for x in zip(*[b(k.c) for k in cs])],
+                         [list(x) for x in estudos.bollinger([k.c for k in cs], 8, 2)])
+
 
 if __name__ == "__main__":
     unittest.main()

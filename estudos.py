@@ -75,9 +75,101 @@ def order_blocks(candles, n=2):
     return out
 
 
+# Indicadores candle a candle: cada classe recebe um valor (ou candle) por chamada e devolve o valor do indicador
+# nesse ponto, com as mesmas contas, na mesma ordem, das funções de lista abaixo (que só alimentam as classes).
+# O Didi guarda uma instância por série e só manda os candles novos: o dia deixa de custar O(n²).
+
+class Media:
+    """Média aritmética simples de n; None enquanto não há n valores."""
+    def __init__(self, n):
+        self.n, self.janela = n, []
+
+    def __call__(self, x):
+        self.janela.append(x)
+        if len(self.janela) > self.n:
+            del self.janela[0]
+        return sum(self.janela) / self.n if len(self.janela) == self.n else None
+
+
+class Bandas:
+    """Bollinger: (superior, centro, inferior) = média de n ± k desvios populacionais."""
+    def __init__(self, n=8, k=2):
+        self.n, self.k, self.media = n, k, Media(n)
+
+    def __call__(self, x):
+        m = self.media(x)
+        if m is None:
+            return None, None, None
+        # desvio na mão: statistics.pstdev é exato (frações) e deixava o backtest 10× mais lento
+        d = self.k * (sum((v - m) ** 2 for v in self.media.janela) / self.n) ** 0.5
+        return m + d, m, m - d
+
+
+class Adx:
+    """ADX de Wilder: (adx, di+, di−). DI vale a partir do candle n; ADX, de 2n − 1 (média dos n primeiros DX)."""
+    def __init__(self, n=8):
+        self.n, self.i, self.ant, self.valor = n, -1, None, None
+        self.s_tr = self.s_mais = self.s_menos = 0.0
+        self.dxs = []
+
+    def __call__(self, c):
+        n, a, self.ant = self.n, self.ant, c
+        self.i += 1
+        if a is None:
+            return None, None, None
+        tr = max(c.h - c.l, abs(c.h - a.c), abs(c.l - a.c))
+        sobe, desce = c.h - a.h, a.l - c.l
+        dm_mais = sobe if sobe > desce and sobe > 0 else 0.0
+        dm_menos = desce if desce > sobe and desce > 0 else 0.0
+        if self.i <= n:  # os n primeiros somam; depois, alisamento de Wilder
+            self.s_tr, self.s_mais, self.s_menos = self.s_tr + tr, self.s_mais + dm_mais, self.s_menos + dm_menos
+            if self.i < n:
+                return None, None, None
+        else:
+            self.s_tr, self.s_mais, self.s_menos = (self.s_tr - self.s_tr / n + tr, self.s_mais - self.s_mais / n
+                                                    + dm_mais, self.s_menos - self.s_menos / n + dm_menos)
+        mais = 100 * self.s_mais / self.s_tr if self.s_tr else 0.0
+        menos = 100 * self.s_menos / self.s_tr if self.s_tr else 0.0
+        soma = mais + menos
+        self.dxs.append(100 * abs(mais - menos) / soma if soma else 0.0)
+        if len(self.dxs) == n:
+            self.valor = sum(self.dxs) / n
+        elif len(self.dxs) > n:
+            self.valor = (self.valor * (n - 1) + self.dxs[-1]) / n
+            del self.dxs[0]  # só o tamanho importa daqui em diante
+        return self.valor, mais, menos
+
+
+class Mme:
+    """Média exponencial (α = 2/(n+1)) que começa na média dos n primeiros valores; None antes e nos None do início."""
+    def __init__(self, n):
+        self.n, self.inicio, self.valor = n, [], None
+
+    def __call__(self, x):
+        if self.valor is not None:
+            self.valor = self.valor + 2 / (self.n + 1) * (x - self.valor)
+        elif x is not None or self.inicio:
+            self.inicio.append(x)
+            if len(self.inicio) == self.n:
+                self.valor = sum(self.inicio) / self.n
+        return self.valor
+
+
+class Trix:
+    """TRIX: variação % de um candle da MME tripla do fechamento. Vale a partir do candle 3(n − 1) + 1."""
+    def __init__(self, n=9):
+        self.e1, self.e2, self.e3, self.ant = Mme(n), Mme(n), Mme(n), None
+
+    def __call__(self, x):
+        a, b = self.ant, self.e3(self.e2(self.e1(x)))
+        self.ant = b
+        return None if a is None or b is None else 100 * (b - a) / a
+
+
 def sma(valores, n):
     """Média aritmética simples; None enquanto não há n valores."""
-    return [None if i < n - 1 else sum(valores[i - n + 1:i + 1]) / n for i in range(len(valores))]
+    m = Media(n)
+    return [m(v) for v in valores]
 
 
 def didi(fechamentos, n_curta=3, n_meio=8, n_longa=20):
@@ -89,55 +181,23 @@ def didi(fechamentos, n_curta=3, n_meio=8, n_longa=20):
 
 def bollinger(fechamentos, n=8, k=2):
     """(superior, centro, inferior): média de n ± k desvios populacionais."""
-    sup, meio, inf = [], sma(fechamentos, n), []
-    for i, m in enumerate(meio):
-        # desvio na mão: statistics.pstdev é exato (frações) e deixava o backtest 10× mais lento
-        d = None if m is None else k * (sum((x - m) ** 2 for x in fechamentos[i - n + 1:i + 1]) / n) ** 0.5
-        sup.append(None if d is None else m + d)
-        inf.append(None if d is None else m - d)
-    return sup, meio, inf
+    b = Bandas(n, k)
+    return tuple(map(list, zip(*[b(x) for x in fechamentos]))) if fechamentos else ([], [], [])
 
 
 def adx(candles, n=8):
     """ADX de Wilder com (adx, di+, di−). DI vale a partir do candle n; ADX, de 2n − 1 (média dos n primeiros DX)."""
-    vazio = [None] * len(candles)
-    adx_, mais, menos = vazio[:], vazio[:], vazio[:]
-    s_tr = s_mais = s_menos = 0.0
-    dxs = []
-    for i in range(1, len(candles)):
-        a, c = candles[i - 1], candles[i]
-        tr = max(c.h - c.l, abs(c.h - a.c), abs(c.l - a.c))
-        sobe, desce = c.h - a.h, a.l - c.l
-        dm_mais = sobe if sobe > desce and sobe > 0 else 0.0
-        dm_menos = desce if desce > sobe and desce > 0 else 0.0
-        if i <= n:  # os n primeiros somam; depois, alisamento de Wilder
-            s_tr, s_mais, s_menos = s_tr + tr, s_mais + dm_mais, s_menos + dm_menos
-            if i < n:
-                continue
-        else:
-            s_tr, s_mais, s_menos = (s_tr - s_tr / n + tr, s_mais - s_mais / n + dm_mais,
-                                     s_menos - s_menos / n + dm_menos)
-        mais[i] = 100 * s_mais / s_tr if s_tr else 0.0
-        menos[i] = 100 * s_menos / s_tr if s_tr else 0.0
-        soma = mais[i] + menos[i]
-        dxs.append(100 * abs(mais[i] - menos[i]) / soma if soma else 0.0)
-        if len(dxs) == n:
-            adx_[i] = sum(dxs) / n
-        elif len(dxs) > n:
-            adx_[i] = (adx_[i - 1] * (n - 1) + dxs[-1]) / n
-    return adx_, mais, menos
+    a = Adx(n)
+    return tuple(map(list, zip(*[a(c) for c in candles]))) if candles else ([], [], [])
 
 
 def ema(valores, n):
     """Média exponencial (α = 2/(n+1)) que começa na média dos n primeiros valores; None antes e nos None."""
-    out, ini = [None] * len(valores), next((i for i, v in enumerate(valores) if v is not None), len(valores))
-    for i in range(ini + n - 1, len(valores)):
-        out[i] = (sum(valores[ini:i + 1]) / n if i == ini + n - 1
-                  else out[i - 1] + 2 / (n + 1) * (valores[i] - out[i - 1]))
-    return out
+    m = Mme(n)
+    return [m(v) for v in valores]
 
 
 def trix(fechamentos, n=9):
     """TRIX: variação % de um candle da EMA tripla do fechamento. Vale a partir do candle 3(n − 1) + 1."""
-    e3 = ema(ema(ema(fechamentos, n), n), n)
-    return [None if a is None or b is None else 100 * (b - a) / a for a, b in zip([None] + e3, e3)]
+    t = Trix(n)
+    return [t(x) for x in fechamentos]
