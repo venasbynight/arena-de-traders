@@ -1,0 +1,67 @@
+#0 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#1 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#2 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#3 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#4 {"adx": "baixo", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#5 {"adx": "baixo", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#6 {"adx": "baixo", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#7 {"adx": "baixo", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": false, "tf": 5, "trix_extremo": 1.0}
+#8 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#9 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#10 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#11 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#12 {"adx": "baixo", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#13 {"adx": "baixo", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#14 {"adx": "baixo", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#15 {"adx": "baixo", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "ma3", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+WDO  5  #0  134  -786.0  0.87  -3902.0  0.51
+WDO  5  #1  769  -12639.0  0.64  -30428.0  0.36
+WDO  5  #2  134  -291.0  0.96  -3415.0  0.62
+WDO  5  #3  757  -12479.0  0.7  -30071.0  0.44
+WDO  5  #4  46  -445.0  0.75  -1495.0  0.43
+WDO  5  #5  206  -2867.0  0.66  -8081.0  0.34
+WDO  5  #6  46  -555.0  0.74  -1605.0  0.45
+WDO  5  #7  206  -2547.0  0.75  -7473.0  0.46
+WDO  5  #8  75  -202.0  0.93  -2022.0  0.52
+WDO  5  #9  360  -5232.0  0.67  -14652.0  0.35
+WDO  5  #10  75  338.0  1.09  -1482.0  0.7
+WDO  5  #11  360  -4892.0  0.75  -14312.0  0.46
+WDO  5  #12  27  -368.0  0.66  -948.0  0.37
+WDO  5  #13  108  -1284.0  0.7  -3924.0  0.36
+WDO  5  #14  27  -333.0  0.74  -913.0  0.46
+WDO  5  #15  108  -1479.0  0.72  -4119.0  0.41
+WDO  5  WF  265  -4561.0  0.68  -9956.0  0.46  [3, 3, 7, 7, 2, 2, 10, 10, 10]
+WIN  5  #0  156  -2465.0  0.62  -3369.0  0.53
+WIN  5  #1  831  -10259.0  0.7  -15742.5  0.59
+WIN  5  #2  156  -1923.0  0.75  -2827.0  0.66
+WIN  5  #3  823  -11887.5  0.71  -17341.5  0.62
+WIN  5  #4  40  -1038.5  0.32  -1256.5  0.26
+WIN  5  #5  201  -2826.0  0.64  -4146.0  0.53
+WIN  5  #6  40  -858.5  0.56  -1076.5  0.5
+WIN  5  #7  201  -3002.0  0.69  -4322.0  0.6
+WIN  5  #8  74  -1546.0  0.52  -1998.0  0.44
+WIN  5  #9  388  -5282.0  0.67  -7830.0  0.56
+WIN  5  #10  74  -982.0  0.75  -1434.0  0.66
+WIN  5  #11  387  -6439.0  0.67  -8983.0  0.58
+WIN  5  #12  21  -507.0  0.38  -615.0  0.32
+WIN  5  #13  98  -867.0  0.75  -1483.0  0.62
+WIN  5  #14  21  -400.0  0.63  -508.0  0.56
+WIN  5  #15  98  -1000.0  0.78  -1616.0  0.67
+WIN  5  WF  251  -5328.0  0.58  -7044.0  0.5  [1, 3, 2, 7, 2, 10, 10, 10, 2]
+EURUSD  5  #0  131  -185.27  0.7  -254.61  0.62
+EURUSD  5  #1  705  -559.84  0.81  -939.36  0.71
+EURUSD  5  #2  131  -154.43  0.81  -223.77  0.74
+EURUSD  5  #3  646  -575.7  0.84  -923.35  0.76
+EURUSD  5  #4  42  -18.84  0.89  -41.52  0.79
+EURUSD  5  #5  222  -267.06  0.7  -386.94  0.6
+EURUSD  5  #6  42  -55.56  0.75  -78.24  0.67
+EURUSD  5  #7  216  -288.63  0.75  -405.27  0.67
+EURUSD  5  #8  61  -108.11  0.61  -140.84  0.53
+EURUSD  5  #9  372  -401.85  0.73  -602.52  0.63
+EURUSD  5  #10  61  -143.59  0.64  -176.32  0.58
+EURUSD  5  #11  365  -376.59  0.81  -573.48  0.73
+EURUSD  5  #12  18  22.86  1.43  13.14  1.22
+EURUSD  5  #13  112  -101.09  0.77  -161.57  0.67
+EURUSD  5  #14  18  5.85  1.07  -3.87  0.96
+EURUSD  5  #15  111  -114.63  0.8  -174.57  0.72
+EURUSD  5  WF  249  -622.52  0.54  -756.55  0.48  [3, 2, 2]
