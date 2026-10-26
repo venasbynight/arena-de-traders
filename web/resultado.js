@@ -69,7 +69,7 @@
     el.querySelector("#ver-dia").onclick = () => {
       const dia = el.querySelector("#dia-replay").value;
       el.style.display = "none";
-      window.arena.irPara(window.arena.candles.findIndex(c => c.iso.startsWith(dia)) + 1);  // mostra o 1º candle do dia
+      window.arena.irPara(window.arena.inicioDoDia(dia));
     };
   }
 

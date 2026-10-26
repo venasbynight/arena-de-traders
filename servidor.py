@@ -90,7 +90,11 @@ class Arena(BaseHTTPRequestHandler):
         if url.path.startswith("/relatorios/"):
             return self._arquivo(url.path[len("/relatorios/"):], RELATORIOS)
         if url.path == "/api/traders":
-            return self._enviar(200, [{"nome": m.NOME, "estilo": m.ESTILO} for m in traders.TODOS])
+            return self._enviar(200, [{"nome": m.NOME, "estilo": m.ESTILO,
+                                       "salas": [a for a, sala in traders.SALAS.items() if m in sala]}
+                                      for m in traders.TODOS])
+        if url.path == "/api/aovivo":
+            return self._ao_vivo(parse_qs(url.query).get("ativo", [""])[0])
         if url.path == "/api/firma":
             return self._firma()
         if url.path == "/api/painel":
@@ -151,6 +155,56 @@ class Arena(BaseHTTPRequestHandler):
         except Exception as e:  # nunca deixar a tela esperando sem resposta
             return self._enviar(500, {"erro": f"erro inesperado no backtest: {e!r}"})
         self._enviar(200, resultado)
+
+    def _ao_vivo(self, ativo):
+        try:
+            cfg = self.server.cfg or motor.carregar_config(CONFIG)
+        except (OSError, ValueError) as e:
+            return self._enviar(500, {"erro": f"não consegui ler trader/config.json: {e}"})
+        if ativo not in cfg.get("ativos", {}) or ativo not in traders.SALAS:
+            return self._enviar(400, {"erro": f"ativo {ativo or '(vazio)'} não tem gráfico ao vivo"})
+        try:
+            candles = ao_vivo(ativo, cfg, self.server.vivo_fn)
+        except dados.ErroDados as e:
+            return self._enviar(503, {"erro": str(e)})
+        except Exception as e:
+            return self._enviar(500, {"erro": f"erro inesperado no ao vivo: {e!r}"})
+        self._enviar(200, {"ativo": ativo, "atualizado": _agora(),
+                           "candles": [[k.t.isoformat(), k.o, k.h, k.l, k.c] for k in candles]})
+
+
+DIAS_AO_VIVO = 4  # segunda-feira ainda mostra quinta e sexta
+VIVO_TTL_S = 4    # várias abas (ou o polling) dentro desse prazo levam a mesma leitura
+_vivo = {}        # ativo -> (instante, candles)
+_travas_vivo = {}  # uma por terminal do MT5 (dois pedidos no mesmo terminal se atrapalham) e uma para a Binance
+_trava_travas = threading.Lock()
+
+
+def baixar_vivo(ativo, cfg, hoje):
+    """Candles de 5 min dos últimos dias direto da fonte, sem o cache: o dia de hoje ainda está acontecendo."""
+    espec = cfg["ativos"][ativo]
+    de = hoje - timedelta(days=DIAS_AO_VIVO)
+    simbolo = espec.get("simbolo") or f"{ativo}$"
+    if espec.get("fonte") == "binance":
+        novos = dados.baixar_binance(simbolo, de, hoje)
+    else:  # prazo curto: um terminal travado não segura o gráfico por minuto e meio
+        novos = dados.baixar_mt5(simbolo, de, hoje, terminal=espec.get("terminal"), deslocamento_h=espec.get("deslocamento_h"),
+                                 fuso_servidor=espec.get("fuso_servidor", "brasilia"), timeout_s=20)
+    return dados.no_tick(novos, espec.get("tick"))
+
+
+def ao_vivo(ativo, cfg, baixar=None, relogio=time.monotonic):
+    espec = cfg["ativos"][ativo]
+    chave = "binance" if espec.get("fonte") == "binance" else espec.get("terminal") or "mt5"
+    with _trava_travas:
+        trava = _travas_vivo.setdefault(chave, threading.Lock())
+    with trava:
+        visto = _vivo.get(ativo)
+        if visto and relogio() - visto[0] < VIVO_TTL_S:
+            return visto[1]
+        candles = (baixar or baixar_vivo)(ativo, cfg, dados._hoje_brasilia())
+        _vivo[ativo] = (relogio(), candles)
+        return candles
 
 
 @functools.lru_cache(maxsize=8)
@@ -303,9 +357,10 @@ def gerente_diario():
                      name="gerente").start()
 
 
-def criar_servidor(porta=8765, historico_fn=None, cfg=None):
+def criar_servidor(porta=8765, historico_fn=None, cfg=None, vivo_fn=None):
     srv = ThreadingHTTPServer(("127.0.0.1", porta), Arena)
     srv.historico_fn = historico_fn or historico
+    srv.vivo_fn = vivo_fn
     srv.cfg = cfg
     return srv
 

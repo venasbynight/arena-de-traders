@@ -104,7 +104,39 @@ class TestServidor(unittest.TestCase):
 
     def test_traders(self):
         status, corpo = self.get("/api/traders")
-        self.assertEqual(json.loads(corpo)[0]["nome"], "Sofia SMC")
+        ts = json.loads(corpo)
+        self.assertEqual(ts[0]["nome"], "Sofia SMC")
+        self.assertEqual(ts[2]["salas"], ["WDO", "WIN"])  # o Caio só nas salas com delta
+
+    def test_ao_vivo_reaproveita_leitura_recente(self):
+        pedidos, agora = [], [100.0]
+        def baixar(ativo, cfg, hoje):
+            pedidos.append(ativo)
+            return UM_DIA[:3]
+        with mock.patch.object(servidor, "_vivo", {}):
+            servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0])
+            agora[0] += 1
+            self.assertEqual(servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0]), UM_DIA[:3])
+            agora[0] += servidor.VIVO_TTL_S
+            servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0])
+        self.assertEqual(pedidos, ["WDO", "WDO"])
+
+    def test_api_ao_vivo(self):
+        def quebra(ativo, cfg, hoje):
+            raise servidor.dados.ErroDados("abra o MT5")
+        srv = servidor.criar_servidor(0, cfg=CFG, vivo_fn=quebra)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            with mock.patch.object(servidor, "_vivo", {}):
+                with self.assertRaises(urllib.error.HTTPError) as e:
+                    urllib.request.urlopen(f"http://127.0.0.1:{srv.server_address[1]}/api/aovivo?ativo=WDO")
+            self.assertEqual(e.exception.code, 503)
+            self.assertIn("abra o MT5", json.loads(e.exception.read().decode("utf-8"))["erro"])
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        status, _ = self.get("/api/aovivo?ativo=PETR4")
+        self.assertEqual(status, 400)
 
     def test_index(self):
         status, corpo = self.get("/")
