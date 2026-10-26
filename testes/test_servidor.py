@@ -88,11 +88,13 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("sem candles", json.loads(corpo)["erro"])
 
-    def test_ativo_so_de_pesquisa_fica_fora_do_replay(self):
-        # ações e pares novos estão no config só para a pesquisa: não são salas, o replay recusa
+    def test_ativo_fora_das_salas_roda_sem_o_caio(self):
+        # ações e pares novos do config também têm backtest; sem delta, só quem não precisa dele
         status, corpo = self.get("/api/backtest?ativo=PETR4&de=2026-09-01&ate=2026-09-01")
-        self.assertEqual(status, 400)
-        self.assertIn("PETR4", json.loads(corpo)["erro"])
+        self.assertEqual(status, 200)
+        self.assertEqual(list(json.loads(corpo)["traders"]), ["Sofia SMC", "Didi Agulhada"])
+        status, corpo = self.get("/api/traders")
+        self.assertNotIn("PETR4", json.loads(corpo)[2]["salas"])  # o Caio
 
     def test_ativo_invalido(self):
         status, _ = self.get("/api/backtest?ativo=XPTO3&de=2026-09-01&ate=2026-09-01")
@@ -110,19 +112,20 @@ class TestServidor(unittest.TestCase):
 
     def test_ao_vivo_reaproveita_leitura_recente(self):
         pedidos, agora = [], [100.0]
-        def baixar(ativo, cfg, hoje):
-            pedidos.append(ativo)
+        def baixar(ativo, cfg, hoje, tf):
+            pedidos.append((ativo, tf))
             return UM_DIA[:3]
         with mock.patch.object(servidor, "_vivo", {}):
             servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0])
             agora[0] += 1
             self.assertEqual(servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0]), UM_DIA[:3])
+            servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0], tf=60)  # outro tempo gráfico: outra leitura
             agora[0] += servidor.VIVO_TTL_S
             servidor.ao_vivo("WDO", CFG, baixar, lambda: agora[0])
-        self.assertEqual(pedidos, ["WDO", "WDO"])
+        self.assertEqual(pedidos, [("WDO", 5), ("WDO", 60), ("WDO", 5)])
 
     def test_api_ao_vivo(self):
-        def quebra(ativo, cfg, hoje):
+        def quebra(ativo, cfg, hoje, tf):
             raise servidor.dados.ErroDados("abra o MT5")
         srv = servidor.criar_servidor(0, cfg=CFG, vivo_fn=quebra)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -135,8 +138,31 @@ class TestServidor(unittest.TestCase):
         finally:
             srv.shutdown()
             srv.server_close()
-        status, _ = self.get("/api/aovivo?ativo=PETR4")
+        status, _ = self.get("/api/aovivo?ativo=XYZW3")
         self.assertEqual(status, 400)
+        status, corpo = self.get("/api/aovivo?ativo=PETR4&tf=7")  # ação vale; 7 min não
+        self.assertEqual(status, 400)
+        self.assertIn("tempo gráfico", json.loads(corpo)["erro"])
+
+    def test_cotacoes_uma_fonte_fora_nao_apaga_as_outras(self):
+        cfg = {"ativos": {"WIN": {"fonte": "mt5", "simbolo": "WIN$", "terminal": "genial"},
+                          "PETR4": {"fonte": "mt5", "simbolo": "PETR4", "terminal": "genial"},
+                          "EURUSD": {"fonte": "mt5", "simbolo": "EURUSD", "terminal": "metaquotes"},
+                          "BTCUSDT": {"fonte": "binance", "simbolo": "BTCUSDT"}}}
+        pedidos = []
+        def buscar(fonte, terminal, simbolos):
+            pedidos.append((fonte, terminal, sorted(simbolos)))
+            if terminal == "metaquotes":
+                raise servidor.dados.ErroDados("MT5 fechado")
+            return {"WIN$": [175000.0, 176000.0], "PETR4": [52.1, None], "BTCUSDT": [70000.0, 69000.0], "OUTRO": [1, 1]}
+        with mock.patch.object(servidor, "_cotacoes", [0.0, None]):
+            r = servidor.cotacoes(cfg, buscar, lambda: 100.0)
+            self.assertIs(servidor.cotacoes(cfg, buscar, lambda: 101.0), r)  # dentro do prazo: mesma leitura
+        self.assertEqual(sorted(pedidos), [("binance", None, ["BTCUSDT"]), ("mt5", "genial", ["PETR4", "WIN$"]),
+                                           ("mt5", "metaquotes", ["EURUSD"])])
+        self.assertEqual(r["cotacoes"], {"WIN": {"preco": 175000.0, "ref": 176000.0}, "PETR4": {"preco": 52.1, "ref": None},
+                                         "BTCUSDT": {"preco": 70000.0, "ref": 69000.0}})
+        self.assertEqual(r["erros"], {"metaquotes": "MT5 fechado"})
 
     def test_index(self):
         status, corpo = self.get("/")
@@ -397,6 +423,15 @@ class TestServidor(unittest.TestCase):
         self.assertEqual(wdo["candles"][0], {"t": "2026-10-12T09:00:00", "o": 5010, "h": 5010.5, "l": 5009.5, "c": 5010})
         self.assertTrue(wdo["nome"])
         self.assertFalse(wdo.get("sem_dados"))
+        self.assertEqual((wdo["desde"], wdo["delta_desde"]), ("2026-10-09", None))  # sem arquivo de delta
+
+    def test_delta_desde_pula_dias_sem_negocios(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            arq = os.path.join(pasta, "WIN_M5.delta.csv")
+            with open(arq, "w", encoding="utf-8") as f:
+                f.write("2026-08-11,\n2026-08-13,WINV26\n2026-08-12,WINV26\n")
+            self.assertEqual(servidor._delta_desde(arq), "2026-08-12")
+            self.assertIsNone(servidor._delta_desde(os.path.join(pasta, "nada.csv")))
 
     def test_painel_tendencia_indefinida_e_ativo_sem_cache(self):
         p = self._painel({"WDO": self._horas(date(2026, 10, 12), [5000] * 8)}, None)
@@ -497,6 +532,26 @@ class TestServidor(unittest.TestCase):
     def test_nao_sai_da_pasta_web(self):
         status, _ = self.get("/web/..%2Fmotor.py")
         self.assertEqual(status, 404)
+
+
+
+class TestBacktestGuardado(unittest.TestCase):
+    """Os mesmos candles, parâmetros e config não recalculam: abrir a tela de backtest de novo é imediato."""
+
+    def test_mesmo_pedido_nao_recalcula_e_dado_novo_recalcula(self):
+        srv = servidor.criar_servidor(0, historico_fn=historico_falso, cfg=CFG)
+        self.addCleanup(srv.server_close)
+        dia = UM_DIA[0].t.date()
+        with tempfile.TemporaryDirectory() as pasta, \
+                mock.patch.object(servidor, "PARAMETROS", os.path.join(pasta, "parametros.json")), \
+                mock.patch.object(servidor.motor, "rodar_backtest", wraps=motor.rodar_backtest) as rodar:
+            a = servidor.calcular_backtest(srv, "WDO", dia, dia, CFG)
+            b = servidor.calcular_backtest(srv, "WDO", dia, dia, CFG)
+            self.assertIs(a, b)
+            self.assertEqual(rodar.call_count, 1)
+            srv.historico_fn = lambda *x: historico_falso(*x)[:-1]   # o histórico mudou: calcula de novo
+            servidor.calcular_backtest(srv, "WDO", dia, dia, CFG)
+            self.assertEqual(rodar.call_count, 2)
 
 
 if __name__ == "__main__":

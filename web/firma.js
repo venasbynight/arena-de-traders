@@ -91,8 +91,8 @@ const sol = new THREE.DirectionalLight("#ffe6c4", 2.6);
 sol.position.set(-18, 26, 16);
 sol.target.position.set(-1, 0, 0);
 sol.castShadow = true;
-sol.shadow.mapSize.set(2048, 2048);
-Object.assign(sol.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 80 });
+sol.shadow.mapSize.set(4096, 4096);
+Object.assign(sol.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 90 });   // prédio, café e praça
 sol.shadow.bias = -0.0004;
 sol.shadow.normalBias = 0.02;
 cena.add(sol, sol.target);
@@ -479,10 +479,6 @@ function construirParede(par) {
       pecaParede(par, s - 0.07, s + 0.01, 0, 2.17, M.batente, { grossura: t + 0.05 });
       pecaParede(par, f - 0.01, f + 0.07, 0, 2.17, M.batente, { grossura: t + 0.05 });
       pecaParede(par, s - 0.07, f + 0.07, 2.09, 2.17, M.batente, { grossura: t + 0.05 });
-      if (ab.tipo === "entrada") {
-        pecaParede(par, s, f, 0, 2.1, mat("#6e4a2f", { roughness: 0.5 }), { grossura: 0.06, colide: true });
-        pecaParede(par, s + 0.2, f - 0.2, 1.0, 1.9, M.vidro, { grossura: 0.08 });
-      }
     }
     u = f;
   }
@@ -514,6 +510,7 @@ function atualizarParedes() {
     let h = alturaFixa ?? PLANTA.corte;
     if (alturaFixa === null && pc.ext && (pc.ext[0] * dirCamera.x + pc.ext[1] * dirCamera.z) / hor > 0.3 &&
         (pc.centro[0] - alvo.x) * dirCamera.x + (pc.centro[1] - alvo.z) * dirCamera.z > -0.5 * hor) h = PLANTA.altura;
+    if (pc.porta) { pc.m.scale.y = Math.min(h, pc.y1) / pc.y1; continue; }
     if (pc.inteira) { pc.m.visible = pc.y1 <= h; continue; }
     const y1 = Math.min(pc.y1, h), visivel = y1 - pc.y0 > 0.005;
     if (pc.topo) { posPeca.set(pc.x, y1 + 0.015, pc.z); escPeca.set(pc.sx, 0.03, pc.sz); }
@@ -1398,6 +1395,135 @@ luzSala(-11, 0, 6);
 const par = (x, z, meio = 0.45) => [{ pos: [+(x - meio).toFixed(2), z], rot: 1.571 }, { pos: [+(x + meio).toFixed(2), z], rot: -1.571 }];
 VAGAS_CONVERSA.push(par(-14.0, -1.9, 0.62), par(-9.6, 2.0, 0.62), par(-9.6, -2.2));
 
+// ---------------------------------------------------------------- lado de fora: porta de entrada, cafeteria e praça
+// Porta da fachada oeste: abre para fora na dobradiça norte. O botão ao lado do batente (dentro e fora) ou a própria
+// porta abre e fecha; fechada, ela segura a primeira pessoa (`bate`) e a grade dos bonecos (`livre`).
+const portaEntrada = { aberta: false, angulo: 0, g: grupo(cena, -16, -PLANTA.porta / 2) };
+caixa(portaEntrada.g, 0.06, 2.1, PLANTA.porta, mat("#6e4a2f", { roughness: 0.5 }), 0, 1.05, PLANTA.porta / 2);
+caixa(portaEntrada.g, 0.08, 0.9, PLANTA.porta - 0.4, M.vidro, 0, 1.45, PLANTA.porta / 2);
+for (const s of [-1, 1]) caixa(portaEntrada.g, 0.05, 0.03, 0.14, M.cromo, s * 0.05, 1.0, PLANTA.porta - 0.15);   // maçanetas
+portaEntrada.g.userData.alvo = "porta";
+clicaveis.push(portaEntrada.g);
+pecas.push({ m: portaEntrada.g, porta: true, y0: 0, y1: 2.1, ext: [-1, 0], centro: [-16, 0] });   // desce com o recorte
+for (const lado of [1, -1]) {   // 1 = dentro (face +x), −1 = fora
+  const b = grupo(cena, -16 + lado * (PLANTA.espessura / 2 + 0.012), 0.95, lado * Math.PI / 2);
+  b.position.y = 1.15;
+  caixa(b, 0.11, 0.17, 0.02, mat("#2b2f36"), 0, 0, 0);
+  cilindro(b, 0.032, 0.032, 0.02, mat("#3ddc5a", { emissive: "#2bbf47", emissiveIntensity: 0.8 }), 0, 0.02, 0.015, 16).rotation.x = Math.PI / 2;
+  b.userData.alvo = "porta";
+  clicaveis.push(b);
+  pecas.push({ m: b, y0: 1.06, y1: 1.24, ext: [-1, 0], centro: [-16, 0], inteira: true });
+}
+
+// tudo que fica na grama: o chão de fora está 15,5 cm abaixo do piso do prédio (os bonecos acompanham, ver `chao`)
+const CHAO_FORA = -0.155;
+const chao = (x, z) => ambientes.some(a => Math.abs(x - a.x) <= a.w / 2 + 0.1 && Math.abs(z - a.z) <= a.d / 2 + 0.1) ? 0 : CHAO_FORA;
+const ext = new THREE.Group();
+ext.position.y = CHAO_FORA;
+fora.add(ext);
+// caminhos de pedra: do caminho da entrada, um vai para o sul até a cafeteria e outro para o norte até a praça
+piso(ext, 1.4, 22.7, matCalcada, 1.2, -20.6, 0.004, 12.25);
+piso(ext, 1.4, 21.1, matCalcada, 1.2, -20.6, 0.004, -11.45);
+piso(ext, 8.7, 1.4, matCalcada, 1.2, -16.95, 0.004, -22);
+
+// Café do Pregão, ao sul: quiosque com o balcão virado para a rua (oeste), toldo listrado, vitrine, máquina de espresso e
+// cardápio; no deck, entre o quiosque e a rua, mesinhas com cadeiras e guarda-sóis. O telhado só aparece na primeira pessoa (de cima, aberto como no Sims).
+piso(ext, 12.7, 7, new THREE.MeshStandardMaterial({ map: texTaco, roughness: 0.6 }), 1.6, -13.55, 0.008, 23.6);
+const quiosque = grupo(ext, -8.5, 23.6, -Math.PI / 2);   // frente (+z local) para o oeste
+{
+  const parede = mat("#f3e6d3", { roughness: 0.9 }), verde = mat("#2f6b4f", { roughness: 0.7 });
+  caixa(quiosque, 5, 2.7, 0.2, parede, 0, 1.35, -1.1);
+  for (const s of [-1, 1]) caixa(quiosque, 0.2, 2.7, 2.4, parede, s * 2.4, 1.35, 0);
+  caixa(quiosque, 4.6, 1.0, 0.45, verde, 0, 0.5, 0.95);              // balcão
+  caixa(quiosque, 4.7, 0.05, 0.55, M.madeira, 0, 1.025, 0.95);
+  caixa(quiosque, 1.4, 0.34, 0.42, M.vidro, -1.2, 1.22, 0.95);       // vitrine de doces
+  ["#e8a87c", "#c0392b", "#f6d55c", "#8a5a36", "#f4f1f8"].forEach((c, k) =>
+    caixa(quiosque, 0.18, 0.08, 0.18, mat(c), -1.75 + k * 0.27, 1.1, 0.95));
+  caixa(quiosque, 4.6, 0.9, 0.5, M.madeira, 0, 0.45, -0.75);         // bancada do fundo
+  caixa(quiosque, 0.62, 0.45, 0.42, M.cromo, -0.6, 1.13, -0.75);     // espresso
+  caixa(quiosque, 0.64, 0.08, 0.44, mat("#c0392b", { roughness: 0.4 }), -0.6, 1.39, -0.75);
+  cilindro(quiosque, 0.09, 0.07, 0.35, M.preto, 0.4, 1.08, -0.75, 12);   // moedor
+  for (let k = 0; k < 4; k++) caneca(quiosque, 1.0 + k * 0.18, -0.7, ["#ffffff", "#2f6b4f", "#f0b429", "#ffffff"][k], 0.95);
+  const cardapio = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshStandardMaterial({ roughness: 0.8,
+    map: canvasTex(512, 210, (g, w, h) => {
+      g.fillStyle = "#1f2a24"; g.fillRect(0, 0, w, h);
+      g.strokeStyle = "#c9a96e"; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
+      g.fillStyle = "#f4ead5"; g.textAlign = "center"; g.font = "700 40px Segoe UI, sans-serif"; g.fillText("Café do Pregão", w / 2, 56);
+      g.font = "26px Segoe UI, sans-serif"; g.textAlign = "left";
+      [["Espresso", "6"], ["Cappuccino", "9"], ["Pão de queijo", "5"], ["Bolo do dia", "8"]].forEach(([n, v], k) => {
+        const x = k % 2 ? 270 : 40, y = 112 + Math.floor(k / 2) * 52;
+        g.fillText(n, x, y); g.fillText(`R$ ${v}`, x + 175, y);
+      });
+    }) }));
+  cardapio.position.set(0, 2.0, -0.99);
+  quiosque.add(cardapio);
+  const toldo = new THREE.MeshStandardMaterial({ roughness: 0.9, map: canvasTex(256, 64, (g, w, h) => {
+    for (let k = 0; k < 8; k++) { g.fillStyle = k % 2 ? "#f4f1ea" : "#2f6b4f"; g.fillRect(k * w / 8, 0, w / 8, h); }
+  }) });
+  caixa(quiosque, 5.2, 0.04, 1.3, toldo, 0, 2.5, 1.65).rotation.x = 0.35;
+  caixa(forro, 2.7, 0.15, 5.3, parede, -8.5, 2.78 + CHAO_FORA, 23.6).castShadow = false;   // telhado (só na primeira pessoa)
+}
+const rotCafe = rotulo("Café do Pregão", "espresso · pão de queijo", "#c9a96e", "#2f6b4f");
+rotCafe.position.set(-8.5, 3.4, 23.6);
+fora.add(rotCafe);
+const cadeirasCafe = [];
+for (const [x, z, guardaSol] of [[-17.5, 22.0, true], [-14.6, 25.3, false], [-12.3, 22.1, true]]) {
+  cilindro(ext, 0.24, 0.26, 0.03, M.metal, x, 0.015, z, 18);
+  cilindro(ext, 0.03, 0.03, 0.72, M.cromo, x, 0.37, z, 10);
+  cilindro(ext, 0.4, 0.4, 0.035, mat("#f4f1ea", { roughness: 0.5 }), x, 0.74, z, 24);
+  caneca(ext, x + 0.1, z - 0.08, "#ffffff", 0.81);
+  cadeirasCafe.push(cadeiraVisita(ext, x - 0.68, z, Math.PI / 2), cadeiraVisita(ext, x + 0.68, z, -Math.PI / 2));
+  if (!guardaSol) continue;
+  cilindro(ext, 0.025, 0.025, 2.3, M.cromo, x, 1.55, z, 8);
+  cilindro(ext, 0.03, 1.25, 0.35, mat("#e26d5a", { roughness: 0.9 }), x, 2.6, z, 8);
+}
+for (const [x, z] of [[-19.4, 20.5], [-19.4, 26.7], [-7.7, 26.7], [-7.7, 20.5]]) planta(ext, x, z, z > 23);
+
+// Praça ao norte: chafariz no meio, quatro bancos virados para ele, postes e canteiros
+const PRACA = [-8, -22];
+{
+  const [x, z] = PRACA, pedra = mat("#cfc6b8", { roughness: 0.85 });
+  const agua = mat("#5fb7e8", { roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85 });
+  const disco = new THREE.CircleGeometry(4.3, 48).rotateX(-Math.PI / 2), uv = disco.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 8.6 / 1.2, uv.getY(i) * 8.6 / 1.2);
+  const chaoPraca = new THREE.Mesh(disco, matCalcada);
+  chaoPraca.position.set(x, 0.006, z);
+  chaoPraca.receiveShadow = true;
+  ext.add(chaoPraca);
+  cilindro(ext, 1.4, 1.5, 0.4, pedra, x, 0.2, z, 32);
+  cilindro(ext, 1.28, 1.28, 0.02, agua, x, 0.41, z, 32);   // espelho d'água por cima da pedra, com a borda à mostra
+  cilindro(ext, 0.16, 0.22, 1.0, pedra, x, 0.9, z, 12);
+  cilindro(ext, 0.55, 0.25, 0.18, pedra, x, 1.45, z, 20);
+  cilindro(ext, 0.48, 0.48, 0.02, agua, x, 1.55, z, 20);
+  cilindro(ext, 0.05, 0.03, 0.35, agua, x, 1.72, z, 8);
+  for (const [dx, dz] of [[-3.9, -1.2], [3.9, -1.2], [-3.9, 1.6], [3.9, 1.6]]) {
+    cilindro(ext, 0.06, 0.08, 3.2, mat("#2b2f36", { roughness: 0.5, metalness: 0.5 }), x + dx, 1.6, z + dz, 10);
+    cilindro(ext, 0.17, 0.17, 0.3, M.luz, x + dx, 3.3, z + dz, 14);
+  }
+  for (let k = 0; k < 10; k++) { const a = k * 0.63 + 0.3; arbusto(x + Math.sin(a) * 4.7, z + Math.cos(a) * 4.7, 0.32); }
+}
+const bancosPraca = [45, 135, 225, 315].map(g => {
+  const a = g * GRAU;
+  return banco(ext, PRACA[0] + 3.0 * Math.sin(a), PRACA[1] + 3.0 * Math.cos(a), a + Math.PI);
+});
+const rotPraca = rotulo("Praça", "chafariz · bancos", "#8b98a5", "#4fae7b");
+rotPraca.position.set(PRACA[0], 3.6, PRACA[1]);
+fora.add(rotPraca);
+
+// lugares de fora: assentos (o Diretor também senta) e pontos em pé dos NPCs; a chave "f<n>" ocupa para todos
+const LUGARES_FORA = [
+  ...cadeirasCafe.map(g => ({ ...vaga("fora", g, 0, 0, 0, "sentado"), assento: 0.6, texto: "no café" })),
+  ...bancosPraca.flatMap(g => [-0.35, 0.35].map(x => ({ ...vaga("fora", g, x, 0, 0, "sentado"), assento: 0.62, texto: "na praça" }))),
+].map((l, i) => ({ chave: `f${i}`, ...l }));
+const PONTOS_NPC = [
+  ...LUGARES_FORA,
+  ...[23.0, 24.3].map((z, i) => ({ chave: `fb${i}`, pos: [-10.1, z], rot: Math.PI / 2, pose: "caneca" })),   // no balcão
+  { chave: "fc0", pos: [PRACA[0] - 1.9, PRACA[1]], rot: Math.PI / 2, pose: "em_pe" },                 // na beira do chafariz
+  { chave: "fc1", pos: [PRACA[0] + 1.9, PRACA[1] + 0.4], rot: -Math.PI / 2, pose: "em_pe" },
+  { chave: "fr0", pos: [-23.2, -5], rot: 0, pose: "em_pe" }, { chave: "fr1", pos: [-23.2, 9], rot: Math.PI, pose: "em_pe" },   // calçada
+];
+const VAGA_BARISTA = { ...vaga("fora", quiosque, 0.3, 0.15, 0, "em_pe"), chave: "barista", pose: "em_pe" };
+
 // onde o Diretor senta com um clique (as cadeiras das mesas de trabalho ficam para os traders); assento = altura do
 // quadril. Os lugares do descanso guardam a chave da vaga ("d3"): quem está lá (ou indo para lá) ocupa para os dois lados.
 const lugar = (g, x, z, assento, texto) => ({ ...vaga("lugar", g, x, z, 0, "sentado"), assento, texto });
@@ -1408,7 +1534,8 @@ const LUGARES = [
   ...bancos.flatMap(g => [-0.35, 0.35].map(x => lugar(g, x, 0, 0.62, "no banco"))),
   ...poltronas.map(g => lugar(g, 0, 0.02, 0.535, "na poltrona")),
 ].map((l, i) => ({ chave: `a${i}`, ...l })).concat(VAGAS_DESCANSO.flatMap((v, i) => v.pose !== "sentado" ? [] :
-  [{ ...v, chave: `d${i}`, assento: v.tipo === "sofa" ? 0.535 : 0.48, texto: v.tipo === "sofa" ? "no sofá" : "no pufe" }]));
+  [{ ...v, chave: `d${i}`, assento: v.tipo === "sofa" ? 0.535 : 0.48, texto: v.tipo === "sofa" ? "no sofá" : "no pufe" }]),
+  LUGARES_FORA);
 
 // ---------------------------------------------------------------- texturas que dependem do estado
 const brl = v => (v < 0 ? "−" : v > 0 ? "+" : "") + "R$ " + Math.abs(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
@@ -1631,7 +1758,7 @@ const malhasFixas = fundirEstaticos([predio, fora], new Set([
 // Cada trader (e o gerente) é uma pessoa que sobrevive aos polls (chave "sala:nome"). Só trabalha na mesa quando
 // o gerente está processando a sala dele (/api/atividade); senão vai para o descanso ou conversa no corredor.
 // Anda a 1,3 m/s por uma grade de 10 cm (paredes e móveis bloqueados, portas abertas) com A*.
-const GR = { x0: -16.2, z0: -10.2, passo: 0.1, nx: 305, nz: 205 };
+const GR = { x0: -34, z0: -29, passo: 0.1, nx: 541, nz: 581 };   // o prédio e o terreno em volta (cafeteria, praça, rua)
 const bloqueio = new Uint8Array(GR.nx * GR.nz);
 function bloquear(x0, z0, x1, z1, folga) {   // marca as células com centro dentro do retângulo alargado pela folga
   const i0 = Math.max(0, Math.ceil((x0 - folga - GR.x0) / GR.passo)), i1 = Math.min(GR.nx - 1, Math.floor((x1 + folga - GR.x0) / GR.passo));
@@ -1648,12 +1775,14 @@ for (const m of malhasFixas) {
       const j = 3 * (idx ? idx[t + v] : t + v), x = p[j], y = p[j + 1], z = p[j + 2];
       x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
     }
-    if (y1 < 0.08 || y0 > 1.5 || x1 < -16.2 || x0 > 14.2 || z1 < -10.2 || z0 > 10.2) continue;
+    if (y1 < 0.08 || y0 > 1.5 || x1 < GR.x0 || x0 > GR.x0 + GR.nx * GR.passo || z1 < GR.z0 || z0 > GR.z0 + GR.nz * GR.passo) continue;
     bloquear(x0, z0, x1, z1, 0.1);
   }
 }
 const celula = (x, z) => [Math.round((x - GR.x0) / GR.passo), Math.round((z - GR.z0) / GR.passo)];
-const livre = (i, k) => i >= 0 && k >= 0 && i < GR.nx && k < GR.nz && !bloqueio[k * GR.nx + i];
+// a porta de entrada fechada bloqueia o vão (com a folga das paredes); aberta, dá para sair
+const naPorta = (i, k) => Math.abs(GR.x0 + i * GR.passo + 16) < 0.3 && Math.abs(GR.z0 + k * GR.passo) < PLANTA.porta / 2 + 0.25;
+const livre = (i, k) => i >= 0 && k >= 0 && i < GR.nx && k < GR.nz && !bloqueio[k * GR.nx + i] && (portaEntrada.aberta || !naPorta(i, k));
 const pontoDe = c => [GR.x0 + (c % GR.nx) * GR.passo, GR.z0 + Math.floor(c / GR.nx) * GR.passo];
 function celulaLivre(x, z) {   // a célula livre mais perto de (x, z): quem está no sofá começa e termina fora dele
   const [ci, ck] = celula(x, z);
@@ -1847,6 +1976,7 @@ function removerPessoa(p) {
   pessoas.delete(p.chave);
 }
 function legenda(p) {   // o rótulo mostra a atividade real; andando para o descanso, "aguardando tarefa"
+  if (p.npc) return;
   if (p === eu) return retextar(p.rot, "Diretor (você)", p.rota.length ? "andando" : p.destino?.texto || "em pé", "#e6edf3", dir.cor);
   const d = p.destino || { chave: "", texto: "aguardando tarefa" }, andando = p.rota.length > 0;
   const pausado = p.alvo?.status === "pausado" && d.chave !== "mesa";
@@ -1930,6 +2060,41 @@ eu.destino = LUGARES[0];
 eu.raiz.position.set(eu.destino.pos[0], 0, eu.destino.pos[1]);
 eu.raiz.rotation.y = eu.destino.rot;
 posar(eu, eu.destino.pose, eu.destino.assento);
+
+// Gente de fora (NPCs): a barista do café e quatro pessoas que trocam de lugar (café, balcão, praça, calçada) a cada
+// 40–100 s. Sem rótulo nem ficha; ocupam os lugares de fora para o Diretor e entre si.
+const GENTE_FORA = [
+  [{ pele: "#f1c7a5", cabelo: "#2a1a10", camisa: "#2f6b4f", calca: "#3a3a40" }, { cabelo: "coque" }],
+  [{ pele: "#c98e63", cabelo: "#d9b36c", camisa: "#e26d5a", calca: "#2e3a5a" }, { cabelo: "longo" }],
+  [{ pele: "#8d5a3b", cabelo: "#121010", camisa: "#f6d55c", calca: "#4a3b2c" }, {}],
+  [{ pele: "#f3d2b8", cabelo: "#6b3b22", camisa: "#5fb3ad", calca: "#33363f" }, { cabelo: "longo" }],
+  [{ pele: "#e0ac85", cabelo: "#2b2b2b", camisa: "#8a6bd8", calca: "#22303f" }, {}],
+];
+const npcs = GENTE_FORA.map(([pal, opc], i) => {
+  const raiz = new THREE.Group(), b = boneco(pal, opc), props = { caneca: new THREE.Group() };
+  raiz.add(b);
+  cena.add(raiz);
+  caneca(props.caneca, 0, 0, "#ffffff", 0);
+  return { chave: `npc${i}`, npc: true, novo: true, raiz, b, props, rota: [], destino: null, fase: 0, ate: 0,
+    rot: new THREE.Object3D(), mini: new THREE.Object3D(), balao: new THREE.Object3D() };
+});
+irPara(npcs[0], VAGA_BARISTA);
+npcs[0].ate = Infinity;   // a barista não sai do balcão
+function passearNpcs() {
+  const agora = Date.now() / 1000, ocupadas = new Set([eu, ...npcs].map(p => p.destino?.chave));
+  for (const n of npcs) {
+    if (n.rota.length || agora < n.ate) continue;
+    const livres = PONTOS_NPC.filter(l => !ocupadas.has(l.chave));
+    const l = livres[Math.floor(Math.random() * livres.length)];
+    if (!l) continue;
+    ocupadas.delete(n.destino?.chave);
+    ocupadas.add(l.chave);
+    n.ate = agora + 40 + Math.random() * 60;
+    irPara(n, l);
+  }
+}
+passearNpcs();
+setInterval(passearNpcs, 5000);
 const gerente = criarPessoa("gerente", { pele: "#d9a37c", cabelo: "#4a4a4a", camisa: "#e9ecef", calca: "#25324a" }, { terno: "#25324a" });
 definirAlvo(gerente, "gerente", "Gerente", "#4c8dff");
 gerente.mesa = mesaDoGerente;
@@ -2052,7 +2217,8 @@ function girar(p, alvo, dt) {
   return dif;
 }
 function atualizarPessoas(dt, t) {
-  for (const p of [eu, ...pessoas.values()]) {
+  for (const p of [eu, ...npcs, ...pessoas.values()]) {
+    p.raiz.position.y = chao(p.raiz.position.x, p.raiz.position.z);
     const u = p.b.userData, d = p.destino;
     u.tronco.scale.y = 1 + 0.012 * Math.sin(t * 2 * Math.PI / 3.5 + u.fase);   // respiração
     if (p.mesa) {   // cadeira puxada só para quem vai sentar; quem não trabalha deixa a mesa arrumada
@@ -2111,7 +2277,8 @@ const resumoPessoas = () => [...pessoas.values()].map(resumo);
 let modoAtual = "cima";   // "cima" | "fp"; firma.modo = ... aplica a troca inteira
 const firma = window.firma = {
   estado: null, abrirPainel, salas, vagas: { descanso: VAGAS_DESCANSO, conversa: VAGAS_CONVERSA },
-  pessoas: resumoPessoas, diretor: () => resumo(eu),
+  pessoas: resumoPessoas, diretor: () => resumo(eu), npcs: () => npcs.map(resumo),
+  porta: () => portaEntrada.aberta, alternarPorta,
   rotas: { caminho, mesaGerente: mesaDoGerente.vaga },   // teste de rotas (todas as vagas alcançáveis, nenhuma parede cruzada)
   simularAtividade(json) { ativ.simulada = json ?? null; if (equipeConhecida) distribuir(); return atividadeAgora(); },   // null volta ao real
   get modo() { return modoAtual; },
@@ -2314,12 +2481,12 @@ function focar(x, z, distancia, azimute = -35 * GRAU, polar = 45 * GRAU) {
   controles.update();
 }
 
-// ?cam=geral | sala&sala=EURUSD (ou DESCANSO, OPCOES…) | quadro&sala=WIN (de frente para a lousa) | diretoria
-// (padrão: Diretoria) | fp[&pos=x,z,yaw°,pitch°] (primeira pessoa; o mouse só trava no primeiro clique);
+// ?cam=geral (padrão: o prédio inteiro, a praça e a rua) | sala&sala=EURUSD (ou DESCANSO, OPCOES…) | quadro&sala=WIN
+// (de frente para a lousa) | diretoria | fp[&pos=x,z,yaw°,pitch°] (primeira pessoa; o mouse só trava no primeiro clique);
 // | foco&foco=x,z,distância[,azimute°,polar°]; &trader=<nome> abre a ficha; &atividade=sala:WIN simula o ciclo
 // do gerente e &instantaneo=1 põe todo mundo direto no lugar — úteis para capturas
 const salaPedida = PLANTA.salas[pedido.get("sala")], quadroPedido = salas[pedido.get("sala")]?.quadro;
-if (pedido.get("cam") === "geral") focar(-1, 1, 41, -30 * GRAU, 42 * GRAU);
+if (pedido.get("cam") === "diretoria") focar(dir.x - 1, dir.z, 11);
 else if (pedido.get("cam") === "sala" && salaPedida) focar(salaPedida.x, salaPedida.z, 9);
 else if (pedido.get("cam") === "quadro" && quadroPedido) {
   const p = quadroPedido.getWorldPosition(new THREE.Vector3());
@@ -2332,7 +2499,7 @@ else if (pedido.get("cam") === "foco") {
   const [x, z, d, az, po] = (pedido.get("foco") || "").split(",").map(Number);
   focar(x || 0, z || 0, d || 12, (az ?? -35) * GRAU, (po ?? 45) * GRAU);
 }
-else focar(dir.x - 1, dir.z, 11);
+else focar(-1, 1, 41, -30 * GRAU, 42 * GRAU);
 
 const teclas = new Set();
 addEventListener("keydown", e => { if (!e.target.closest?.("input,textarea")) teclas.add(e.key.toLowerCase()); });
@@ -2357,8 +2524,8 @@ function atualizarCima(dt) {
   }
   // não deixa o foco sair do terreno da firma
   const t = controles.target, antes = t.clone();
-  t.x = THREE.MathUtils.clamp(t.x, -20, 18);
-  t.z = THREE.MathUtils.clamp(t.z, -13, 13);
+  t.x = THREE.MathUtils.clamp(t.x, -32, 18);
+  t.z = THREE.MathUtils.clamp(t.z, -27, 27);
   camera.position.add(desloc.subVectors(t, antes));
   controles.update();
 }
@@ -2429,7 +2596,7 @@ function irAte() {
   const hit = raio.intersectObjects(alvosChao, true)[0];
   if (!hit) return;
   const { x, y, z } = hit.point, perto = l => Math.hypot(l.pos[0] - x, l.pos[1] - z);
-  const ocupados = new Set([...pessoas.values()].map(p => p.destino?.chave));   // lugar do descanso com trader: o vizinho livre serve
+  const ocupados = new Set([...pessoas.values(), ...npcs].map(p => p.destino?.chave));   // lugar do descanso com trader: o vizinho livre serve
   const l = y > 0.15 && LUGARES.filter(l => perto(l) < 0.55 && !ocupados.has(l.chave)).sort((a, b) => perto(a) - perto(b))[0];
   if (l) return irPara(eu, l);
   const c = celulaLivre(x, z);   // chão (ou móvel, parede, lugar ocupado): a célula livre mais perto do ponto
@@ -2440,14 +2607,20 @@ function irAte() {
 
 // trader → ficha; gerente/diretor → resumo; monitor da Diretoria → relatórios. O plumbob só vai em boneco.
 function interagir(o) {
+  if (o.userData.alvo === "porta") return alternarPorta();
   const b = bonecoDe(o);
   selecionar(b.userData.contornos ? b : null);
   abrirPainel(b.userData.alvo);
 }
 
+function alternarPorta() {
+  portaEntrada.aberta = !portaEntrada.aberta;
+  alvoFp = null;   // a dica "E abrir/fechar a porta" se refaz no próximo quadro
+}
+
 // ---------------------------------------------------------------- primeira pessoa
 // V alterna com a câmera de cima. O mouse olha (PointerLockControls); WASD anda a 3 m/s (Shift 5 m/s) com
-// colisão só nas paredes (COLISORES), eixo por eixo para deslizar rente a elas; E interage com o que está na mira.
+// colisão com paredes e móveis (ver `bate`), eixo por eixo para deslizar rente a eles; E interage com o que está na mira.
 const OLHO = 1.7, RAIO = 0.3, ANDAR = 3, CORRER = 5, ALCANCE = 2.5;
 const olhar = new PointerLockControls(camera, renderer.domElement), giro = new THREE.Euler(0, 0, 0, "YXZ");
 olhar.minPolarAngle = 10 * GRAU;
@@ -2471,8 +2644,19 @@ document.addEventListener("pointerlockerror", () => {
   voltar.hidden = ++recusas > 1;
   if (recusas === 1) setTimeout(() => firma.modo === "fp" && !olhar.isLocked && travar(), 1100);
 });
+// O Chrome no Windows às vezes manda num único evento um movementX/Y de centenas de px que o mouse não fez (mais ainda
+// logo depois de travar): a câmera girava sozinha 90–180° num quadro. Pico = salto grande vindo do nada; um giro rápido
+// de verdade cresce aos poucos e passa (depois de um pico descartado, o mesmo tamanho já não conta como pico).
+let ultimoMov = 0;
+function picoDoMouse(e) {
+  const m = Math.hypot(e.movementX, e.movementY), pico = m > 200 && m > 4 * ultimoMov + 40;
+  ultimoMov = pico ? m / 4 : m;
+  return pico;
+}
+document.removeEventListener("mousemove", olhar._onMouseMove);
+document.addEventListener("mousemove", e => picoDoMouse(e) || olhar._onMouseMove(e));
 renderer.domElement.addEventListener("pointermove", e => {
-  if (firma.modo !== "fp" || olhar.isLocked || !(e.buttons & 1)) return;
+  if (firma.modo !== "fp" || olhar.isLocked || !(e.buttons & 1) || picoDoMouse(e)) return;
   giro.setFromQuaternion(camera.quaternion);
   giro.y -= e.movementX * 0.004;
   giro.x = THREE.MathUtils.clamp(giro.x - e.movementY * 0.004, -80 * GRAU, 80 * GRAU);
@@ -2513,7 +2697,24 @@ function trocarModo(m) {
   voltar.hidden = true;
   mirar(null);
   marcarSobre(null);
+  mostrarDica();   // os controles mudam com a câmera: mostra os novos
 }
+
+// Tutorial de controles (canto de baixo): aberto ao entrar e a cada troca de câmera, encolhe para o botão "Controles"
+// depois de 4 s (com o mouse em cima, espera ele sair); clicar no botão abre e fecha.
+const dica = $("#dica");
+let tempoDica;
+function mostrarDica(aberta = true) {
+  clearTimeout(tempoDica);
+  dica.classList.toggle("aberta", aberta);
+  $("#dica-botao").setAttribute("aria-expanded", aberta);
+  if (aberta) tempoDica = setTimeout(function encolher() {
+    if (dica.matches(":hover")) tempoDica = setTimeout(encolher, 800);
+    else mostrarDica(false);
+  }, 4000);
+}
+$("#dica-botao").onclick = () => mostrarDica(!dica.classList.contains("aberta"));
+mostrarDica();
 
 function pararDiretor(x, z, rot) {   // em pé em (x, z), sem rota
   eu.rota = []; eu.chegando = false;
@@ -2529,14 +2730,19 @@ function teleportar(x, z, yaw = 0, pitch = 0) {   // graus; yaw 0 = norte (−z)
   camera.rotation.set(pitch * GRAU, yaw * GRAU, 0, "YXZ");
 }
 
-const bate = (x, z) => COLISORES.some(c =>   // todos os colisores começam no chão ou no peitoril (as vergas não entram)
-  x + RAIO > c.min[0] && x - RAIO < c.max[0] && z + RAIO > c.min[2] && z - RAIO < c.max[2]);
+// paredes (COLISORES: todos começam no chão ou no peitoril, as vergas não entram), móveis (as células bloqueadas da
+// grade dos funcionários, já com folga) e as cadeiras das mesas, que andam (um círculo em volta de cada uma)
+const posCadeira = new THREE.Vector3();
+const bate = (x, z) => COLISORES.some(c => x + RAIO > c.min[0] && x - RAIO < c.max[0] && z + RAIO > c.min[2] && z - RAIO < c.max[2]) ||
+  !livre(...celula(x, z)) ||
+  cadeirasMoveis.some(c => (c.getWorldPosition(posCadeira), Math.hypot(posCadeira.x - x, posCadeira.z - z) < 0.5));
 function andar(dx, dz) {
   // passos de até 5 cm: nunca atravessa (a peça mais fina, o vidro, vira 0,63 m com o raio) e para a < 5 cm da parede
   const n = Math.ceil(Math.hypot(dx, dz) / 0.05), p = camera.position;
   for (let k = 0; k < n; k++) {
-    if (!bate(p.x + dx / n, p.z)) p.x += dx / n;
-    if (!bate(p.x, p.z + dz / n)) p.z += dz / n;
+    const preso = bate(p.x, p.z);   // começou dentro de um móvel (?cam=fp&pos=...): anda livre até sair
+    if (preso || !bate(p.x + dx / n, p.z)) p.x += dx / n;
+    if (preso || !bate(p.x, p.z + dz / n)) p.z += dz / n;
   }
 }
 
@@ -2553,7 +2759,8 @@ function alvoNaMira() {
 }
 
 let alvoFp = null;
-const acaoDe = a => a === "gerente" ? "painel do gerente" : a === "relatorios" ? "relatórios do dia"
+const acaoDe = a => a === "porta" ? (portaEntrada.aberta ? "fechar a porta" : "abrir a porta")
+  : a === "gerente" ? "painel do gerente" : a === "relatorios" ? "relatórios do dia"
   : a.quadro ? `quadro de status (${a.quadro})` : `ficha de ${a.nome}`;
 function mirar(o) {
   if (o === alvoFp) return;
@@ -2570,6 +2777,7 @@ modos.fp = dt => {
     const yaw = giro.setFromQuaternion(camera.quaternion).y, v = (teclas.has("shift") ? CORRER : ANDAR) * dt / Math.hypot(fw, lt);
     andar((-Math.sin(yaw) * fw + Math.cos(yaw) * lt) * v, (-Math.cos(yaw) * fw - Math.sin(yaw) * lt) * v);
   }
+  camera.position.y = OLHO + chao(camera.position.x, camera.position.z);   // lá fora o chão é mais baixo
   mirar(alvoNaMira());
 };
 
@@ -2656,6 +2864,9 @@ renderer.setAnimationLoop(() => {
   modos[firma.modo]?.(dt);
   atualizarParedes();
   atualizarPessoas(Math.min(bruto, 1), t);   // com a tela travando, quem anda não fica para trás
+  const abrir = (portaEntrada.aberta ? Math.PI / 2 : 0) - portaEntrada.angulo;   // ~0,6 s para abrir ou fechar
+  portaEntrada.angulo += Math.sign(abrir) * Math.min(Math.abs(abrir), 2.6 * dt);
+  portaEntrada.g.rotation.y = -portaEntrada.angulo;
   if (plumbob.visible) { plumbob.rotation.y = t * 1.5; plumbob.position.y = (selecionado?.userData.topo ?? 1.465) + 0.255 + 0.04 * Math.sin(t * 2.5); }
   // rótulos crescem um pouco com a distância para continuarem legíveis na visão geral; em primeira pessoa
   // ficam menores e respeitam as paredes (de cima atravessam tudo)

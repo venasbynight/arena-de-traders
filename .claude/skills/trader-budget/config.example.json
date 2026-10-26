@@ -25,6 +25,11 @@
       "fonte": "binance", "simbolo": "BTCUSDT",
       "sessao": {"dias": [0, 1, 2, 3, 4, 5, 6], "inicio": "00:05", "fim": "23:30"}
     },
+    "ETHUSDT": {
+      "ponto_rs": 0.0054, "tick": 0.01, "margem_por_contrato": 300, "custo_por_contrato": 0.1,
+      "fonte": "binance", "simbolo": "ETHUSDT",
+      "sessao": {"dias": [0, 1, 2, 3, 4, 5, 6], "inicio": "00:05", "fim": "23:30"}
+    },
     "USDJPY": {
       "ponto_rs": 34.4, "tick": 0.001, "margem_por_contrato": 200, "custo_por_contrato": 0.05,
       "fonte": "mt5", "simbolo": "USDJPY", "terminal": "C:\\Program Files\\MetaTrader 5\\terminal64.exe",

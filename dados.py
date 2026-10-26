@@ -1,4 +1,5 @@
 """Candles: arquivo CSV, agrupamento por tempo gráfico e histórico do MT5 e da Binance."""
+import atexit
 import csv
 import functools
 import http.client
@@ -13,6 +14,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta, timezone
+from time import monotonic
 
 from tipos import Candle
 
@@ -34,7 +36,21 @@ def salvar_csv(candles, caminho):
     os.replace(temporario, caminho)
 
 
+_lidos = {}  # caminho -> ((mtime, tamanho), candles): reler o histórico inteiro a cada backtest levava ~1 s
+
+
 def ler_csv(caminho):
+    """Candles do CSV; enquanto o arquivo não muda, devolve uma cópia do que já foi lido."""
+    st = os.stat(caminho)
+    marca, guardado = (st.st_mtime_ns, st.st_size), _lidos.get(caminho)
+    if guardado and guardado[0] == marca:
+        return list(guardado[1])
+    candles = _ler_csv(caminho)
+    _lidos[caminho] = (marca, candles)
+    return list(candles)
+
+
+def _ler_csv(caminho):
     try:
         with open(caminho, newline="", encoding="utf-8") as f:
             return [Candle(datetime.fromisoformat(r["t"]), float(r["o"]), float(r["h"]), float(r["l"]),
@@ -66,8 +82,8 @@ def agrupar(candles, minutos):
     return out
 
 
-def baixar_binance(simbolo, de, ate, abrir_url=None):
-    """Candles de 5 min de `de` até `ate` (inclusive) da Binance, com `t` em horário de Brasília (UTC-3).
+def baixar_binance(simbolo, de, ate, abrir_url=None, tf=5):
+    """Candles de `tf` min (5 por padrão) de `de` até `ate` (inclusive) da Binance, com `t` em horário de Brasília (UTC-3).
 
     `abrir_url` substitui urllib.request.urlopen (os testes injetam um falso).
     """
@@ -79,7 +95,7 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
     out = []
     while inicio <= fim:
         url = "https://api.binance.com/api/v3/klines?" + urllib.parse.urlencode(
-            {"symbol": simbolo, "interval": "5m", "startTime": inicio, "endTime": fim, "limit": 1000})
+            {"symbol": simbolo, "interval": TEMPOS_BINANCE[tf], "startTime": inicio, "endTime": fim, "limit": 1000})
         try:
             with abrir(url, timeout=30) as r:
                 klines = json.loads(r.read())
@@ -100,7 +116,7 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
                               2 * float(k[9]) - float(k[5])))
         if len(klines) < 1000:
             break
-        inicio = klines[-1][0] + 300000  # próxima página começa depois do último candle recebido
+        inicio = klines[-1][0] + tf * 60000  # próxima página começa depois do último candle recebido
     return out
 
 
@@ -145,7 +161,10 @@ def _conversores(fuso_servidor, deslocamento_h):
 
 
 BLOCO_DIAS_MT5 = 180  # 300 dias de 5 min passaram no teste de 26/10/2026; 365 não
-TEMPOS_MT5 = {5: ("M5", "TIMEFRAME_M5"), 60: ("H1", "TIMEFRAME_H1")}  # tf em minutos: sufixo do cache, constante do MT5
+TEMPOS_MT5 = {1: ("M1", "TIMEFRAME_M1"), 5: ("M5", "TIMEFRAME_M5"), 15: ("M15", "TIMEFRAME_M15"),  # tf em minutos:
+              30: ("M30", "TIMEFRAME_M30"), 60: ("H1", "TIMEFRAME_H1"), 240: ("H4", "TIMEFRAME_H4"),  # sufixo do cache,
+              1440: ("D1", "TIMEFRAME_D1")}                                                           # constante do MT5
+TEMPOS_BINANCE = {1: "1m", 5: "5m", 15: "15m", 30: "30m", 60: "1h", 240: "4h", 1440: "1d"}
 
 
 def _consultar_mt5(mt5, simbolo, inicio, fim, terminal, tf=5):
@@ -254,13 +273,52 @@ def baixar_delta_mt5(simbolo, volumes, mt5=None, terminal=None, deslocamento_h=N
                                    "fuso_servidor": fuso_servidor, "deslocamento_h": deslocamento_h}, timeout_s)
 
 
+def _consultar_cotacoes(mt5, simbolos, terminal):
+    """{símbolo: [último preço, fechamento do dia anterior]} dos símbolos que o terminal conhece; os outros ficam de fora."""
+    if not (mt5.initialize(path=terminal) if terminal else mt5.initialize()):
+        raise ErroDados(f"não consegui falar com o MetaTrader 5: abra o MT5 e faça login ({mt5.last_error()})")
+    try:
+        out = {}
+        for s in simbolos:
+            tick = mt5.symbol_info_tick(s) if mt5.symbol_select(s, True) else None
+            dias = mt5.copy_rates_from_pos(s, mt5.TIMEFRAME_D1, 0, 2) if tick else None
+            if dias is None or not len(dias):
+                continue
+            preco = float(tick.last or tick.bid or dias[-1]["close"])  # B3 tem último negócio; forex só bid/ask
+            out[s] = [preco, float(dias[0]["close"]) if len(dias) > 1 else None]
+        return out
+    finally:
+        mt5.shutdown()
+
+
+def cotacoes_mt5(simbolos, terminal=None, mt5=None, timeout_s=20):
+    """Último preço e fechamento anterior de vários símbolos numa conversa só com o terminal (lista de cotações)."""
+    if mt5 is not None:
+        return _consultar_cotacoes(mt5, simbolos, terminal)
+    return _consultar_mt5_isolado({"tipo": "cotacoes", "simbolos": simbolos, "terminal": terminal}, timeout_s)
+
+
+def cotacoes_binance(simbolos, abrir_url=None):
+    """{símbolo: [último preço, preço de 24 h atrás]} da Binance num pedido só."""
+    abrir = abrir_url or urllib.request.urlopen
+    url = "https://api.binance.com/api/v3/ticker/24hr?" + urllib.parse.urlencode(
+        {"symbols": json.dumps(simbolos, separators=(",", ":"))})
+    try:
+        with abrir(url, timeout=10) as r:
+            return {t["symbol"]: [float(t["lastPrice"]), float(t["openPrice"])] for t in json.loads(r.read())}
+    except (OSError, http.client.HTTPException, ValueError, KeyError) as e:
+        raise ErroDados(f"Binance indisponível agora ({getattr(e, 'reason', e)})")
+
+
 def _filho_mt5(pasta):
     """Corpo do processo filho: lê pedido.json, consulta o MT5 e grava saida.json (resultado ou erro)."""
     with open(os.path.join(pasta, "pedido.json"), encoding="utf-8") as f:
         p = json.load(f)
     try:
         mt5 = _importar_mt5()
-        if p.get("tipo") == "delta":
+        if p.get("tipo") == "cotacoes":
+            r = _consultar_cotacoes(mt5, p["simbolos"], p["terminal"])
+        elif p.get("tipo") == "delta":
             r = _consultar_delta(mt5, p["simbolo"], p["volumes"], p["terminal"], p["fuso_servidor"],
                                  p["deslocamento_h"])
         else:
@@ -275,6 +333,91 @@ def _filho_mt5(pasta):
         json.dump(saida, f)
 
 
+# Terminal MT5 fechado: a arena abre ele minimizado (sem roubar o foco), usa e fecha depois de MT5_OCIOSO_S sem pedidos
+# (a tela ao vivo pede cotações a cada 20 s e abrir leva ~5 s: fechar a cada consulta seria abre-e-fecha sem fim). Só
+# fecha o que ela abriu e que continua minimizado: janela restaurada = você está usando o terminal, e ele fica.
+MT5_OCIOSO_S = 300
+_abertos = {}  # terminal64.exe → [pid, último uso (monotonic)] dos terminais que a arena abriu
+_trava_abertos = threading.Lock()
+
+
+def _pids_terminal(caminho):
+    """PIDs dos processos que rodam o executável `caminho` (Windows)."""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.windll.kernel32
+    k32.OpenProcess.restype = wintypes.HANDLE
+    ids, n = (wintypes.DWORD * 4096)(), wintypes.DWORD()
+    ctypes.windll.psapi.EnumProcesses(ids, ctypes.sizeof(ids), ctypes.byref(n))
+    out = []
+    for pid in ids[:n.value // 4]:
+        h = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            continue
+        buf, tam = ctypes.create_unicode_buffer(1024), wintypes.DWORD(1024)
+        if k32.QueryFullProcessImageNameW(wintypes.HANDLE(h), 0, buf, ctypes.byref(tam)) and                 os.path.normcase(buf.value) == os.path.normcase(caminho):
+            out.append(pid)
+        k32.CloseHandle(wintypes.HANDLE(h))
+    return out
+
+
+def _minimizado(pid):
+    """Nenhuma janela visível do processo está aberta na tela (todas minimizadas)?"""
+    import ctypes
+    u32, abertas = ctypes.windll.user32, []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def ver(h, _):
+        dono = ctypes.c_ulong()
+        u32.GetWindowThreadProcessId(ctypes.c_void_p(h), ctypes.byref(dono))
+        if dono.value == pid and u32.IsWindowVisible(ctypes.c_void_p(h)) and not u32.IsIconic(ctypes.c_void_p(h)):
+            abertas.append(h)
+        return True
+    u32.EnumWindows(ver, 0)
+    return not abertas
+
+
+def _abrir_terminal(terminal):
+    """Abre o terminal minimizado se ele não está rodando (senão o `initialize` do filho o abriria na frente de tudo)."""
+    if sys.platform != "win32" or not terminal or not os.path.isfile(terminal):
+        return
+    with _trava_abertos:
+        pids = _pids_terminal(terminal)
+        if terminal in _abertos and _abertos[terminal][0] not in pids:
+            del _abertos[terminal]  # fechado por fora
+        if pids:
+            return
+        si = subprocess.STARTUPINFO()
+        si.dwFlags, si.wShowWindow = subprocess.STARTF_USESHOWWINDOW, 7  # SW_SHOWMINNOACTIVE
+        filho = subprocess.Popen([terminal], startupinfo=si, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+        _abertos[terminal] = [filho.pid, monotonic()]
+
+
+def _usou(terminal):
+    with _trava_abertos:
+        if terminal in _abertos:
+            _abertos[terminal][1] = monotonic()
+            t = threading.Timer(MT5_OCIOSO_S + 1, fechar_terminais_ociosos)
+            t.daemon = True
+            t.start()
+
+
+def fechar_terminais_ociosos(todos=False):
+    """Fecha os terminais que a arena abriu e ninguém usa há MT5_OCIOSO_S (todos=True: na saída do programa)."""
+    with _trava_abertos:
+        for terminal, (pid, uso) in list(_abertos.items()):
+            if not todos and monotonic() - uso < MT5_OCIOSO_S:
+                continue
+            del _abertos[terminal]
+            if _minimizado(pid):  # taskkill sem /F pede para fechar: o MT5 sai normalmente
+                subprocess.run(["taskkill", "/PID", str(pid)], capture_output=True,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+
+atexit.register(fechar_terminais_ociosos, True)
+
+
 def _consultar_mt5_isolado(pedido, timeout_s):
     """`pedido` (candles ou delta) num processo filho: um terminal que pendura (a Genial sem o feed liberado
     bloqueia `initialize` e `copy_rates_range` por minutos) é morto em vez de travar o programa.
@@ -285,6 +428,7 @@ def _consultar_mt5_isolado(pedido, timeout_s):
         with open(os.path.join(pasta, "pedido.json"), "w", encoding="utf-8") as f:
             json.dump(pedido, f)
         terminal = pedido["terminal"]
+        _abrir_terminal(terminal)
         filho = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--mt5-filho", pasta],
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))  # sem janela de console
@@ -295,6 +439,8 @@ def _consultar_mt5_isolado(pedido, timeout_s):
             filho.wait()
             raise ErroDados(f"o MT5 ({terminal or 'terminal padrão'}) não respondeu em {timeout_s:g} s; "
                             "abra o terminal, confira o login e tente de novo")
+        finally:
+            _usou(terminal)  # conta a partir do fim da conversa o tempo até fechar o terminal que a arena abriu
         try:
             with open(os.path.join(pasta, "saida.json"), encoding="utf-8") as f:
                 saida = json.load(f)
@@ -446,7 +592,8 @@ def _completar_delta(ativo, espec, candles, de, ate, pasta, arq_csv, mt5, hoje):
                     feitos[date.fromisoformat(d)] = s
         except ValueError:
             raise ErroDados(f"cache corrompido em {arq}; apague-o e rode de novo")
-    dias = {d: [k if feitos.get(d) else replace(k, delta=None) for k in ks] for d, ks in por_dia(candles).items()}
+    # (só recria o candle que tem delta a apagar: o histórico inteiro passa aqui a cada pedido)
+    dias = {d: [k if feitos.get(d) or k.delta is None else replace(k, delta=None) for k in ks] for d, ks in por_dia(candles).items()}
     hoje = hoje or _hoje_brasilia()
     faltam = sorted(d for d in dias if de <= d <= ate and d < hoje and d not in feitos) if espec.get("delta") else []
     for i in range(0, len(faltam), DIAS_POR_PROCESSO):

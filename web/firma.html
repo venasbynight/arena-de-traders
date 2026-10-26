@@ -1,10 +1,13 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Firma · TradeQuarters</title>
 <link rel="icon" href="/web/logo.png" type="image/png">
+<link rel="manifest" href="/web/manifest.json">
+<meta name="theme-color" content="#121821">
 <link rel="stylesheet" href="/web/firma.css">
 <script type="importmap">
 {"imports": {
@@ -29,9 +32,38 @@
   <div id="painel-corpo"></div>
 </aside>
 
+<!-- tutorial de controles: aberto ao entrar e a cada troca de câmera, encolhe para o botão depois de 4 s (firma.js) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mouse" viewBox="0 0 24 32"><rect x="3" y="2" width="18" height="28" rx="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v11M3 13h18" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-esq" viewBox="0 0 24 32"><path d="M12 3A9 9 0 0 0 4 11v1h8z" fill="var(--brand)"/><use href="#i-mouse"/></symbol>
+  <symbol id="i-dir" viewBox="0 0 24 32"><path d="M12 3a9 9 0 0 1 8 8v1h-8z" fill="var(--brand)"/><use href="#i-mouse"/></symbol>
+  <symbol id="i-roda" viewBox="0 0 24 32"><use href="#i-mouse"/><rect x="9.5" y="5" width="5" height="8" rx="2.5" fill="var(--brand)"/></symbol>
+  <symbol id="i-setas" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M12 2l-3 3m3-3 3 3M12 22l-3-3m3 3 3-3M2 12l3-3m-3 3 3 3M22 12l-3-3m3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
 <div id="dica">
-  <span class="so-cima"><b>Arraste</b> ou <b>WASD</b> move · <b>botão direito</b> ou <b>Q/E</b> gira · <b>scroll</b> aproxima · <b>clique</b> num trader ou quadro abre a ficha · <b>V</b> primeira pessoa</span>
-  <span class="so-fp"><b>WASD</b> andar · <b>Shift</b> correr · <b>E</b> interagir · <b>V</b> câmera de cima · <b>ESC</b> solta o mouse</span>
+  <button id="dica-botao" aria-expanded="false" aria-controls="dica-corpo" title="Mostrar ou esconder os controles">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 10h1m3 0h1m3 0h1m3 0h1M6 14h1m3 0h4m3 0h1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <span class="so-cima">Controles</span><span class="so-fp">Controles · primeira pessoa</span>
+  </button>
+  <div id="dica-corpo"><div>
+    <ul class="so-cima">
+      <li><span class="ico"><svg class="m"><use href="#i-esq"/></svg><svg class="s"><use href="#i-setas"/></svg></span><span><b>Arraste</b> com o botão esquerdo para mover a câmera</span></li>
+      <li><span class="ico"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>também <b>movem</b> a câmera</span></li>
+      <li><span class="ico"><svg class="m"><use href="#i-dir"/></svg><kbd>Q</kbd><kbd>E</kbd></span><span><b>Giram</b> a câmera: botão direito arrastando, ou Q e E</span></li>
+      <li><span class="ico"><svg class="m"><use href="#i-roda"/></svg></span><span><b>Rodinha</b> aproxima e afasta</span></li>
+      <li><span class="ico"><svg class="m"><use href="#i-esq"/></svg></span><span><b>Clique no chão</b>: o Diretor anda até lá; numa cadeira ou sofá, ele senta</span></li>
+      <li><span class="ico"><svg class="m"><use href="#i-esq"/></svg></span><span><b>Clique num trader ou quadro</b> para abrir a ficha</span></li>
+      <li><span class="ico"><i class="botao-porta"></i></span><span><b>Botão verde da porta</b> (ou a porta) abre a saída para a rua</span></li>
+      <li><span class="ico"><kbd>V</kbd></span><span>Entra em <b>primeira pessoa</b>: você vira o Diretor</span></li>
+    </ul>
+    <ul class="so-fp">
+      <li><span class="ico"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span><b>Andar</b>; segure <kbd>Shift</kbd> para correr</span></li>
+      <li><span class="ico"><svg class="m"><use href="#i-mouse"/></svg><svg class="s"><use href="#i-setas"/></svg></span><span><b>Mexa o mouse</b> para olhar em volta</span></li>
+      <li><span class="ico"><kbd>E</kbd></span><span><b>Interagir</b> com o que está na mira: ficha, quadro, porta</span></li>
+      <li><span class="ico"><kbd>V</kbd></span><span>Volta para a <b>câmera de cima</b>; o Diretor fica onde você parou</span></li>
+      <li><span class="ico"><kbd class="largo">Esc</kbd></span><span><b>Solta o mouse</b>; clique na tela para voltar</span></li>
+    </ul>
+  </div></div>
 </div>
 
 <!-- primeira pessoa: mira, ação do que está na mira e o aviso de mouse solto -->

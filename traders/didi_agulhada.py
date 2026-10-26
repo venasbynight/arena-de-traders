@@ -12,6 +12,11 @@ from traders.sofia_smc import arredondar_tick
 
 NOME = "Didi Agulhada"
 ESTILO = "agulhada 3·8·20 · Bollinger abrindo · ADX e TRIX"
+EXPLICA = [("Tempo gráfico", "tudo no 5 min (nas ações, no 60)"),
+           ("Entrada", "as médias 3, 8 e 20 se cruzam (agulhada) e em até 4 candles as Bandas de Bollinger abrem, "
+                       "com o ADX subindo de baixo e o TRIX numa ponta"),
+           ("Stop", "3 ticks além do candle que abriu as bandas"),
+           ("Saída", "quando as bandas fecham e o ADX cai no mesmo candle")]
 # agulhada_n: candles entre os dois cruzamentos (0 = no mesmo candle); janela_bandas: candles depois da agulhada em
 # que as bandas ainda podem abrir; adx: "sobe" (ADX subindo e DI a favor), "di" (só o DI a favor) ou "nao";
 # adx "baixo": ADX subindo agora e ≤ ADX_BAIXO no candle antes da agulhada (compressão), com o DI a favor;

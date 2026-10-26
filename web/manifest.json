@@ -1,0 +1,14 @@
+{
+  "name": "TradeQuarters",
+  "short_name": "TradeQuarters",
+  "description": "Teste estratégias. Gerencie agentes. Domine os mercados.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#121821",
+  "icons": [
+    {"src": "/web/app-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/web/app-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

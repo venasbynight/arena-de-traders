@@ -9,6 +9,11 @@ from tipos import Candle, Decisao, Pivo, Plano
 
 NOME = "Sofia SMC"
 ESTILO = "OB/FVG · tendência 60→5"
+# o que o painel de escolha do operacional mostra, em palavras do Diretor
+EXPLICA = [("Tempo gráfico", "tendência no 60 min, entrada no 5 min (nas ações: tendência no diário, entrada no 60)"),
+           ("Entrada", "ordem limitada no meio de um order block ou FVG, só a favor da tendência"),
+           ("Stop", "2 ticks além da zona"),
+           ("Alvo", "o primeiro topo ou fundo à frente (liquidez)")]
 # zona_min_atr: altura mínima da zona em amplitudes médias (0 = qualquer); alvo_r: o alvo é a primeira liquidez
 # (topo/fundo) além de alvo_r vezes o risco (0 = a mais próxima); horario: entradas só nessa janela (None = sempre);
 # entrada_frac: onde fica a limitada, da borda de perto (0) à de longe (1) da zona, 0,5 = meio; desconto: compra só

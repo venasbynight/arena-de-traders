@@ -6,6 +6,11 @@ from traders.sofia_smc import arredondar_tick
 
 NOME = "Caio Contrafluxo"
 ESTILO = "delta contra a tendência · S/R do dia"
+EXPLICA = [("Tempo gráfico", "tendência no 60 min, sinal no 5 min · só WDO e WIN (precisa do delta)"),
+           ("Entrada", "na resistência do dia, se alguém compra forte contra a tendência (delta acima de 7.500 no WDO, "
+                       "10.000 no WIN), ele vende; no suporte, o espelho"),
+           ("Stop", "4 ticks além do topo ou fundo"),
+           ("Alvo", "o topo ou fundo do outro lado do dia")]
 # limite do delta (contratos) por ativo. Grade = percentis 80, 90, 95 e 98 do |delta| por candle de 5 min, medidos
 # em 25/10/2026: WDO 5134, 7706, 10507, 14301 (83 pregões, 29/06 a 23/10); WIN 17949, 24943, 32326, 42248 (51
 # pregões, 12/08 a 23/10), arredondados. WIN parte dos 10.000 da regra; WDO, do percentil 90.

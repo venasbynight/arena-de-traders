@@ -1,33 +1,52 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TradeQuarters</title>
 <link rel="icon" href="/web/logo.png" type="image/png">
+<link rel="manifest" href="/web/manifest.json">
+<meta name="theme-color" content="#121821">
+<script>try { document.documentElement.dataset.tema = localStorage.getItem("tq.tema") || "carbono"; } catch {}</script>
 <link rel="stylesheet" href="/web/estilo.css">
+<link rel="stylesheet" href="/web/resultado.css">
+<link rel="stylesheet" href="/web/desenho.css">
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body class="vivo">
 <header>
-  <div class="logo"><img src="/web/logo.png" alt=""><img class="nome" src="/web/nome.png" alt="TradeQuarters"></div>
+  <div class="logo"><img src="/web/logo.png" alt=""><img class="nome" src="/web/nome.png" alt="TradeQuarters"><img class="nome nome-escuro" src="/web/nome-escuro.png" alt="TradeQuarters"></div>
   <div class="seg" id="modo"><button data-modo="backtest">Backtest</button><button class="sel" data-modo="vivo">Ao vivo</button></div>
-  <span class="pill">Contas simuladas · R$ 5.000 cada · dados: MT5 · Binance</span>
-  <a class="btn prim" href="/firma">Firma</a>
+  <button class="tema" id="tema" aria-haspopup="dialog" aria-expanded="false" title="Trocar o tema de cores"><span class="tema-amostra" aria-hidden="true"><i></i><i></i><i></i></span><span class="tema-txt"><small>Tema</small><b id="tema-nome">Neon Quarters</b></span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
+  <a class="jogar" href="/firma" title="Entrar na firma 3D">
+    <svg class="predio" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 3 29 10v13l-13 7-13-7V10z" fill="#0d3b4f"/><path d="M16 3 29 10 16 17 3 10z" fill="#1de9b6"/>
+      <path d="M3 10l13 7v13L3 23z" fill="#127a8a"/><path d="M29 10 16 17v13l13-7z" fill="#0f5a6e"/>
+      <g class="janelas" fill="#ffe08a"><rect x="6" y="15" width="3" height="3"/><rect x="11" y="18" width="3" height="3"/><rect x="6" y="20" width="3" height="3"/>
+      <rect x="19" y="18" width="3" height="3"/><rect x="24" y="15" width="3" height="3"/><rect x="24" y="20" width="3" height="3"/></g>
+    </svg>
+    <span class="txt">Entrar na Firma</span>
+    <span class="play" aria-hidden="true">▶</span>
+  </a>
 </header>
 
 <main id="vivo"></main>
 <aside id="lado-vivo">
-  <section class="card" style="flex:none"><h3><span>Ativos</span><span class="mut" id="vivo-hora"></span></h3><div id="vivo-ativos"></div></section>
-  <section class="card" style="flex:1;min-height:0"><h3><span>Placar da firma <span id="ciclo-vivo"></span></span><a class="lnk" href="/firma">abrir a firma →</a></h3><div id="vivo-placar"></div></section>
+  <section class="card card-ativos"><h3><span>Ativos</span><span class="mut" id="vivo-hora"></span></h3><div id="vivo-ativos"></div></section>
+  <section class="card card-placar"><h3><span>Placar da firma <span id="ciclo-vivo"></span></span><a class="lnk" href="/firma">abrir a firma →</a></h3><div id="vivo-placar"></div></section>
 </aside>
 
-<main id="grid"><div class="espera"><b>Sala de replay</b><span>calculando o backtest dos oito gráficos…</span></div></main>
+<div class="bt-resumo" id="bt-resumo" aria-live="off"></div>
+<main id="bt"><nav class="ferr" id="ferr-bt" aria-label="Ferramentas de desenho"></nav>
+  <div id="grid"><div class="espera"><b>Sala de replay</b><span>calculando o backtest dos oito gráficos…</span></div></div></main>
 
 <footer class="ctrl" id="replay">
+  <div class="aviso-data" id="aviso-data" role="status" hidden><span class="txt"></span><button aria-label="Fechar o aviso">✕</button></div>
   <div class="grp">
-    <label>De <input type="date" id="de"></label>
-    <label>até <input type="date" id="ate"></label>
+    <label>De <input type="hidden" id="de"><button class="data-btn" data-alvo="de" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4"/></svg><span></span></button></label>
+    <label>até <input type="hidden" id="ate"><button class="data-btn" data-alvo="ate" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4"/></svg><span></span></button></label>
+    <span class="info" id="info-dados" tabindex="0" aria-label="Período dos dados de cada ativo" aria-describedby="info-dica">i<div class="info-dica" id="info-dica" role="tooltip"></div></span>
     <button class="btn prim" id="rodar">Rodar</button>
   </div>
   <div class="grp transporte">
@@ -38,20 +57,18 @@
   <label class="vel">Velocidade <select id="vel"><option value="1">1x</option><option value="5">5x</option><option value="20" selected>20x</option><option value="100">100x</option></select></label>
   <input type="range" id="barra" min="0" max="0" value="0" disabled aria-label="Linha do tempo do replay">
   <div id="relogio" class="mut">escolha o período e clique em Rodar</div>
+  <div class="lay" id="bt-layout" role="group" aria-label="Gráficos na tela"><button data-layout="1" title="1 gráfico" aria-label="1 gráfico"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="1.5"/></svg></button><button data-layout="2" title="2 gráficos" aria-label="2 gráficos"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="1.5"/><path d="M10 3v14"/></svg></button><button data-layout="4" title="4 gráficos" aria-label="4 gráficos"><svg viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="1.5"/><path d="M10 3v14M3 10h14"/></svg></button><button data-layout="8" title="8 gráficos" aria-label="8 gráficos"><svg viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="1.5"/><path d="M6 4v12M10 4v12M14 4v12M2 10h16"/></svg></button></div>
+  <button class="btn diario-btn" id="abrir-diario" aria-expanded="false" aria-controls="gaveta">Diário <span class="badge" id="diario-novos" hidden></span></button>
 </footer>
 
-<aside id="lado-bt">
-  <section class="card" style="flex:none">
-    <h3><span>Placar do backtest</span><span id="placar-ate"></span></h3>
-    <table id="placar"><tr><th>Trader</th><th>Resultado</th><th>Trades</th><th>Acerto</th><th>Agora</th></tr></table>
-  </section>
-  <section class="card" style="flex:1;min-height:0">
-    <h3><span>O que cada um está fazendo</span><span id="diario-dia"></span></h3>
-    <div id="diario"></div>
-  </section>
-</aside>
+<section class="gaveta" id="gaveta" aria-label="Diário do backtest">
+  <div class="gv-top"><h3><span>Diário <span id="diario-dia" class="mut"></span></span></h3>
+    <button class="gv-x" id="fechar-diario" aria-label="Fechar o diário">✕</button></div>
+  <div id="diario"></div>
+</section>
 
 <section id="resultado"></section>
+<script src="/web/desenho.js"></script>
 <script src="/web/sala.js"></script>
 <script src="/web/resultado.js"></script>
 <script src="/web/vivo.js"></script>
