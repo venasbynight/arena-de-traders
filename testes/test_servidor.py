@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 import unittest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import urllib.error
 import urllib.request
 from unittest import mock
@@ -222,7 +222,7 @@ class TestServidor(unittest.TestCase):
                   "ranking": [], "pendencias": ["Genial sem dados"]}
         status, corpo = self._get_firma_com_estado(json.dumps(estado))
         self.assertEqual(status, 200)
-        self.assertEqual(json.loads(corpo), estado)  # servido como está, sem a chave "exemplo"
+        self.assertEqual(json.loads(corpo), {**estado, "grupos": servidor.traders.GRUPOS})  # servido como está, sem a chave "exemplo"
 
     def test_firma_estado_corrompido_vira_500(self):
         status, corpo = self._get_firma_com_estado('{"gerado_em": "2026-10-24T19:3')  # gravação pela metade
@@ -250,7 +250,7 @@ class TestServidor(unittest.TestCase):
             with mock.patch.multiple(servidor, ESTADO_FIRMA=caminho, RELATORIOS=rel):
                 status, corpo = self.get("/api/firma")
                 self.assertEqual(status, 200)
-                self.assertEqual(json.loads(corpo), {**estado, "relatorios": {
+                self.assertEqual(json.loads(corpo), {**estado, "grupos": servidor.traders.GRUPOS, "relatorios": {
                     "dia": "2026-10-25", "arquivos": ["eurusd-sofia-smc.html", "gerente.html"]}})
                 status, corpo = self.get("/relatorios/2026-10-25/gerente.html")
                 self.assertEqual((status, corpo), (200, "<html>2026-10-25 gerente.html</html>"))
@@ -352,7 +352,8 @@ class TestServidor(unittest.TestCase):
         status, corpo = self.get("/api/atividade")
         self.assertEqual(status, 200)
         ativ = json.loads(corpo)
-        self.assertEqual(sorted(ativ), ["atualizado", "gerente"])
+        self.assertEqual(sorted(ativ), ["atualizado", "gerente", "pesquisa"])
+        self.assertIsNone(ativ["pesquisa"])
         self.assertEqual(ativ["gerente"]["estado"], "ocioso")
         self.assertEqual((ativ["gerente"]["sala"], ativ["gerente"]["trader"]), (None, None))
         datetime.fromisoformat(ativ["gerente"]["desde"])
@@ -385,6 +386,71 @@ class TestServidor(unittest.TestCase):
             self.assertEqual(g["estado"] == "trabalhando", g["sala"] is not None)  # nunca um estado pela metade
         t.join()
         servidor.registrar_atividade(None, None)
+
+    def test_atividade_do_gerente_ganha_grupo_com_sala(self):
+        try:
+            servidor.registrar_atividade("PETR4", "Robô Alfa")
+            self.assertEqual(json.loads(self.get("/api/atividade")[1])["gerente"]["grupo"], "Brasil")
+            servidor.registrar_atividade("EURUSD", "Robô Alfa")
+            self.assertEqual(json.loads(self.get("/api/atividade")[1])["gerente"]["grupo"], "Global")
+            servidor.registrar_atividade(None, None)
+            self.assertNotIn("grupo", json.loads(self.get("/api/atividade")[1])["gerente"])
+        finally:
+            servidor.registrar_atividade(None, None)
+
+    def _com_estado(self, **arquivos):
+        """Pasta de estado falsa com os arquivos dados ({nome: dict}); servidor aponta para ela."""
+        pasta = tempfile.TemporaryDirectory()
+        self.addCleanup(pasta.cleanup)
+        for nome, conteudo in arquivos.items():
+            with open(os.path.join(pasta.name, nome + ".json"), "w", encoding="utf-8") as f:
+                json.dump(conteudo, f)
+        patch = mock.patch.multiple(servidor, ESTADO_ATIVIDADE_PESQUISA=os.path.join(pasta.name, "atividade_pesquisa.json"),
+                                    ESTADO_LABORATORIO=os.path.join(pasta.name, "laboratorio.json"))
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def _aviso(self, segundos_atras):
+        batida = servidor._agora()
+        return {"trader": "Didi Agulhada", "grupo": "Global", "ativo": "EURUSD", "n": 2, "total": 5, "rotulo": "v2",
+                "desde": "2026-10-26T09:00:00",
+                "batida": (datetime.fromisoformat(batida) - timedelta(seconds=segundos_atras)).isoformat(timespec="seconds")}
+
+    def test_atividade_mostra_a_pesquisa_em_andamento(self):
+        aviso = self._aviso(30)
+        self._com_estado(atividade_pesquisa=aviso)
+        p = json.loads(self.get("/api/atividade")[1])["pesquisa"]
+        self.assertEqual(p, {k: v for k, v in aviso.items() if k != "batida"})
+
+    def test_atividade_ignora_aviso_velho_ou_quebrado(self):
+        self._com_estado(atividade_pesquisa=self._aviso(300))
+        self.assertIsNone(json.loads(self.get("/api/atividade")[1])["pesquisa"])
+        self._com_estado(atividade_pesquisa={"trader": "x", "batida": "ontem"})
+        self.assertIsNone(json.loads(self.get("/api/atividade")[1])["pesquisa"])
+        self._com_estado()  # sem arquivo
+        self.assertIsNone(json.loads(self.get("/api/atividade")[1])["pesquisa"])
+
+    def test_laboratorio_vazio_e_cheio(self):
+        self._com_estado()
+        status, corpo = self.get("/api/laboratorio")
+        self.assertEqual((status, json.loads(corpo)), (200, {}))
+        quadro = {"titulo": "Rodada", "quando": "2026-10-26T10:00:00",
+                  "linhas": [{"trader": "Sofia SMC", "grupo": "Brasil", "ativo": "WDO", "tf": 5, "variante": "v1",
+                              "trades": 120, "resultado": 310.5, "pf": 1.2, "passou": True, "obs": ""}]}
+        self._com_estado(laboratorio=quadro)
+        self.assertEqual(json.loads(self.get("/api/laboratorio")[1]), quadro)
+
+    def test_firma_traz_os_grupos(self):
+        with mock.patch.multiple(servidor, ESTADO_FIRMA="nao-existe/firma.json"):  # o exemplo
+            exemplo = json.loads(self.get("/api/firma")[1])
+        self.assertIn("WDO", exemplo["grupos"]["Brasil"])
+        self.assertIn("EURUSD", exemplo["grupos"]["Global"])
+        with tempfile.TemporaryDirectory() as pasta:
+            real = os.path.join(pasta, "firma.json")
+            with open(real, "w", encoding="utf-8") as f:
+                json.dump({"dia": "2026-10-25", "salas": {}}, f)
+            with mock.patch.multiple(servidor, ESTADO_FIRMA=real, RELATORIOS=os.path.join(pasta, "r")):
+                self.assertEqual(json.loads(self.get("/api/firma")[1])["grupos"], servidor.traders.GRUPOS)
 
     # ---- /api/painel: mercado (cache em dados/) e placar dos traders (estado do gerente)
     def _painel(self, candles_por_ativo, estado):
