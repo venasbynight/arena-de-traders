@@ -1,0 +1,11 @@
+H7 gatilho vizinho folga_ticks=1         GBPUSD   5   162       360 PF 1.28 | est       272 PF 1.2 positiva [354, 9, -40, 37]
+H7 gatilho vizinho folga_ticks=1         USDJPY   5   147       200 PF 1.23 | est       150 PF 1.17 positiva [128, -81, 120, 33]
+H7 gatilho vizinho folga_ticks=3         GBPUSD   5   147       377 PF 1.31 | est       297 PF 1.23 positiva [384, 16, -43, 19]
+H7 gatilho vizinho folga_ticks=3         USDJPY   5   141       197 PF 1.23 | est       148 PF 1.17 positiva [124, -102, 139, 36]
+H7 gatilho vizinho zona_min_atr=0.25     GBPUSD   5    93       260 PF 1.28 | est       210 PF 1.22 inconclusivo [214, 30, 49, -32]
+H7 gatilho vizinho zona_min_atr=0.25     USDJPY   5    77       177 PF 1.34 | est       150 PF 1.28 inconclusivo [33, -91, 159, 77]
+H7 gatilho vizinho n=3                   GBPUSD   5   198      -127 PF 0.93 | est      -234 PF 0.88 negativa [251, -151, -102, -124]
+H7 gatilho vizinho n=3                   USDJPY   5   212       -32 PF 0.98 | est      -105 PF 0.93 negativa [35, -25, -31, -11]
+H7 gatilho vizinho dias_zona=2           GBPUSD   5   157       342 PF 1.26 | est       257 PF 1.19 positiva [368, 39, -49, -16]
+H7 gatilho vizinho dias_zona=2           USDJPY   5   155       153 PF 1.16 | est        99 PF 1.1 positiva [138, -97, 110, 3]
+262 s
