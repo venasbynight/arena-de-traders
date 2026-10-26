@@ -77,6 +77,10 @@ class Conta:
         # teste de estresse: cada entrada e cada saída executa `estresse_ticks` ticks pior (só no resultado;
         # os preços e o caminho das ordens ficam os mesmos)
         self.deslize = estresse_ticks * self.tick
+        # posição de vários dias (ações/opções no 60): "zerar_no_dia": false deixa a posição dormir; "max_pregoes": N
+        # sai por tempo no fechamento do N-ésimo pregão com ela aberta (o da entrada conta). Padrão: zera todo dia
+        regras = cfg.get("ativos", {}).get(ativo, {})
+        self.zerar, self.max_pregoes, self.pregoes = regras.get("zerar_no_dia", True), regras.get("max_pregoes"), 0
         self.saldo = float(cfg["capital"])
         self.pendentes, self.posicao, self.sair = [], None, False
         self.dia = {"data": None, "trades": 0, "stops": 0, "resultado": 0.0, "posicao_aberta": False}
@@ -132,9 +136,10 @@ class Conta:
         elif self.posicao:
             eventos += self._conferir_saida(c, candle_da_entrada=False)
         if ultimo_do_dia:
-            if self.posicao:
+            self.pregoes += self.posicao is not None
+            if self.posicao and (self.zerar or self.max_pregoes and self.pregoes >= self.max_pregoes):
                 sinal = 1 if self.posicao["lado"] == "compra" else -1
-                eventos += self._sair(c.c - sinal * self.tick, c.t, "zeragem")
+                eventos += self._sair(c.c - sinal * self.tick, c.t, "zeragem" if self.zerar else "tempo")
             eventos += [self._cancelada(o, c.t) for o in self.pendentes if o["tipo"] == "stop"]
             self.pendentes = []
             self.equity.append((c.t, round(self.saldo, 2)))
@@ -219,7 +224,7 @@ class Conta:
         self.dia["resultado"] += resultado
         self.dia["stops"] += motivo == "stop"
         self.dia["posicao_aberta"] = False
-        self.posicao, self.sair = None, False
+        self.posicao, self.sair, self.pregoes = None, False, 0
         return [self._ev(t, "saida", motivo=motivo, preco=preco, resultado_rs=resultado)]
 
 
@@ -302,6 +307,10 @@ def rodar_backtest(ativo, candles5, modulos_traders, cfg, minutos=5, estresse_ti
                 if novo(m.NOME, "ordens", [{k: v for k, v in e.items() if k != "t"} for e in evs]):
                     eventos[m.NOME] += evs
         ontem5 = hoje
+    for m, _, conta in mesa:  # posição de vários dias aberta quando os dados acabam: sai no último fechamento
+        if conta.posicao:
+            sinal = 1 if conta.posicao["lado"] == "compra" else -1
+            eventos[m.NOME] += conta._sair(c.c - sinal * conta.tick, c.t, "fim dos dados")
 
     return {"ativo": ativo,
             "candles": [[k.t.isoformat(), k.o, k.h, k.l, k.c] for k in candles5],

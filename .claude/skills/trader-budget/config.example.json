@@ -63,72 +63,84 @@
     },
     "PETR4": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "PETR4", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "VALE3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "VALE3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "ITUB4": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "ITUB4", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "BBDC4": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "BBDC4", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "AXIA3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "AXIA3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "BBAS3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "BBAS3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "SBSP3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "SBSP3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "PETR3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "PETR3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "EMBJ3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "EMBJ3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "PRIO3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "PRIO3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "RENT3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "RENT3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
     },
     "EQTL3": {
       "ponto_rs": 100, "tick": 0.01, "margem_por_contrato": 1000, "custo_por_contrato": 1.0, "tf": 60,
+      "zerar_no_dia": false, "max_pregoes": 10,
       "fonte": "mt5", "simbolo": "EQTL3", "terminal": "C:\\Program Files\\Genial Investimentos MetaTrader 5\\terminal64.exe",
       "fuso_servidor": "brasilia",
       "sessao": {"dias": [0, 1, 2, 3, 4], "inicio": "10:00", "fim": "17:00", "feriados_b3": true}
