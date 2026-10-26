@@ -44,8 +44,6 @@ kbd{display:inline-grid;place-items:center;min-width:21px;height:21px;padding:0 
   border:1px solid #2c3a4a;border-bottom-width:3px;font:700 11px "Segoe UI",system-ui,sans-serif}
 kbd.largo{min-width:34px}
 #dica li kbd:not(.ico kbd){height:19px;min-width:19px;margin:0 2px;font-size:10px}
-.botao-porta{width:16px;height:22px;border-radius:4px;background:#2b2f36;border:1px solid #3c4450;display:grid;place-items:center}
-.botao-porta::after{content:"";width:9px;height:9px;border-radius:50%;background:#3ddc5a;box-shadow:0 0 8px #3ddc5a}
 body.fp .so-cima,body:not(.fp) .so-fp{display:none}
 
 /* primeira pessoa */
@@ -89,5 +87,15 @@ td{padding:5px 4px;text-align:right;border-bottom:1px solid #18212c}th:first-chi
 .membro{display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-weight:600;font-size:14px}
 table.req td:last-child{white-space:nowrap}
 .pend{list-style:none;padding-left:2px}
+/* linhas de mercado (ficha do boneco, lousas): clique abre a ficha daquele mercado */
+.linha{display:flex;align-items:center;gap:8px;width:100%;margin:4px 0;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
+  background:#0f141b;color:var(--txt);font:12px "Segoe UI",system-ui,sans-serif;text-align:left;cursor:pointer}
+.linha:hover{border-color:var(--acc)}.linha:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.linha b{min-width:64px;font-size:13px}.linha .vai{margin-left:auto;color:var(--mut);font-size:16px}
+.linha.off{cursor:default;background:none}.linha.off:hover{border-color:var(--line)}
+.voltar{border:0;background:none;color:var(--acc);font:12px "Segoe UI",system-ui,sans-serif;cursor:pointer;margin:0 0 8px;padding:0}
+.voltar:hover{text-decoration:underline}
+.nota{margin-top:12px;font-size:12px}
+table.lab td,table.lab th{font-size:11px;padding:4px 3px}
 .up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.warn{color:var(--warn)}
 @media (max-width:700px){#dica{display:none}.hud .pill{display:none}}

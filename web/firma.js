@@ -1,5 +1,6 @@
-// Firma 3D: o escritório da arena no estilo The Sims — uma sala por mercado, o hall do gerente
-// e a Diretoria. Tudo procedural (caixas e cilindros) e texturas desenhadas em canvas.
+// Firma 3D: o escritório da arena no estilo The Sims — uma sala por operacional (dois bonecos cada: Brasil e
+// Global), a Sala da Demo, o Laboratório, o hall do gerente e a Diretoria. Tudo procedural (caixas e cilindros)
+// e texturas desenhadas em canvas.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
@@ -15,19 +16,33 @@ export const PLANTA = {
   corte: 1.0,  // altura das "paredes baixas" na câmera de cima
   hall: { nome: "Hall", x: 0, z: 0, w: 12, d: 8 },
   salas: {
-    WDO:       { nome: "Mini-dólar",  x: -4, z: -7, w: 8, d: 6, porta: [-2, -4], cor: "#5b8bd9" },
-    WIN:       { nome: "Mini-índice", x: 4,  z: -7, w: 8, d: 6, porta: [2, -4],  cor: "#4fae7b" },
-    EURUSD:    { nome: "Forex",       x: -4, z: 7,  w: 8, d: 6, porta: [-2, 4],  cor: "#8f6fd6" },
-    BTCUSDT:   { nome: "Bitcoin",     x: 4,  z: 7,  w: 8, d: 6, porta: [2, 4],   cor: "#e39a3b" },
+    SOFIA:     { nome: "Sala da Sofia", x: -4, z: -7, w: 8, d: 6, porta: [-2, -4], cor: "#5b8bd9" },
+    DIDI:      { nome: "Sala do Didi",  x: 4,  z: -7, w: 8, d: 6, porta: [2, -4],  cor: "#4fae7b" },
+    CAIO:      { nome: "Sala do Caio",  x: -4, z: 7,  w: 8, d: 6, porta: [-2, 4],  cor: "#8f6fd6" },
+    DEMO:      { nome: "Sala da Demo",  x: 4,  z: 7,  w: 8, d: 6, porta: [2, 4],   cor: "#e39a3b" },
     DIRETORIA: { nome: "Diretoria",   x: 10, z: 0,  w: 8, d: 6, porta: [6, 0],   cor: "#a24d5e" },
-    // ala oeste: descanso (noroeste), corredor (liga a entrada ao hall) e a sala de Ações/Opções (sudoeste)
+    // ala oeste: descanso (noroeste), corredor (liga a entrada ao hall) e o Laboratório (sudoeste)
     DESCANSO:  { nome: "Descanso e jogos", x: -12, z: -7, w: 8, d: 6, porta: [-12, -4], cor: "#2fa3a0", piso: "taco" },
     CORREDOR:  { nome: "Corredor",    x: -11, z: 0,  w: 10, d: 8, porta: [-6, 0], cor: "#9aa5b1", piso: "porcelanato" },
-    OPCOES:    { nome: "Ações / Opções", x: -12, z: 7, w: 8, d: 6, porta: [-12, 4], cor: "#cf6a87" },
+    LAB:       { nome: "Laboratório", x: -12, z: 7, w: 8, d: 6, porta: [-12, 4], cor: "#cf6a87" },
   },
 };
-const MERCADOS = ["WDO", "WIN", "EURUSD", "BTCUSDT"];
-const EQUIPES = [...MERCADOS, "OPCOES"];   // salas com mesas e quadro de status
+// Os operacionais e os dois bonecos de cada um: "Sofia · Brasil" (B3: WDO, WIN, ações) e "Sofia · Global" (forex,
+// cripto). Mesmo rosto e cabelo; a roupa em dois tons. O trader do estado ("Sofia SMC") acha o seu pelo primeiro nome.
+const OPERACIONAIS = {
+  SOFIA: { nome: "Sofia", pele: "#f1c7a5", cabelo: "#3b2a20", corte: "longo", roupa: { Brasil: ["#c2456b", "#2d3440"], Global: ["#f08fb0", "#3d4a5c"] } },
+  DIDI:  { nome: "Didi",  pele: "#c98e63", cabelo: "#1d1712", corte: "curto", roupa: { Brasil: ["#3f6fd1", "#4a3b2c"], Global: ["#8fb4f5", "#3a4a40"] } },
+  CAIO:  { nome: "Caio",  pele: "#8d5a3b", cabelo: "#121010", corte: "curto", roupa: { Brasil: ["#d9822b", "#2e2a3a"], Global: ["#f2c46d", "#3a3550"] } },
+};
+const OPS = Object.keys(OPERACIONAIS), GRUPOS_FIRMA = ["Brasil", "Global"];
+const opDoTrader = nome => OPS.find(k => OPERACIONAIS[k].nome.toLowerCase() === String(nome ?? "").split(" ")[0].toLowerCase());
+// espelho de traders.GRUPOS (Python) para quando /api/firma ainda não traz `grupos`; fora do Brasil é Global
+const GRUPOS_PADRAO = { Brasil: ["WDO", "WIN", "PETR4", "VALE3", "ITUB4", "BBDC4", "AXIA3", "BBAS3", "SBSP3", "PETR3", "EMBJ3", "PRIO3", "RENT3", "EQTL3"] };
+const grupoDo = ativo => ((Array.isArray(firma.estado?.grupos?.Brasil) ? firma.estado.grupos.Brasil : GRUPOS_PADRAO.Brasil).includes(ativo) ? "Brasil" : "Global");
+// as duas telas de cada mesa: Brasil = futuros | ações, Global = forex | cripto
+const TELAS_GRUPO = { Brasil: ["B3 · futuros", "B3 · ações"], Global: ["Forex", "Cripto"] };
+const telaDoAtivo = ativo => grupoDo(ativo) === "Brasil" ? (["WDO", "WIN"].includes(ativo) ? 0 : 1) : (/USDT?$/.test(ativo) && !/^[A-Z]{6}$/.test(ativo) ? 1 : 0);
+const SALAS_OP = [...OPS, "DEMO", "LAB"];   // salas com mesas e quadro de status
 
 // paredes pela linha de centro; ext = normal da face externa (null = parede interna).
 // aberturas: j = janela, p = porta aberta, e = porta de entrada (fechada); número = centro ao longo da parede
@@ -1025,29 +1040,20 @@ function luzSala(x, z, intensidade = 7) {
   cena.add(l);
 }
 
-// tela de parede com o nome do mercado (fica nas fachadas do fundo)
-function texPlacaSala(ativo, s) {
+// tela de parede com o nome da sala (fica nas fachadas do fundo)
+function texPlacaSala(titulo, sub, cor) {
   return canvasTex(512, 256, (g, w, h) => {
     g.fillStyle = "#0b0f14"; g.fillRect(0, 0, w, h);
-    g.fillStyle = s.cor; g.fillRect(0, 0, w, 10);
-    g.fillStyle = "#e6edf3"; g.font = "700 76px Segoe UI, sans-serif"; g.fillText(ativo, 28, 110);
-    g.fillStyle = s.cor; g.font = "500 42px Segoe UI, sans-serif"; g.fillText(s.nome, 30, 175);
-    g.strokeStyle = s.cor; g.lineWidth = 4; g.beginPath();
+    g.fillStyle = cor; g.fillRect(0, 0, w, 10);
+    g.fillStyle = "#e6edf3"; g.font = "700 76px Segoe UI, sans-serif"; g.fillText(titulo, 28, 110, w - 56);
+    g.fillStyle = cor; g.font = "500 42px Segoe UI, sans-serif"; g.fillText(sub, 30, 175, w - 60);
+    g.strokeStyle = cor; g.lineWidth = 4; g.beginPath();
     for (let k = 0; k < 12; k++) g.lineTo(300 + k * 18, 200 - Math.sin(k * 1.3) * 18 - k * 4);
     g.stroke();
   });
 }
 
 // ---------------------------------------------------------------- bonecos
-const PALETAS = [
-  { pele: "#f1c7a5", cabelo: "#3b2a20", camisa: "#3f7fd9", calca: "#2d3440" },
-  { pele: "#c98e63", cabelo: "#1d1712", camisa: "#e9ecef", calca: "#4a3b2c" },
-  { pele: "#8d5a3b", cabelo: "#121010", camisa: "#d65a7a", calca: "#2e2a3a" },
-  { pele: "#f3d2b8", cabelo: "#c9893a", camisa: "#3fa37a", calca: "#39404d" },
-  { pele: "#e0ac85", cabelo: "#6b3b22", camisa: "#f0b429", calca: "#33363f" },
-  { pele: "#a86f4c", cabelo: "#2a2a2a", camisa: "#8a6bd8", calca: "#22303f" },
-];
-const CABELO = { "Sofia SMC": "longo" };   // quem não está aqui usa "curto"
 
 // boneco articulado (≈1,85 m em pé): origem no chão sob o quadril, olhando para +z. Nasce sentado à mesa
 // (quadril a 0,575 m, coxas na horizontal); `posar` troca a pose (em pé, andando, sofá, café...).
@@ -1180,7 +1186,6 @@ function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
 // rótulo compacto de quem está ocioso (câmera de cima): "Sofia SMC · WIN" numa linha; pausado ganha "pausado" em
 // vermelho embaixo. O canvas tem a largura do texto. Subido `linhas` acima da cabeça (para não cobrir outro rótulo),
 // ganha uma haste até a cabeça do dono.
-const SIGLA = { WDO: "WDO", WIN: "WIN", EURUSD: "EUR", BTCUSDT: "BTC", OPCOES: "OPÇÕES" };
 const PX_MINI = 0.36;   // px de tela por px de canvas: o compacto tem tamanho fixo na tela (texto de ~14 px), perto ou longe
 const VAO_MINI = 6;     // px de tela entre duas linhas de rótulos
 const medidor = document.createElement("canvas").getContext("2d");
@@ -1207,7 +1212,7 @@ function texMini(titulo, pausado, corBorda, linhas = 0) {
 // ---------------------------------------------------------------- salas
 const dinamicos = [];   // objetos refeitos a cada atualização do estado
 const clicaveis = [];   // bonecos e rótulos que abrem o painel
-const salas = {};       // ATIVO → {def, estacoes, traders}
+const salas = {};       // SOFIA | DIDI | CAIO | DEMO | LAB → {def, estacoes, quadro}
 
 // vaga nomeada num ponto local (x, z, giro) do grupo g, convertida para o mundo
 const pontoVaga = new THREE.Object3D(), posVaga = new THREE.Vector3(), quatVaga = new THREE.Quaternion(), giroVaga = new THREE.Euler();
@@ -1222,42 +1227,113 @@ function vaga(tipo, g, x, z, rot, pose) {
   return { tipo, pos: [r(posVaga.x), r(posVaga.z)], rot: Math.round(y * 1000) / 1000, pose };
 }
 
-// estação de trabalho: mesa, monitor, teclado, caneca, cadeira e lixeira; o trader senta em z = -0.78
-function estacao(pai, x, z, rot, corCaneca) {
-  const g = grupo(pai, x, z, rot);
-  mesa(g, 1.4, 0.7);
-  const tela = monitor(g, 0, 0.16);
-  teclado(g, -0.05, -0.17);
-  caneca(g, 0.52, -0.05, corCaneca);
-  const assento = cadeira(g, 0, -0.52);   // empurrada para baixo da mesa; o trader a puxa (−0,78) ao sentar
-  lixeira(g, 0.88, -0.5);
-  return { grupo: g, tela, cadeira: assento, vaga: vaga("mesa", g, 0, -0.78, 0, "sentado"), puxada: -0.78, guardada: -0.52 };
+// bandeirinha do Brasil (mesa Brasil) e globo (mesa Global), enfeites de mesa
+const texBandeira = canvasTex(200, 140, (g, w, h) => {
+  g.fillStyle = "#009c3b"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#ffdf00"; g.beginPath(); g.moveTo(w / 2, 14); g.lineTo(w - 14, h / 2); g.lineTo(w / 2, h - 14); g.lineTo(14, h / 2); g.fill();
+  g.fillStyle = "#002776"; g.beginPath(); g.arc(w / 2, h / 2, 33, 0, 7); g.fill();
+  g.strokeStyle = "#ffffff"; g.lineWidth = 6; g.beginPath(); g.arc(w / 2 + 6, h / 2 + 60, 66, -2.2, -0.95); g.stroke();
+  g.fillStyle = "#ffffff"; for (const [x, y] of [[88, 84], [104, 92], [116, 80], [96, 98], [110, 100]]) g.fillRect(x, y, 3, 3);
+});
+const texGlobo = canvasTex(256, 128, (g, w, h) => {
+  const mar = g.createLinearGradient(0, 0, 0, h);
+  mar.addColorStop(0, "#5aa3e0"); mar.addColorStop(0.5, "#2f78c4"); mar.addColorStop(1, "#5aa3e0");
+  g.fillStyle = mar; g.fillRect(0, 0, w, h);
+  // continentes aproximados (equirretangular): Américas, Europa/África, Ásia, Austrália
+  for (const [x, y, rx, ry, c] of [[52, 34, 20, 14, "#6fae4f"], [64, 50, 10, 10, "#6fae4f"], [78, 82, 11, 22, "#5f9e44"], [132, 34, 13, 9, "#7cb85a"],
+    [138, 70, 15, 22, "#c9b27a"], [182, 38, 34, 15, "#6fae4f"], [196, 60, 14, 10, "#c9b27a"], [218, 92, 12, 8, "#c9b27a"], [128, 120, 128, 6, "#eef3f6"]]) {
+    g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill();
+  }
+  ruido(g, w, h, 10);
+});
+function bandeirinha(g, x, z) {
+  cilindro(g, 0.045, 0.055, 0.02, M.metal, x, 0.76, z, 12);
+  cilindro(g, 0.006, 0.006, 0.36, M.cromo, x, 0.93, z, 6);
+  const f = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.154), new THREE.MeshStandardMaterial({ map: texBandeira, roughness: 0.8, side: THREE.DoubleSide }));
+  f.position.set(x - 0.11, 1.03, z);
+  f.rotation.y = Math.PI - 0.25;   // de frente para a câmera, levemente virada como pano
+  f.castShadow = true;
+  g.add(f);
+}
+function globo(g, x, z) {
+  cilindro(g, 0.07, 0.085, 0.025, M.madeiraEscura, x, 0.7625, z, 16);
+  cilindro(g, 0.009, 0.009, 0.07, M.ouro, x, 0.81, z, 6);
+  const esfera = new THREE.Mesh(new THREE.SphereGeometry(0.1, 24, 16), new THREE.MeshStandardMaterial({ map: texGlobo, roughness: 0.45 }));
+  esfera.position.set(x, 0.94, z);
+  esfera.rotation.set(0, 2.2, 0.41);
+  esfera.castShadow = true;
+  g.add(esfera);
+  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.006, 6, 28, Math.PI * 1.15), M.ouro);
+  anel.position.set(x, 0.94, z);
+  anel.rotation.set(0, Math.PI / 2, 0.41 - 0.5);
+  anel.castShadow = true;
+  g.add(anel);
 }
 
+// estação de trabalho: mesa, monitores (dx de cada um; dois ficam virados para quem senta), teclado, caneca, cadeira,
+// lixeira e o enfeite do grupo; o trader senta em z = -0.78
+function estacao(pai, x, z, rot, corCaneca, { telas: dxs = [0], enfeite = null, largura = 1.4 } = {}) {
+  const g = grupo(pai, x, z, rot);
+  mesa(g, largura, 0.7);
+  const telas = dxs.map(dx => dx ? monitor(grupo(g, dx, 0.16, Math.sign(dx) * 0.22), 0, 0) : monitor(g, 0, 0.16));
+  teclado(g, -0.05, -0.17);
+  caneca(g, enfeite ? -largura / 2 + 0.2 : largura / 2 - 0.2, -0.12, corCaneca);
+  if (enfeite === "bandeira") bandeirinha(g, largura / 2 - 0.12, -0.2);
+  if (enfeite === "globo") globo(g, largura / 2 - 0.14, -0.18);
+  const assento = cadeira(g, 0, -0.52);   // empurrada para baixo da mesa; o trader a puxa (−0,78) ao sentar
+  lixeira(g, largura / 2 + 0.18, -0.5);
+  return { grupo: g, telas, cadeira: assento, vaga: vaga("mesa", g, 0, -0.78, 0, "sentado"), puxada: -0.78, guardada: -0.52 };
+}
+
+// rack de servidores do Laboratório: porta escura com os LEDs piscando (verde, âmbar, azul)
+const LEDS = ["#3ddc5a", "#f0b429", "#4cc3ff"].map(c => new THREE.MeshBasicMaterial({ color: c, toneMapped: false }));
+function rack(pai, x, z, rot) {
+  const g = grupo(pai, x, z, rot);
+  caixa(g, 0.6, 1.9, 0.62, mat("#262b33", { roughness: 0.45, metalness: 0.4 }), 0, 0.95, 0);
+  caixa(g, 0.52, 1.76, 0.012, mat("#12161c", { roughness: 0.15 }), 0, 0.97, 0.31);
+  for (let k = 0; k < 12; k++) {
+    const y = 0.24 + k * 0.135;
+    caixa(g, 0.46, 0.1, 0.01, mat("#323944"), 0, y, 0.318);
+    for (let n = 0; n < 3; n++) caixa(g, 0.022, 0.014, 0.006, LEDS[(k + n) % 3], -0.19 + n * 0.035, y + 0.02, 0.325).castShadow = false;
+  }
+  return g;
+}
+
+// Salas com mesas e lousa: as três dos operacionais (mesa Brasil à esquerda, Global à direita, duas telas cada), a Demo
+// (uma mesa por boneco promovido num mercado; três mesas prontas) e o Laboratório (a mesa onde o gerente acompanha os
+// testes e os servidores).
 const CORES_CANECA = ["#ffffff", "#ef5350", "#4c8dff", "#f0b429", "#26a69a"];
-EQUIPES.forEach((ativo, i) => {   // OPCOES ganha as mesmas mesas (monitores apagados) e o seu quadro
-  const s = PLANTA.salas[ativo], norte = s.z < 0;
+SALAS_OP.forEach((chave, i) => {
+  const s = PLANTA.salas[chave], norte = s.z < 0, op = OPERACIONAIS[chave];
   const fundo = norte ? s.z - s.d / 2 : s.z + s.d / 2;     // fachada do fundo
-  const ext = [0, norte ? -1 : 1];
-  const estacoes = [-2.6, 0, 2.6].map((dx, k) =>
-    estacao(predio, s.x + dx, s.z + (norte ? -1.0 : 0.1), Math.PI, CORES_CANECA[(i + k) % 5]));
+  const ext = [0, norte ? -1 : 1], zMesa = s.z + (norte ? -1.0 : 0.1);
+  const estacoes = op ? GRUPOS_FIRMA.map((gr, k) => estacao(predio, s.x + (k ? 1.5 : -1.5), zMesa, Math.PI, CORES_CANECA[(i + k) % 5],
+      { telas: [-0.34, 0.34], enfeite: k ? "globo" : "bandeira", largura: 1.6 }))
+    : chave === "DEMO" ? [-2.6, 0, 2.6].map((dx, k) => estacao(predio, s.x + dx, zMesa, Math.PI, CORES_CANECA[(i + k) % 5]))
+    : [estacao(predio, s.x - 0.6, s.z + 0.3, Math.PI, "#4c8dff", { telas: [-0.34, 0.34], largura: 1.6 })];
   planta(predio, s.x - s.w / 2 + 0.45, fundo - ext[1] * 0.45);
   planta(predio, s.x + s.w / 2 - 0.45, fundo - ext[1] * 0.45, false);
   const lado = s.x < 0 ? -1 : 1;                           // parede lateral externa
   armarioBaixo(predio, s.x + lado * (s.w / 2 - 0.33), s.z + (norte ? 1.75 : -1.75), -lado * Math.PI / 2);
   planta(predio, s.x - lado * (s.w / 2 - 0.45), s.z - ext[1] * 2.4, false);
-  quadroParede(s.x, 1.65, fundo, ext, 1.3, 0.65, texPlacaSala(ativo === "OPCOES" ? "OPÇÕES" : ativo, s));
-  // mesinha de reunião no canto livre e lousa de status encostada na divisória, virada para as mesas
+  const [titulo, sub] = op ? [op.nome, "Brasil · Global"] : chave === "DEMO" ? ["Demo", "promovidos"] : ["Laboratório", "testes · opções"];
+  quadroParede(s.x, 1.65, fundo, ext, 1.3, 0.65, texPlacaSala(titulo, sub, s.cor));
+  // mesinha de reunião no canto livre e lousa de status encostada na divisória; no Laboratório, os servidores ao lado da
+  // lousa e a estante de livros de mercado junto da porta
   mesaReuniao(predio, s.x + lado * 2.3, s.z + (norte ? 1.6 : 2.0), norte ? 0 : Math.PI / 2);
-  const quadro = quadroStatus(predio, s.x - lado * (s.w / 2 - 0.35), s.z + (norte ? 1.0 : -1.0), lado * Math.PI / 2, ativo);
+  if (chave === "LAB") {
+    for (const dz of [0.9, 1.55]) rack(predio, s.x + s.w / 2 - 0.42, s.z + dz, -Math.PI / 2);
+    estante(predio, s.x - 2.2, s.z - s.d / 2 + 0.3, 0);
+  }
+  const quadro = quadroStatus(predio, s.x - lado * (s.w / 2 - 0.35), s.z + (norte ? 1.0 : -1.0), lado * Math.PI / 2, chave);
   quadroParede(s.x + lado * s.w / 2, 1.6, s.z + (norte ? 1.75 : -1.75), [lado, 0], 0.7, 0.5, ARTES[i % 3]);
   luminaria(s.x - 2, s.z); luminaria(s.x + 2, s.z);
   luzSala(s.x, s.z);
-  salas[ativo] = { def: s, estacoes, traders: [], quadro };
+  salas[chave] = { def: s, estacoes, quadro };
 });
-const placaOpcoes = rotulo("Ações / Opções", "OPCOES · sem tarefa · aguardando o Diretor", "#f0b429", PLANTA.salas.OPCOES.cor);
-placaOpcoes.position.set(-12, 2.2, 4.5);
-predio.add(placaOpcoes);
+const placaLab = rotulo("Laboratório", "nenhum teste agora", "#8b98a5", PLANTA.salas.LAB.cor);
+placaLab.position.set(-12, 2.2, 4.5);
+predio.add(placaLab);
 
 // hall: mesa do gerente, quadro de ranking, sala de espera, bebedouro e plantas
 tapete(predio, 0, 0.5, 4, 2.6);
@@ -1396,8 +1472,8 @@ const par = (x, z, meio = 0.45) => [{ pos: [+(x - meio).toFixed(2), z], rot: 1.5
 VAGAS_CONVERSA.push(par(-14.0, -1.9, 0.62), par(-9.6, 2.0, 0.62), par(-9.6, -2.2));
 
 // ---------------------------------------------------------------- lado de fora: porta de entrada, cafeteria e praça
-// Porta da fachada oeste: abre para fora na dobradiça norte. O botão ao lado do batente (dentro e fora) ou a própria
-// porta abre e fecha; fechada, ela segura a primeira pessoa (`bate`) e a grade dos bonecos (`livre`).
+// Porta da fachada oeste: abre para fora na dobradiça norte. Só o E da primeira pessoa (mirando nela) abre e fecha; de
+// cima ela não é clicável. Fechada, segura a primeira pessoa (`bate`) e a grade dos bonecos (`livre`).
 const portaEntrada = { aberta: false, angulo: 0, g: grupo(cena, -16, -PLANTA.porta / 2) };
 caixa(portaEntrada.g, 0.06, 2.1, PLANTA.porta, mat("#6e4a2f", { roughness: 0.5 }), 0, 1.05, PLANTA.porta / 2);
 caixa(portaEntrada.g, 0.08, 0.9, PLANTA.porta - 0.4, M.vidro, 0, 1.45, PLANTA.porta / 2);
@@ -1405,15 +1481,6 @@ for (const s of [-1, 1]) caixa(portaEntrada.g, 0.05, 0.03, 0.14, M.cromo, s * 0.
 portaEntrada.g.userData.alvo = "porta";
 clicaveis.push(portaEntrada.g);
 pecas.push({ m: portaEntrada.g, porta: true, y0: 0, y1: 2.1, ext: [-1, 0], centro: [-16, 0] });   // desce com o recorte
-for (const lado of [1, -1]) {   // 1 = dentro (face +x), −1 = fora
-  const b = grupo(cena, -16 + lado * (PLANTA.espessura / 2 + 0.012), 0.95, lado * Math.PI / 2);
-  b.position.y = 1.15;
-  caixa(b, 0.11, 0.17, 0.02, mat("#2b2f36"), 0, 0, 0);
-  cilindro(b, 0.032, 0.032, 0.02, mat("#3ddc5a", { emissive: "#2bbf47", emissiveIntensity: 0.8 }), 0, 0.02, 0.015, 16).rotation.x = Math.PI / 2;
-  b.userData.alvo = "porta";
-  clicaveis.push(b);
-  pecas.push({ m: b, y0: 1.06, y1: 1.24, ext: [-1, 0], centro: [-16, 0], inteira: true });
-}
 
 // tudo que fica na grama: o chão de fora está 15,5 cm abaixo do piso do prédio (os bonecos acompanham, ver `chao`)
 const CHAO_FORA = -0.155;
@@ -1547,7 +1614,7 @@ function texCurva(t) {
     g.fillStyle = "#0b0f14"; g.fillRect(0, 0, w, h);
     const v = (t.equity || []).map(p => p[1]);
     const final = v.at(-1) ?? 5000, cor = final >= 5000 ? "#26a69a" : "#ef5350";
-    g.fillStyle = "#e6edf3"; g.font = "600 22px Segoe UI, sans-serif"; g.fillText(t.nome, 12, 28);
+    g.fillStyle = "#e6edf3"; g.font = "600 22px Segoe UI, sans-serif"; g.fillText(t.nome, 12, 28, w - 120);
     g.fillStyle = cor; g.font = "600 20px Segoe UI, sans-serif"; g.textAlign = "right";
     g.fillText(brl(final - 5000), w - 12, 28); g.textAlign = "left";
     if (v.length < 2) return;
@@ -1561,28 +1628,41 @@ function texCurva(t) {
   });
 }
 
-// ---- quadro de status de cada equipe (lousa 3D e painel lateral usam o mesmo resumo)
-const AGUARDANDO = "aguardando próximo ciclo do gerente";
+// ---- bonecos e lousas (a lousa 3D e o painel lateral usam os mesmos dados)
 const PENDENCIAS_OPCOES = ["como escolher a opção (call/put, strike, vencimento)", "quais ações acompanhar",
   "quais operacionais usar no 60 min", "fonte de dados das opções (MT5 Genial?)", "regra de saída e tamanho da posição"];
 const objeto = x => !!x && typeof x === "object" && !Array.isArray(x);
 // traders que se leem: objeto com nome; status fora de STATUS vira "—" (nada de "undefined" no quadro)
 const tradersValidos = d => (Array.isArray(d?.traders) ? d.traders : []).filter(t => objeto(t) && t.nome)
   .map(t => ({ ...t, status: STATUS[t.status] ? t.status : null }));
-function statusEquipe(chave, estado) {
-  const d = estado?.salas?.[chave];
-  if (chave === "OPCOES") return {
-    titulo: "Equipe Opções · status", resumo: `sem tarefa · ${d?.motivo || "aguardando definição do Diretor"}`, tom: "warn",
-    traders: tradersValidos(d).map(t => ({ ...t, requisitos: null })),
-    pendencias: d?.pendencias?.length ? d.pendencias : PENDENCIAS_OPCOES,
-  };
-  const base = { titulo: `Equipe ${chave} · status`, pendencias: null };
-  if (d?.status !== "ok") return { ...base, resumo: "aguardando dados" + (d?.motivo ? `: ${d.motivo}` : ""), tom: "warn", traders: [] };
-  const traders = tradersValidos(d).map(t => ({ ...t, requisitos: Array.isArray(t.requisitos) ? t.requisitos.filter(objeto) : null }));
-  if (!traders.some(t => t.requisitos)) return { ...base, resumo: AGUARDANDO, tom: "warn", traders };
-  const n = traders.filter(t => t.requisitos?.length && t.requisitos.every(r => r.ok)).length;
-  return { ...base, traders, resumo: n ? `${n} pronto${n > 1 ? "s" : ""} para a demo` : "ninguém pronto para a demo", tom: n ? "up" : "dn" };
+const ORDEM = { promovido: 3, experiencia: 2, pausado: 1 };   // o status do boneco é o melhor entre os mercados dele
+const reqs = t => Array.isArray(t.requisitos) ? t.requisitos.filter(objeto) : [];
+const nReq = t => { const r = reqs(t); return r.length ? `${r.filter(x => x.ok).length} de ${r.length} requisitos` : "requisitos no próximo ciclo"; };
+const corTexto = c => c === "#f0b429" ? "#b7791f" : c;   // o amarelo do status não se lê no quadro branco
+// Boneco = (operacional, grupo): os mercados do grupo em que o trader dele foi avaliado (estado.salas[ATIVO]), os
+// mercados do grupo ainda sem dados e o melhor status. Chave "SOFIA:Brasil".
+function montarBonecos(estado) {
+  const out = {};
+  for (const op of OPS) for (const gr of GRUPOS_FIRMA) out[`${op}:${gr}`] = { boneco: true, op, grupo: gr, sala: op,
+    nome: `${OPERACIONAIS[op].nome} · ${gr}`, mercados: [], aguardando: [], status: null };
+  for (const [ativo, d] of Object.entries(objeto(estado?.salas) ? estado.salas : {})) {
+    if (ativo === "OPCOES" || !objeto(d)) continue;   // OPCOES é a lousa de pendências do Laboratório
+    const gr = grupoDo(ativo);
+    if (d.status !== "ok") { for (const op of OPS) out[`${op}:${gr}`].aguardando.push({ ativo, motivo: d.motivo || "" }); continue; }
+    for (const t of tradersValidos(d)) {
+      const op = opDoTrader(t.nome);
+      if (op) out[`${op}:${gr}`].mercados.push({ ...t, ativo, op, grupo: gr, mercado: true });
+    }
+  }
+  for (const b of Object.values(out)) b.status = b.mercados.reduce((m, t) => (ORDEM[t.status] || 0) > (ORDEM[m] || 0) ? t.status : m, null);
+  return out;
 }
+let bonecos = montarBonecos(null), laboratorio = {};
+const promovidos = () => Object.values(bonecos).flatMap(b => b.mercados.filter(t => t.status === "promovido").map(t => ({ ...t, dono: b.nome })));
+const pendenciasOpcoes = estado => { const p = estado?.salas?.OPCOES?.pendencias; return Array.isArray(p) && p.length ? p : PENDENCIAS_OPCOES; };
+const linhasLab = () => (Array.isArray(laboratorio?.linhas) ? laboratorio.linhas : []).filter(objeto);
+const quemLab = l => `${OPERACIONAIS[opDoTrader(l.trader)]?.nome ?? l.trader ?? "—"} · ${l.grupo || grupoDo(l.ativo)}`;
+const numero = (v, casas = 2) => typeof v === "number" ? v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) : "—";
 
 function quebrar(g, texto, larg) {   // linhas que cabem em `larg` px com a fonte atual
   const linhas = [];
@@ -1595,75 +1675,162 @@ function quebrar(g, texto, larg) {   // linhas que cabem em `larg` px com a font
 }
 
 const FONTE = "Segoe UI, sans-serif", EMOJI = "Segoe UI Emoji, Segoe UI Symbol, sans-serif";
-function texQuadroStatus(chave, estado) {
-  const st = statusEquipe(chave, estado), cor = PLANTA.salas[chave].cor;
+const TOM = { up: "#1b8a5a", dn: "#c0392b", warn: "#b7791f", mut: "#6a737d" };
+const quando = iso => { const d = new Date(iso); return iso && !isNaN(d) ? d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""; };
+const rodapeGerente = estado => estado?.gerado_em ? `atualizado pelo gerente: ${quando(estado.gerado_em)}` : "sem ciclo do gerente";
+
+// moldura das lousas: quadro branco com marcas de apagador, faixa da cor da sala, título, resumo, risco e rodapé
+function lousa(chave, titulo, resumo, tom, rodape, desenhar) {
   return canvasTex(1024, 768, (g, w, h) => {
     const fundo = g.createLinearGradient(0, 0, w, h);
     fundo.addColorStop(0, "#ffffff"); fundo.addColorStop(1, "#e9edf0");
     g.fillStyle = fundo; g.fillRect(0, 0, w, h);
-    g.fillStyle = "rgba(120,130,140,.05)";   // marcas de apagador
+    g.fillStyle = "rgba(120,130,140,.05)";
     [[180, 600, 160], [760, 120, 120], [520, 700, 200], [880, 520, 110]].forEach(([x, y, r]) => { g.beginPath(); g.ellipse(x, y, r, r * 0.22, -0.2, 0, 7); g.fill(); });
-    g.fillStyle = cor; g.fillRect(38, 28, 12, 60);
-    g.fillStyle = "#1d3f7a"; g.font = `700 50px ${FONTE}`; g.fillText(st.titulo, 66, 74, w - 110);
-    g.fillStyle = { up: "#1b8a5a", dn: "#c0392b", warn: "#b7791f" }[st.tom]; g.font = `700 32px ${FONTE}`; g.fillText(st.resumo, 66, 118, w - 110);
+    g.fillStyle = PLANTA.salas[chave].cor; g.fillRect(38, 28, 12, 60);
+    g.fillStyle = "#1d3f7a"; g.font = `700 50px ${FONTE}`; g.fillText(titulo, 66, 74, w - 110);
+    g.fillStyle = TOM[tom]; g.font = `700 32px ${FONTE}`; g.fillText(resumo, 66, 118, w - 110);
     g.strokeStyle = "#1d3f7a"; g.lineWidth = 3; g.beginPath(); g.moveTo(40, 138); g.quadraticCurveTo(w / 2, 144, w - 40, 136); g.stroke();
-    const rodape = estado?.gerado_em ? `atualizado pelo gerente: ${new Date(estado.gerado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : "sem ciclo do gerente";
     g.fillStyle = "#7a838c"; g.font = `20px ${FONTE}`; g.textAlign = "right"; g.fillText(rodape, w - 40, h - 18); g.textAlign = "left";
+    desenhar(g, w, h);
+  });
+}
+// bandeira do Brasil ou globo (as mesmas texturas das mesas) no canvas; devolve a largura usada
+function iconeGrupo(g, gr, x, y, alto) {
+  if (gr === "Brasil") {
+    g.drawImage(texBandeira.image, x, y, alto * 1.43, alto);
+    g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; g.strokeRect(x, y, alto * 1.43, alto);
+    return alto * 1.43;
+  }
+  g.save(); g.beginPath(); g.arc(x + alto / 2, y + alto / 2, alto / 2, 0, 7); g.clip();
+  g.drawImage(texGlobo.image, x - alto * 0.4, y, alto * 2, alto); g.restore();
+  return alto;
+}
+const tracejado = (g, x, y0, y1) => { g.strokeStyle = "rgba(29,63,122,.35)"; g.lineWidth = 2; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke(); g.setLineDash([]); };
 
-    if (st.pendencias) {   // OPCOES: o que o Diretor ainda precisa decidir
-      g.fillStyle = "#1f2328"; g.font = `700 32px ${FONTE}`; g.fillText("Pendências (decisão do Diretor)", 52, 214);
-      st.pendencias.slice(0, 6).forEach((p, k) => {
-        const y = 272 + k * 66;
-        g.fillStyle = "#1d3f7a"; g.font = `36px ${EMOJI}`; g.fillText("☐", 56, y + 4);
-        g.fillStyle = "#2b2f36"; g.font = `30px ${FONTE}`; g.fillText(p, 106, y, w - 150);
-      });
-      const nomes = st.traders.map(t => t.nome).join(" · ") || "a definir";
-      g.fillStyle = "#6a737d"; g.font = `italic 26px ${FONTE}`; g.fillText(`Equipe: ${nomes} — sem tarefa`, 52, h - 66, w - 100);
-      return;
-    }
-    if (!st.traders.length) {
-      g.fillStyle = "#6a737d"; g.font = `30px ${FONTE}`;
-      g.fillText("as mesas ficam vazias até os dados do mercado chegarem", 52, 260, w - 100);
-      return;
-    }
-    const n = st.traders.length, col = (w - 80) / n;
-    st.traders.forEach((t, i) => {
-      const x = 40 + i * col + 14, larg = col - 28;
-      if (i) { g.strokeStyle = "rgba(29,63,122,.35)"; g.lineWidth = 2; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(40 + i * col, 160); g.lineTo(40 + i * col, h - 50); g.stroke(); g.setLineDash([]); }
-      const [nomeSt, corSt] = STATUS[t.status] || [t.status || "—", "#8b98a5"];
-      g.fillStyle = "#1f2328"; g.font = `700 32px ${FONTE}`; g.fillText(t.nome, x, 184, larg);
-      g.fillStyle = corSt; g.beginPath(); g.arc(x + 9, 211, 8, 0, 7); g.fill();
-      g.font = `700 26px ${FONTE}`; g.fillText(nomeSt, x + 26, 220, larg - 26);
-      if (!t.requisitos) {
-        g.fillStyle = "#6a737d"; g.font = `italic 24px ${FONTE}`;
-        quebrar(g, AGUARDANDO, larg).forEach((l, k) => g.fillText(l, x, 276 + k * 32));
+// sala do operacional: dois blocos (Brasil e Global), uma linha por mercado com status e "N de M requisitos"
+function texQuadroOp(op, estado) {
+  const bs = GRUPOS_FIRMA.map(gr => bonecos[`${op}:${gr}`]);
+  return lousa(op, `${PLANTA.salas[op].nome} · status`, ...resumoOp(op), rodapeGerente(estado), (g, w, h) => {
+    bs.forEach((b, i) => {
+      const col = (w - 80) / 2, x = 40 + i * col + 14, larg = col - 28;
+      if (i) tracejado(g, 40 + col, 160, h - 50);
+      const li = iconeGrupo(g, b.grupo, x, 160, 32);
+      g.fillStyle = "#1f2328"; g.font = `700 34px ${FONTE}`; g.fillText(b.nome, x + li + 14, 188, larg - li - 14);
+      const linhas = [...b.mercados, ...b.aguardando.map(a => ({ ...a, aguardando: true }))];
+      if (!linhas.length) {
+        g.fillStyle = "#6a737d"; g.font = `italic 26px ${FONTE}`;
+        quebrar(g, "nenhum mercado avaliado ainda", larg).forEach((l, k) => g.fillText(l, x, 258 + k * 34));
         return;
       }
-      // texto longo quebra em linhas (quebrar); se a coluna não cabe até o rodapé, a fonte diminui (23 → 15 px)
-      const linhas = c => t.requisitos.slice(0, 9).map(r => {
-        g.font = `600 ${c}px ${FONTE}`; const item = quebrar(g, r.item ?? "", larg - 34);
-        g.font = `700 ${c - 2}px ${FONTE}`; return { r, item, valor: quebrar(g, String(r.valor ?? "").replace(/R\$ /g, "R$\u00a0"), larg - 34) };   // "R$" não fica sozinho no fim da linha
-      });
-      const altura = (ls, c) => ls.reduce((a, l) => a + (l.item.length + l.valor.length) * (c + 2) + 10, 0);
-      let c = 23, ls = linhas(c);
-      while (c > 15 && altura(ls, c) > h - 290) ls = linhas(--c);
-      let y = 238 + c;
-      ls.forEach(({ r, item, valor }) => {
-        g.font = `${c + 1}px ${EMOJI}`; g.fillStyle = r.ok ? "#1b8a5a" : "#c0392b"; g.fillText(r.ok ? "✅" : "❌", x, y + 2);
-        g.fillStyle = "#1f2328"; g.font = `600 ${c}px ${FONTE}`;
-        for (const l of item) { g.fillText(l, x + 34, y, larg - 34); y += c + 2; }
-        g.fillStyle = r.ok ? "#1b8a5a" : "#c0392b"; g.font = `700 ${c - 2}px ${FONTE}`;
-        for (const l of valor) { g.fillText(l, x + 34, y, larg - 34); y += c + 2; }
-        y += 10;
+      const passo = Math.min(76, (h - 310) / linhas.length), duas = passo >= 58;
+      linhas.forEach((t, k) => {
+        const y = 256 + k * passo;
+        const [nomeSt, corSt] = t.aguardando ? ["aguardando dados", "#8b98a5"] : STATUS[t.status] || ["—", "#8b98a5"];
+        g.fillStyle = corSt; g.beginPath(); g.arc(x + 9, y - 10, 9, 0, 7); g.fill();
+        g.fillStyle = "#1f2328"; g.font = `700 30px ${FONTE}`; g.fillText(t.ativo, x + 28, y);
+        g.fillStyle = corTexto(corSt); g.font = `700 25px ${FONTE}`; g.textAlign = "right"; g.fillText(nomeSt, x + larg, y); g.textAlign = "left";
+        if (!duas) return;
+        const detalhe = t.aguardando ? (t.motivo || "sem dados do mercado") : `${nReq(t)}${typeof t.prova?.resultado === "number" ? ` · prova ${brl(t.prova.resultado)}` : ""}`;
+        g.fillStyle = "#4f5861"; g.font = `23px ${FONTE}`; g.fillText(detalhe, x + 28, y + 30, larg - 28);
       });
     });
   });
 }
+
+// Sala da Demo: quem foi promovido em qual mercado
+function texQuadroDemo(estado) {
+  const lista = promovidos();
+  return lousa("DEMO", "Sala da Demo · promovidos", lista.length ? `${lista.length} na demo` : "ninguém promovido ainda",
+    lista.length ? "up" : "mut", rodapeGerente(estado), (g, w) => {
+      if (!lista.length) {
+        g.fillStyle = "#4f5861"; g.font = `30px ${FONTE}`;
+        g.fillText("uma mesa para cada boneco promovido num mercado;", 52, 230, w - 100);
+        g.fillText("pausado volta para a sala do operacional", 52, 272, w - 100);
+        return;
+      }
+      lista.slice(0, 8).forEach((t, k) => {
+        const y = 222 + k * 62;
+        const li = iconeGrupo(g, t.grupo, 52, y - 28, 30);
+        g.fillStyle = "#1f2328"; g.font = `700 32px ${FONTE}`; g.fillText(t.dono, 66 + li, y, 420);
+        g.fillStyle = "#1d3f7a"; g.font = `700 30px ${FONTE}`; g.fillText(t.ativo, 520, y);
+        const r = t.prova?.resultado;
+        if (typeof r === "number") { g.fillStyle = r >= 0 ? "#1b8a5a" : "#c0392b"; g.textAlign = "right"; g.fillText(`prova ${brl(r)}`, w - 52, y); g.textAlign = "left"; }
+      });
+    });
+}
+
+// Laboratório: a última rodada de testes (/api/laboratorio) e as pendências das opções
+function texQuadroLab(estado) {
+  const linhas = linhasLab(), passaram = linhas.filter(l => l.passou === true).length;
+  const resumo = linhas.length ? [laboratorio.titulo || "última rodada", quando(laboratorio.quando)].filter(Boolean).join(" · ") : "nenhuma rodada ainda";
+  const rodape = linhas.length ? `${linhas.length} variante${linhas.length > 1 ? "s" : ""} · ${passaram} passa${passaram === 1 ? "ou" : "ram"}` : "os testes pedidos ao Claude aparecem aqui";
+  return lousa("LAB", "Laboratório · última rodada", resumo, linhas.length ? (passaram ? "up" : "dn") : "mut", rodape, (g, w, h) => {
+    if (linhas.length) {
+      const cols = [[52, "Quem", "left"], [262, "Mercado", "left"], [425, "Variante", "left"], [712, "Trades", "right"], [858, "Resultado", "right"], [935, "PF", "right"]];
+      g.fillStyle = "#6a737d"; g.font = `700 22px ${FONTE}`;
+      for (const [x, t, a] of cols) { g.textAlign = a; g.fillText(t, x, 186); }
+      linhas.slice(0, 7).forEach((l, k) => {
+        const y = 230 + k * 42, celulas = [quemLab(l), `${l.ativo ?? "—"}${l.tf ? ` ${l.tf}m` : ""}`, String(l.variante ?? "—"), l.trades ?? "—",
+          typeof l.resultado === "number" ? brl(l.resultado) : "—", numero(l.pf)];
+        if (k % 2) { g.fillStyle = "rgba(29,63,122,.05)"; g.fillRect(44, y - 30, w - 88, 42); }
+        celulas.forEach((c, n) => {
+          const [x, , a] = cols[n];
+          g.textAlign = a; g.font = `${n < 2 ? 700 : 500} 24px ${FONTE}`;
+          g.fillStyle = n === 4 && typeof l.resultado === "number" ? (l.resultado >= 0 ? "#1b8a5a" : "#c0392b") : "#1f2328";
+          g.fillText(String(c), x, y, [200, 150, 265][n] ?? 130);
+        });
+        g.textAlign = "left"; g.font = `22px ${EMOJI}`; g.fillText(l.passou ? "✅" : "❌", 948, y);
+      });
+      if (linhas.length > 7) { g.fillStyle = "#6a737d"; g.font = `italic 22px ${FONTE}`; g.fillText(`+ ${linhas.length - 7} variantes no painel`, 52, 556); }
+      g.textAlign = "left";
+    } else {
+      g.fillStyle = "#4f5861"; g.font = `30px ${FONTE}`;
+      g.fillText("nenhuma rodada ainda: peça um teste ao Claude", 52, 230, w - 100);
+    }
+    // pendências das opções logo abaixo da tabela (ou do aviso), em duas colunas
+    const topo = linhas.length ? Math.max(440, 230 + Math.min(linhas.length, 7) * 42 + (linhas.length > 7 ? 50 : 20)) : 300;
+    g.strokeStyle = "rgba(29,63,122,.35)"; g.lineWidth = 2; g.beginPath(); g.moveTo(44, topo); g.lineTo(w - 44, topo); g.stroke();
+    g.fillStyle = "#1f2328"; g.font = `700 30px ${FONTE}`; g.fillText("Opções · pendências (decisão do Diretor)", 52, topo + 44);
+    pendenciasOpcoes(estado).slice(0, 6).forEach((p, k) => {
+      const x = k % 2 ? 530 : 52, y = topo + 92 + Math.floor(k / 2) * 44;
+      g.fillStyle = "#1d3f7a"; g.font = `26px ${EMOJI}`; g.fillText("☐", x, y + 2);
+      g.fillStyle = "#2b2f36"; g.font = `25px ${FONTE}`; g.fillText(p, x + 34, y, 420);
+    });
+  });
+}
+
+const texQuadroStatus = (chave, estado) => chave === "LAB" ? texQuadroLab(estado) : chave === "DEMO" ? texQuadroDemo(estado) : texQuadroOp(chave, estado);
 function pintarQuadro(chave, estado) {
   const tela = salas[chave].quadro, map = texQuadroStatus(chave, estado);
   tela.material.map?.dispose(); tela.material.dispose();
   // um pouco de emissivo: o texto continua legível com a sala na penumbra
   tela.material = new THREE.MeshStandardMaterial({ map, roughness: 0.45, emissive: "#ffffff", emissiveMap: map, emissiveIntensity: 0.3 });
+}
+
+// telas das mesas: ociosa (o grupo de mercado daquela tela), teste em andamento e a rodada do Laboratório
+function texTelaOciosa(titulo, sub, cor) {
+  return canvasTex(320, 190, (g, w, h) => {
+    g.fillStyle = "#0b0f14"; g.fillRect(0, 0, w, h);
+    g.fillStyle = cor; g.fillRect(0, 0, w, 6);
+    g.textAlign = "center";
+    g.fillStyle = "#8b98a5"; g.font = `600 30px ${FONTE}`; g.fillText(titulo, w / 2, 96, w - 24);
+    g.fillStyle = "#4a5663"; g.font = `20px ${FONTE}`; g.fillText(sub, w / 2, 130, w - 24);
+  });
+}
+const progresso = pq => { const n = Number(pq.n) || 0, t = Number(pq.total) || 0; return t > 1 ? `${n}/${t}` : ""; };
+function texTeste(pq, cor) {
+  return canvasTex(320, 190, (g, w, h) => {
+    g.fillStyle = "#0d1712"; g.fillRect(0, 0, w, h);
+    g.fillStyle = cor; g.fillRect(0, 0, w, 6);
+    g.fillStyle = "#7ee2b0"; g.font = `600 20px ${FONTE}`; g.fillText("● testando", 14, 34);
+    g.fillStyle = "#e6edf3"; g.font = `700 50px ${FONTE}`; g.fillText(pq.ativo ?? "—", 14, 92, w - 28);
+    g.fillStyle = "#8b98a5"; g.font = `18px ${FONTE}`; g.fillText(pq.rotulo || quemLab(pq), 14, 120, w - 28);
+    const n = Number(pq.n) || 0, t = Number(pq.total) || 0, f = t > 0 ? Math.min(1, n / t) : 1;
+    g.fillStyle = "#1f2a36"; g.fillRect(14, 140, w - 28, 18);
+    g.fillStyle = "#26a69a"; g.fillRect(14, 140, (w - 28) * f, 18);
+    g.fillStyle = "#e6edf3"; g.font = `600 18px ${FONTE}`; g.textAlign = "right"; g.fillText(progresso(pq) || "1 variante", w - 14, 182); g.textAlign = "left";
+  });
 }
 
 function texRanking(estado) {
@@ -1679,26 +1846,26 @@ function texRanking(estado) {
       g.fillStyle = i % 2 ? "#121a25" : "#16202d"; g.fillRect(28, y - 42, w - 56, 56);
       g.fillStyle = i === 0 ? "#f0b429" : "#8b98a5"; g.font = "700 34px Segoe UI, sans-serif"; g.fillText(`${i + 1}º`, 44, y);
       g.fillStyle = "#e6edf3"; g.font = "600 34px Segoe UI, sans-serif"; g.fillText(x.nome, 118, y);
-      g.fillStyle = PLANTA.salas[x.sala]?.cor || "#8b98a5"; g.font = "30px Segoe UI, sans-serif"; g.fillText(x.sala, 560, y);
+      g.fillStyle = PLANTA.salas[opDoTrader(x.nome)]?.cor || "#8b98a5"; g.font = "30px Segoe UI, sans-serif"; g.fillText(x.sala, 560, y);
       g.fillStyle = x.prova_resultado >= 0 ? "#26a69a" : "#ef5350"; g.font = "700 34px Segoe UI, sans-serif";
       g.textAlign = "right"; g.fillText(brl(x.prova_resultado), w - 48, y); g.textAlign = "left";
     });
   });
 }
 
-function texCavalete(ativo) {
+function texCavalete(linhas, sub) {   // placa amarela de aviso: duas linhas grandes e uma menor
   return canvasTex(256, 340, (g, w, h) => {
     g.fillStyle = "#f0b429"; g.fillRect(0, 0, w, h);
     g.fillStyle = "#16181d";
     for (let x = -40; x < w; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 20, 0); g.lineTo(x + 40, 26); g.lineTo(x + 20, 26); g.fill(); }
     g.textAlign = "center"; g.font = "800 40px Segoe UI, sans-serif";
-    g.fillText("AGUARDANDO", w / 2, 130); g.fillText("DADOS", w / 2, 178);
-    g.font = "600 34px Segoe UI, sans-serif"; g.fillText(ativo, w / 2, 250);
+    linhas.forEach((l, k) => g.fillText(l, w / 2, 130 + k * 48, w - 20));
+    g.font = "600 34px Segoe UI, sans-serif"; g.fillText(sub, w / 2, 250, w - 20);
   });
 }
 
-function cavalete(x, z, ativo) {
-  const g = new THREE.Group(), tex = texCavalete(ativo);
+function cavalete(x, z, linhas, sub) {
+  const g = new THREE.Group(), tex = texCavalete(linhas, sub);
   g.position.set(x, 0, z);
   for (const s of [-1, 1]) {
     const lado = new THREE.Group();
@@ -1746,10 +1913,10 @@ function fundirEstaticos(raizes, manter, destino = cena) {
   return fundidas;
 }
 // as cadeiras das mesas andam (puxadas ao sentar): cada uma vira uma malha por material (4 em vez de 17)
-const cadeirasMoveis = [...EQUIPES.flatMap(a => salas[a].estacoes.map(e => e.cadeira)), mesaDoGerente.cadeira];
+const cadeirasMoveis = [...SALAS_OP.flatMap(a => salas[a].estacoes.map(e => e.cadeira)), mesaDoGerente.cadeira];
 for (const c of cadeirasMoveis) fundirEstaticos([c], new Set(), c);
 const malhasFixas = fundirEstaticos([predio, fora], new Set([
-  ...EQUIPES.flatMap(a => [...salas[a].estacoes.map(e => e.tela), salas[a].quadro]), ...cadeirasMoveis,
+  ...SALAS_OP.flatMap(a => [...salas[a].estacoes.flatMap(e => e.telas), salas[a].quadro]), ...cadeirasMoveis,
   telaGerente, telaDiretor, telaRanking, telaRankingVerso, diretor,
   ...pecas.filter(pc => pc.inteira).map(pc => pc.m),
 ]));
@@ -1922,14 +2089,28 @@ const texBalao = [1, 2, 3].map(n => canvasTex(128, 96, g => {
 
 const pessoas = new Map();   // chave → pessoa
 const pedido = new URLSearchParams(location.search), INSTANTANEO = pedido.get("instantaneo") === "1";
-// ?atividade=sala:WIN[:trader] (ou ocioso) simula o ciclo do gerente para capturas; firma.simularAtividade(json) idem
+// ?atividade=sala:WIN[:trader] (ou ocioso) simula o ciclo do gerente; &teste=WDO:Didi Agulhada[:12/40] simula um teste do
+// Laboratório (o campo `pesquisa`); &hora=10 fixa a hora do expediente — úteis para capturas. firma.simularAtividade(json)
+// aceita o mesmo formato de /api/atividade: {gerente, pesquisa}
 const ativ = { real: null, simulada: null };
 {
   const [tipo, sala, trader] = (pedido.get("atividade") || "").split(":");
   if (tipo === "sala" && sala) ativ.simulada = { gerente: { estado: "trabalhando", sala, trader: trader || null } };
   else if (tipo === "ocioso") ativ.simulada = { gerente: { estado: "ocioso", sala: null, trader: null } };
 }
+{
+  const [ativo, trader, prog] = (pedido.get("teste") || "").split(":");
+  if (ativo) {
+    const [n, total] = (prog || "1/1").split("/").map(Number);
+    (ativ.simulada ??= { gerente: { estado: "ocioso", sala: null, trader: null } }).pesquisa = { trader: trader || "Sofia SMC", ativo, n, total, rotulo: "" };
+  }
+}
 const atividadeAgora = () => (ativ.simulada ?? ativ.real)?.gerente || { estado: "ocioso" };
+const pesquisaAgora = () => { const p = (ativ.simulada ?? ativ.real)?.pesquisa; return objeto(p) && p.ativo ? p : null; };
+const grupoPesquisa = pq => GRUPOS_FIRMA.includes(pq.grupo) ? pq.grupo : grupoDo(pq.ativo);
+// expediente na firma: Global também à noite; Brasil só no horário da B3 (9h às 18h, hora deste computador)
+const HORA = pedido.has("hora") ? Number(pedido.get("hora")) : null;
+const expediente = gr => gr === "Global" || (h => h >= 9 && h < 18)(HORA ?? new Date().getHours());
 
 function criarPessoa(chave, pal, opc) {
   const raiz = new THREE.Group(), b = boneco(pal, opc);
@@ -1982,7 +2163,7 @@ function legenda(p) {   // o rótulo mostra a atividade real; andando para o des
   const pausado = p.alvo?.status === "pausado" && d.chave !== "mesa";
   const texto = andando && d.chave !== "mesa" ? "aguardando tarefa" : d.texto;
   retextar(p.rot, p.titulo, pausado ? `pausado · ${texto}` : texto, d.chave === "mesa" ? "#26a69a" : pausado ? "#ef5350" : "#c9d1d9", p.corBorda);
-  const titulo = p.chave === "gerente" ? "Gerente" : `${p.titulo} · ${SIGLA[p.sala] || p.sala}`;
+  const titulo = p.chave === "gerente" ? "Gerente" : p.titulo;
   if (p.miniTexto.join("|") === [titulo, pausado, p.corBorda].join("|")) return;
   p.miniTexto = [titulo, pausado, p.corBorda];
   p.texMinis.forEach(t => t?.dispose());
@@ -2098,29 +2279,26 @@ setInterval(passearNpcs, 5000);
 const gerente = criarPessoa("gerente", { pele: "#d9a37c", cabelo: "#4a4a4a", camisa: "#e9ecef", calca: "#25324a" }, { terno: "#25324a" });
 definirAlvo(gerente, "gerente", "Gerente", "#4c8dff");
 gerente.mesa = mesaDoGerente;
+gerente.lab = salas.LAB.estacoes[0];   // durante um teste do Laboratório o gerente acompanha dali
+// os seis bonecos (operacional × grupo) existem sempre, cada um na sua mesa; o estado novo só troca a ficha
 function sincronizarPessoas(estado) {
-  const vivos = new Set(["gerente"]);
-  EQUIPES.forEach((ativo, i) => {
-    const dados = estado?.salas?.[ativo];
-    const lista = ativo === "OPCOES" || dados?.status === "ok" ? tradersValidos(dados).slice(0, 3) : [];   // 3 mesas por sala
-    lista.forEach((t, k) => {
-      const chave = `${ativo}:${t.nome}`;
-      vivos.add(chave);
-      const p = pessoas.get(chave) || criarPessoa(chave, PALETAS[(i * 3 + k) % 6], { cabelo: CABELO[t.nome] || "curto" });
-      definirAlvo(p, { ...t, sala: ativo }, t.nome, (STATUS[t.status] || [])[1] || "#8b98a5");
-      p.sala = ativo;
-      p.mesa = salas[ativo].estacoes[k];
-    });
-  });
-  for (const [chave, p] of pessoas) if (!vivos.has(chave)) removerPessoa(p);
+  bonecos = montarBonecos(estado);
+  OPS.forEach(op => GRUPOS_FIRMA.forEach((gr, k) => {
+    const chave = `${op}:${gr}`, b = bonecos[chave], o = OPERACIONAIS[op], [camisa, calca] = o.roupa[gr];
+    const p = pessoas.get(chave) || criarPessoa(chave, { pele: o.pele, cabelo: o.cabelo, camisa, calca }, { cabelo: o.corte });
+    definirAlvo(p, b, b.nome, (STATUS[b.status] || [])[1] || "#8b98a5");
+    Object.assign(p, { sala: op, grupo: gr, mesa: salas[op].estacoes[k] });
+  }));
   equipeConhecida = true;
   distribuir();
 }
 let equipeConhecida = false;   // até o primeiro estado ninguém se mexe (o gerente não vai ao café e volta)
 
 const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
-// Quem vai para onde. Trabalha só quem tem tarefa (a sala que o gerente processa agora; o gerente, na mesa
-// dele, durante o ciclo). Cada ocioso tem a sua "vez" (troca a cada 2–5 min, período e fase tirados do nome):
+// Quem vai para onde. Trabalha só quem tem tarefa: no ciclo do gerente, os bonecos do grupo do mercado em processamento
+// que têm esse mercado (e não estão pausados nele) e o gerente na mesa dele; num teste do Laboratório (`pesquisa`), o
+// boneco (trader, grupo) do teste e o gerente na mesa do Laboratório. Global trabalha a qualquer hora; Brasil só das 9h
+// às 18h (fora disso fica no descanso mesmo com tarefa). Cada ocioso tem a sua "vez" (troca a cada 2–5 min, período e fase tirados do nome):
 // enquanto a vez não muda ele fica onde está; na troca sorteia (nome + vez) entre conversar em par no corredor e
 // uma vaga livre do descanso. Pausados não conversam; o gerente prefere o café.
 // Pausado nunca vai à mesa (o gerente tirou a tarefa dele). Quem sentou para trabalhar fica pelo menos GRACA s depois
@@ -2129,14 +2307,23 @@ const GRACA = 30;
 const inalcancaveis = new Set();   // vagas sem rota (nunca acontece na planta de hoje): ninguém tenta de novo
 function distribuir() {
   const g = atividadeAgora(), salaAtiva = g.estado === "trabalhando" ? g.sala : null, agora = Date.now() / 1000;
+  const grupoAtivo = salaAtiva && (GRUPOS_FIRMA.includes(g.grupo) ? g.grupo : grupoDo(salaAtiva));
+  const pq = pesquisaAgora(), opTeste = pq && opDoTrader(pq.trader), grupoTeste = pq && grupoPesquisa(pq);
   const destinos = new Map(), ociosos = [];
   for (const p of pessoas.values()) {
     if (!p.alvo) continue;
-    const gerente = p.chave === "gerente";
-    if (salaAtiva && (gerente || (p.sala === salaAtiva && p.alvo.status !== "pausado"))) {
+    let texto = null, est = p.mesa;
+    if (p.chave === "gerente") {
+      if (salaAtiva) texto = `trabalhando: backtest ${salaAtiva}${g.trader ? ` · ${g.trader}` : ""}`;
+      else if (pq) { texto = `no laboratório: teste de ${pq.ativo}`; est = p.lab; }
+    } else if (expediente(p.grupo)) {
+      const mercado = salaAtiva && grupoAtivo === p.grupo && p.alvo.mercados.find(t => t.ativo === salaAtiva);
+      if (pq && opTeste === p.sala && grupoTeste === p.grupo) texto = `testando: ${pq.ativo}${progresso(pq) ? ` · ${progresso(pq)}` : ""}`;
+      else if (mercado && mercado.status !== "pausado") texto = `trabalhando: backtest ${salaAtiva}`;
+    }
+    if (texto) {
       p.fimTarefa = null;
-      const v = p.mesa.vaga, quem = gerente && g.trader ? ` · ${g.trader}` : "";
-      destinos.set(p, { chave: "mesa", pos: v.pos, rot: v.rot, pose: "digitando", assento: ASSENTO.mesa, texto: `trabalhando: backtest ${salaAtiva}${quem}` });
+      destinos.set(p, { chave: "mesa", estacao: est, pos: est.vaga.pos, rot: est.vaga.rot, pose: "digitando", assento: ASSENTO.mesa, texto });
     } else if (p.sentou && p.destino?.chave === "mesa" && agora - (p.fimTarefa ??= agora) < GRACA) destinos.set(p, p.destino);
     else { p.fimTarefa = null; ociosos.push(p); }
   }
@@ -2179,6 +2366,7 @@ function distribuir() {
     destinos.set(p, d);
   }
   for (const [p, d] of destinos) irPara(p, d);
+  pintarTelas();
 }
 
 function irPara(p, d) {
@@ -2209,7 +2397,7 @@ function irPara(p, d) {
   legenda(p);
 }
 
-const VELOCIDADE = 1.3, GIRO = 7;   // m/s e rad/s
+const VELOCIDADE = 1.3, VELOCIDADE_DIRETOR = 2.2, GIRO = 7;   // m/s (o Diretor, andando pelo clique, vai mais rápido) e rad/s
 const angulo = a => Math.atan2(Math.sin(a), Math.cos(a));
 function girar(p, alvo, dt) {
   const dif = angulo(alvo - p.raiz.rotation.y);
@@ -2221,15 +2409,15 @@ function atualizarPessoas(dt, t) {
     p.raiz.position.y = chao(p.raiz.position.x, p.raiz.position.z);
     const u = p.b.userData, d = p.destino;
     u.tronco.scale.y = 1 + 0.012 * Math.sin(t * 2 * Math.PI / 3.5 + u.fase);   // respiração
-    if (p.mesa) {   // cadeira puxada só para quem vai sentar; quem não trabalha deixa a mesa arrumada
-      const c = p.mesa.cadeira, alvo = d?.chave === "mesa" ? p.mesa.puxada : p.mesa.guardada;
+    for (const est of [p.mesa, p.lab]) if (est) {   // cadeira puxada só onde ele vai sentar; quem não trabalha deixa a mesa arrumada
+      const c = est.cadeira, alvo = d?.chave === "mesa" && (d.estacao ?? p.mesa) === est ? est.puxada : est.guardada;
       c.position.z += Math.sign(alvo - c.position.z) * Math.min(Math.abs(alvo - c.position.z), 0.8 * dt);
     }
     if (!d) continue;
     if (p.rota.length) {
       const [x, z] = p.rota[0], pos = p.raiz.position, dx = x - pos.x, dz = z - pos.z, dist = Math.hypot(dx, dz);
       const dif = dist > 0.02 ? girar(p, Math.atan2(dx, dz), dt) : 0;
-      const passo = VELOCIDADE * dt * Math.max(0.15, Math.cos(dif));   // curva fechada: quase para e gira
+      const passo = (p === eu ? VELOCIDADE_DIRETOR : VELOCIDADE) * dt * Math.max(0.15, Math.cos(dif));   // curva fechada: quase para e gira
       if (dist <= passo) { pos.x = x; pos.z = z; p.rota.shift(); } else { pos.x += dx / dist * passo; pos.z += dz / dist * passo; }
       // passada: 1 ciclo por 1,3 m; a perna de trás dobra o joelho; o quadril desce para o pé da frente tocar o chão
       p.fase += passo / 1.3 * 2 * Math.PI;
@@ -2309,29 +2497,67 @@ function aplicarEstado(estado) {
   firma.estado = estado;
   sincronizarPessoas(estado);   // as pessoas não são refeitas: quem anda continua andando (e selecionado)
 
-  MERCADOS.forEach((ativo, i) => {
-    const sala = salas[ativo], s = sala.def, dados = estado?.salas?.[ativo];
-    const ok = dados?.status === "ok";
-    sala.traders = ok ? tradersValidos(dados).slice(0, 3).map(t => ({ ...t, sala: ativo })) : [];  // ponytail: 3 mesas por sala; um 4º trader pede mais mesas
-    sala.estacoes.forEach((est, k) => {
-      const t = sala.traders[k];
-      trocarTela(est.tela, t ? texCurva(t) : null);
-    });
-    const placa = rotulo(`${ativo} · ${s.nome}`, ok ? `${sala.traders.length} ${sala.traders.length === 1 ? "trader" : "traders"}` : "aguardando dados", ok ? "#8b98a5" : "#f0b429", s.cor);
-    placa.position.set(s.porta[0], 2.2, s.porta[1] + (s.z < 0 ? -0.5 : 0.5));
-    dinamico(placa, predio);
-    if (!ok) dinamico(cavalete(s.x + 1.3, s.z + (s.z < 0 ? 1.5 : -1.5), ativo), predio);
-  });
+  for (const op of OPS) {
+    const s = PLANTA.salas[op], n = GRUPOS_FIRMA.reduce((a, gr) => a + bonecos[`${op}:${gr}`].mercados.length, 0);
+    placaSala(s, n ? `${n} ${n === 1 ? "mercado" : "mercados"} · Brasil e Global` : "aguardando dados", n ? "#8b98a5" : "#f0b429");
+    if (!n) dinamico(cavalete(s.x + 1.3, s.z + (s.z < 0 ? 1.5 : -1.5), ["AGUARDANDO", "DADOS"], OPERACIONAIS[op].nome), predio);
+  }
+  const np = promovidos().length, demo = PLANTA.salas.DEMO;
+  placaSala(demo, np ? `${np} promovido${np > 1 ? "s" : ""}` : "ninguém promovido ainda", np ? "#26a69a" : "#8b98a5");
+  if (!np) dinamico(cavalete(demo.x + 1.3, demo.z - 1.5, ["NINGUÉM", "PROMOVIDO"], "ainda"), predio);
 
-  EQUIPES.forEach(k => pintarQuadro(k, estado));
+  SALAS_OP.forEach(k => pintarQuadro(k, estado));
   trocarTela(telaRanking, texRanking(estado));
   trocarTela(telaRankingVerso, texRanking(estado));
   trocarTela(telaGerente, texRanking(estado));
   trocarTela(telaDiretor, texRanking(estado));
-  const quando = estado?.gerado_em ? new Date(estado.gerado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
-  $("#ciclo").textContent = estado ? `Ciclo do gerente: ${quando}` : "sem estado do gerente";
+  $("#ciclo").textContent = estado ? `Ciclo do gerente: ${quando(estado.gerado_em) || "—"}` : "sem estado do gerente";
   $("#exemplo").hidden = !estado?.exemplo;
-  if ($("#painel").classList.contains("aberto") && painelAlvo) abrirPainel(selecionado?.userData.alvo ?? painelAlvo);
+  reabrirPainel();
+}
+// a ficha aberta acompanha o estado novo (a de um mercado continua no mesmo mercado)
+function reabrirPainel() {
+  if (!$("#painel").classList.contains("aberto") || !painelAlvo) return;
+  abrirPainel(painelAlvo.mercado ? fichaMercado(painelAlvo.op, painelAlvo.ativo) ?? painelAlvo : selecionado?.userData.alvo ?? painelAlvo);
+}
+const fichaMercado = (op, ativo) => Object.values(bonecos).find(b => b.op === op && b.grupo === grupoDo(ativo))?.mercados.find(t => t.ativo === ativo);
+function placaSala(s, sub, corSub) {   // rótulo sobre a porta
+  const placa = rotulo(s.nome, sub, corSub, s.cor);
+  placa.position.set(s.porta[0], 2.2, s.porta[1] + (s.z < 0 ? -0.5 : 0.5));
+  dinamico(placa, predio);
+}
+
+// Telas das mesas: cada tela mostra o melhor mercado do seu grupo (Brasil: futuros | ações; Global: forex | cripto); o
+// teste em andamento acende a tela do mercado testado. A Demo mostra os promovidos; o Laboratório, o teste e a última
+// rodada. Só repinta a tela cujo conteúdo mudou (roda a cada poll da atividade).
+function pintarTela(tela, chave, fazer) {
+  if (tela.userData.chave === chave) return;
+  tela.userData.chave = chave;
+  trocarTela(tela, fazer ? fazer() : null);
+}
+function pintarTelas() {
+  const pq = pesquisaAgora(), ciclo = firma.estado?.gerado_em, chaveTeste = pq && `t|${pq.ativo}|${pq.n}|${pq.total}|${pq.rotulo}|${pq.trader}`;
+  for (const op of OPS) GRUPOS_FIRMA.forEach((gr, k) => {
+    const b = bonecos[`${op}:${gr}`], cor = PLANTA.salas[op].cor;
+    const testando = pq && expediente(gr) && opDoTrader(pq.trader) === op && grupoPesquisa(pq) === gr;
+    salas[op].estacoes[k].telas.forEach((tela, n) => {
+      if (testando && telaDoAtivo(pq.ativo) === n) return pintarTela(tela, chaveTeste, () => texTeste(pq, cor));
+      const t = b.mercados.filter(m => telaDoAtivo(m.ativo) === n).sort((x, y) => (ORDEM[y.status] || 0) - (ORDEM[x.status] || 0))[0];
+      if (t) return pintarTela(tela, `c|${ciclo}|${t.ativo}`, () => texCurva({ ...t, nome: t.ativo }));
+      pintarTela(tela, `o|${gr}${n}`, () => texTelaOciosa(TELAS_GRUPO[gr][n], "sem mercado avaliado", cor));
+    });
+  });
+  const lista = promovidos();
+  salas.DEMO.estacoes.forEach((est, k) => {   // ponytail: três mesas na Demo; do 4º promovido em diante, só a lousa e o painel
+    const t = lista[k];
+    pintarTela(est.telas[0], t ? `c|${ciclo}|${t.op}|${t.ativo}` : "apagada", t && (() => texCurva({ ...t, nome: `${t.ativo} · ${t.dono}` })));
+  });
+  const [telaTeste, telaRodada] = salas.LAB.estacoes[0].telas, cor = PLANTA.salas.LAB.cor, linhas = linhasLab();
+  const ok = linhas.filter(l => l.passou === true).length;
+  pintarTela(telaTeste, pq ? chaveTeste : "lab", () => pq ? texTeste(pq, cor) : texTelaOciosa("Laboratório", "nenhum teste agora", cor));
+  pintarTela(telaRodada, `r|${laboratorio.quando}|${linhas.length}|${ok}`, () => texTelaOciosa(linhas.length ? `${ok} de ${linhas.length} passaram` : "nenhuma rodada", "última rodada", cor));
+  retextar(placaLab, "Laboratório", pq ? `testando: ${pq.ativo}${progresso(pq) ? ` · ${progresso(pq)}` : ""} · ${quemLab(pq)}`
+    : linhas.length ? `última rodada: ${ok} de ${linhas.length} passaram` : "nenhuma rodada ainda", pq ? "#26a69a" : "#8b98a5", cor);
 }
 
 // ---------------------------------------------------------------- painel lateral
@@ -2356,8 +2582,9 @@ function linkRelatorio(nome, texto) {
 
 function abrirPainel(alvo) {
   const corpo = $("#painel-corpo");
+  linksPainel = [];
   corpo.innerHTML = alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado)
-    : alvo.quadro ? htmlQuadro(alvo.quadro) : alvo.sala === "OPCOES" ? htmlQuadro("OPCOES") : htmlTrader(alvo);  // OPCOES ainda sem operacional: a ficha é o quadro
+    : alvo.quadro ? htmlQuadro(alvo.quadro) : alvo.boneco ? htmlBoneco(alvo) : htmlTrader(alvo);
   // o V (câmera) e o ESC (fechar) continuam valendo com o foco dentro do relatório embutido (mesma origem)
   corpo.querySelector("iframe")?.addEventListener("load", e => {
     try { for (const f of [teclaModo, teclaEsc]) e.target.contentWindow.addEventListener("keydown", f); } catch {}
@@ -2371,21 +2598,50 @@ function fecharPainel() {
   painelAlvo = null;
   selecionar(null);
 }
+// linhas clicáveis do painel: um mercado abre a ficha daquele mercado; o "←" volta para o boneco
+let linksPainel = [];
+const linkFicha = (alvo, html, cls = "linha") => `<button class="${cls}" data-ficha="${linksPainel.push(alvo) - 1}">${html}</button>`;
+$("#painel-corpo").addEventListener("click", e => {
+  const b = e.target.closest("[data-ficha]");
+  if (b) abrirPainel(linksPainel[b.dataset.ficha]);
+});
 
+const chipStatus = (status, vazio = "—") => { const [n, c] = STATUS[status] || [status || vazio, "#8b98a5"]; return `<span class="chip" style="border-color:${c};color:${c}">${esc(n)}</span>`; };
+const linhaMercado = t => linkFicha(t, `<b>${esc(t.ativo)}</b>${chipStatus(t.status)}<span class="mut">${esc(nReq(t))}</span><span class="vai">›</span>`);
+const DESCR_GRUPO = { Brasil: "B3: WDO, WIN e ações · 9h às 18h", Global: "forex e cripto · quase 24 h" };
+function blocoBoneco(b) {
+  const linhas = b.mercados.map(linhaMercado).join("") + b.aguardando.map(a =>
+    `<div class="linha off"><b>${esc(a.ativo)}</b><span class="mut">aguardando dados${a.motivo ? ` · ${esc(a.motivo)}` : ""}</span></div>`).join("");
+  return `<h3>${esc(b.nome)} · ${esc(DESCR_GRUPO[b.grupo])}</h3>${linhas || '<div class="mut">nenhum mercado avaliado ainda</div>'}`;
+}
+// ficha do boneco: o melhor status e uma linha por mercado do grupo
+function htmlBoneco(b) {
+  const s = PLANTA.salas[b.op];
+  return `
+    <div class="ficha"><span class="av" style="background:${s.cor}">${esc(b.nome[0])}</span>
+      <div><div class="n">${esc(b.nome)}</div><div class="s">${esc(s.nome)} · mesa ${b.grupo === "Brasil" ? "com a bandeira do Brasil" : "com o globo"}</div></div></div>
+    <div class="chips">${chipStatus(b.status, "sem mercado avaliado")}<span class="chip">${b.mercados.length} ${b.mercados.length === 1 ? "mercado" : "mercados"}</span></div>
+    ${blocoBoneco(b)}
+    <p class="mut nota">O status do boneco é o melhor entre os mercados dele. Clique num mercado para abrir a ficha.</p>`;
+}
+
+// ficha de um mercado de um boneco (o trader do estado naquele ativo)
 function htmlTrader(t) {
-  const [nomeSt, corSt] = STATUS[t.status] || [t.status, "#8b98a5"];
+  const [nomeSt, corSt] = STATUS[t.status] || [t.status || "—", "#8b98a5"];
   const cls = { promovido: "up", pausado: "dn", experiencia: "warn" }[t.status] || "";
   const linha = (rot, f) => `<tr><td>${rot}</td><td>${f(t.treino || {})}</td><td>${f(t.prova || {})}</td></tr>`;
   const din = v => v == null ? "—" : `<span class="${v >= 0 ? "up" : "dn"}">${brl(v)}</span>`;
   const params = Object.entries(t.parametros || {}).map(([k, v]) => `${esc(k)} = ${esc(v)}`).join(" · ") || "padrão";
-  const s = PLANTA.salas[t.sala];
+  const s = PLANTA.salas[t.op] || { cor: "#8b98a5", nome: "" }, b = bonecos[`${t.op}:${t.grupo}`], r = reqs(t);
   return `
-    <div class="ficha"><span class="av" style="background:${s.cor}">${esc(t.nome[0])}</span>
-      <div><div class="n">${esc(t.nome)}</div><div class="s">${esc(t.estilo)} · sala ${esc(t.sala)} (${esc(s.nome)})</div></div></div>
+    ${b ? linkFicha(b, `← ${esc(b.nome)}`, "voltar") : ""}
+    <div class="ficha"><span class="av" style="background:${s.cor}">${esc((b?.nome ?? t.nome)[0])}</span>
+      <div><div class="n">${esc(b?.nome ?? t.nome)} · ${esc(t.ativo)}</div><div class="s">${esc(t.nome)} · ${esc(t.estilo)}</div></div></div>
     <div class="chips"><span class="chip ${cls}" style="border-color:${corSt}">${esc(nomeSt)}</span>
       ${t.overfit ? '<span class="chip dn">overfit</span>' : ""}
       <span class="chip">confiança ${esc(t.prova?.confianca ?? "—")}</span></div>
     <h3>Decisão do gerente</h3><div class="decisao">${esc(t.decisao || "—")}</div>
+    ${r.length ? `<h3>Requisitos · ${esc(nReq(t))}</h3><table class="req">${r.map(x => `<tr><td>${x.ok ? "✅" : "❌"} ${esc(x.item)}</td><td class="${x.ok ? "up" : "dn"}">${esc(x.valor)}</td></tr>`).join("")}</table>` : ""}
     <h3>Placar</h3>
     <table><tr><th></th><th>Treino</th><th>Prova</th></tr>
       ${linha("Resultado", x => din(x.resultado))}
@@ -2398,45 +2654,56 @@ function htmlTrader(t) {
     <h3>Parâmetros</h3><div class="mut">${params}</div>
     <h3>Diário do último pregão</h3><div class="diario">${(t.diario || []).map(l => `<div>${esc(l)}</div>`).join("") || '<div class="mut">sem anotações</div>'}</div>
     <div class="links">
-      ${linkRelatorio(`${t.sala.toLowerCase()}-${slug(t.nome)}.html`, "Relatório do dia")}
-      <a href="/?ativo=${encodeURIComponent(t.sala)}">Abrir na sala de operações (${esc(t.sala)}) →</a>
+      ${linkRelatorio(`${String(t.ativo).toLowerCase()}-${slug(t.nome)}.html`, "Relatório do dia")}
+      <a href="/?ativo=${encodeURIComponent(t.ativo)}">Abrir na sala de operações (${esc(t.ativo)}) →</a>
     </div>`;
 }
 
-// quadro de status da equipe: o mesmo conteúdo da lousa da sala
+// lousa de cada sala no painel: os mesmos dados da lousa 3D, com as linhas clicáveis
+function resumoOp(op) {
+  const bs = GRUPOS_FIRMA.map(gr => bonecos[`${op}:${gr}`]);
+  const avaliados = bs.reduce((a, b) => a + b.mercados.length, 0), n = bs.reduce((a, b) => a + b.mercados.filter(t => t.status === "promovido").length, 0);
+  return !avaliados ? ["aguardando dados", "warn"] : n ? [`${n} mercado${n > 1 ? "s" : ""} promovido${n > 1 ? "s" : ""} para a demo`, "up"] : ["ninguém promovido ainda", "dn"];
+}
 function htmlQuadro(chave) {
-  const st = statusEquipe(chave, firma.estado), s = PLANTA.salas[chave];
-  const membros = st.traders.map(t => {
-    const [nomeSt, corSt] = STATUS[t.status] || [t.status || "—", "#8b98a5"];
-    const req = t.requisitos
-      ? `<table class="req">${t.requisitos.map(r => `<tr><td>${r.ok ? "✅" : "❌"} ${esc(r.item)}</td><td class="${r.ok ? "up" : "dn"}">${esc(r.valor)}</td></tr>`).join("")}</table>`
-      : st.pendencias ? "" : `<div class="mut">${AGUARDANDO}</div>`;
-    return `<div class="membro">${esc(t.nome)} <span class="chip" style="border-color:${corSt};color:${corSt}">${esc(nomeSt)}</span></div>${req}`;
-  }).join("");
-  return `
-    <div class="ficha"><span class="av" style="background:${s.cor}">${esc(chave[0])}</span>
-      <div><div class="n">${esc(st.titulo)}</div><div class="s">${esc(s.nome)}</div></div></div>
-    <div class="decisao ${st.tom}">${esc(st.resumo)}</div>
-    ${st.pendencias ? `<h3>Pendências (decisão do Diretor)</h3><ul class="lista pend">${st.pendencias.map(p => `<li>☐ ${esc(p)}</li>`).join("")}</ul>` : ""}
-    <h3>Equipe</h3>${membros || '<div class="mut">ninguém na sala</div>'}`;
+  const s = PLANTA.salas[chave], cabeca = (resumo, tom) => `
+    <div class="ficha"><span class="av" style="background:${s.cor}">${esc(s.nome.split(" ").at(-1)[0])}</span>
+      <div><div class="n">${esc(s.nome)}</div><div class="s">lousa de status</div></div></div>
+    <div class="decisao ${tom}">${esc(resumo)}</div>`;
+  if (OPERACIONAIS[chave]) return cabeca(...resumoOp(chave)) + GRUPOS_FIRMA.map(gr => blocoBoneco(bonecos[`${chave}:${gr}`])).join("");
+  if (chave === "DEMO") {
+    const lista = promovidos();
+    return cabeca(lista.length ? `${lista.length} na demo` : "ninguém promovido ainda", lista.length ? "up" : "mut") + `
+      <h3>Promovidos</h3>${lista.map(t => linkFicha(t, `<b>${esc(t.dono)}</b><span>${esc(t.ativo)}</span><span class="mut">${typeof t.prova?.resultado === "number" ? `prova ${brl(t.prova.resultado)}` : ""}</span><span class="vai">›</span>`)).join("")
+        || '<div class="mut">Uma mesa para cada boneco promovido num mercado; pausado volta para a sala do operacional.</div>'}`;
+  }
+  const linhas = linhasLab(), pq = pesquisaAgora();
+  return cabeca(linhas.length ? [laboratorio.titulo || "última rodada", quando(laboratorio.quando)].filter(Boolean).join(" · ") : "nenhuma rodada ainda",
+      linhas.length ? "" : "mut") + `
+    ${pq ? `<div class="chips"><span class="chip up">testando agora: ${esc(pq.ativo)}${progresso(pq) ? ` · ${progresso(pq)}` : ""} · ${esc(quemLab(pq))}</span></div>` : ""}
+    <h3>Última rodada</h3>
+    ${linhas.length ? `<table class="lab"><tr><th>Quem</th><th>Mercado</th><th>Variante</th><th>Trades</th><th>Resultado</th><th>PF</th><th></th></tr>
+      ${linhas.map(l => `<tr title="${esc(l.obs)}"><td>${esc(quemLab(l))}</td><td>${esc(l.ativo)}${l.tf ? ` ${esc(l.tf)}m` : ""}</td><td>${esc(l.variante)}</td>
+        <td>${esc(l.trades ?? "—")}</td><td class="${l.resultado >= 0 ? "up" : "dn"}">${typeof l.resultado === "number" ? brl(l.resultado) : "—"}</td>
+        <td>${numero(l.pf)}</td><td>${l.passou ? "✅" : "❌"}</td></tr>`).join("")}</table>`
+      : '<div class="mut">Os testes que o Diretor pede ao Claude aparecem aqui: o que foi testado, as variantes, quem passou e os números.</div>'}
+    <h3>Opções · pendências (decisão do Diretor)</h3><ul class="lista pend">${pendenciasOpcoes(firma.estado).map(p => `<li>☐ ${esc(p)}</li>`).join("")}</ul>`;
 }
 
 function htmlGerente(estado) {
   if (!estado) return `<div class="ficha"><div class="n">Gerente</div></div><p class="warn">O gerente ainda não rodou: execute <b>python gerente.py</b>.</p>`;
-  const quando = new Date(estado.gerado_em).toLocaleString("pt-BR");
-  const salasHtml = MERCADOS.map(a => {
-    const s = estado.salas?.[a];
-    return `<tr><td>${a} · ${PLANTA.salas[a].nome}</td><td class="${s?.status === "ok" ? "up" : "warn"}">${s?.status === "ok" ? "ok" : "aguardando dados"}</td></tr>`;
-  }).join("");
+  const pq = pesquisaAgora();
+  const salasHtml = Object.entries(objeto(estado.salas) ? estado.salas : {}).filter(([a, s]) => a !== "OPCOES" && objeto(s)).map(([a, s]) =>
+    `<tr><td>${esc(a)} · ${grupoDo(a)}</td><td class="${s.status === "ok" ? "up" : "warn"}">${s.status === "ok" ? "ok" : "aguardando dados"}</td></tr>`).join("");
   return `
     <div class="ficha"><span class="av" style="background:#4c8dff">G</span>
-      <div><div class="n">Gerente da firma</div><div class="s">último ciclo: ${esc(quando)}</div></div></div>
+      <div><div class="n">Gerente da firma</div><div class="s">último ciclo: ${esc(new Date(estado.gerado_em).toLocaleString("pt-BR"))}</div></div></div>
     ${estado.exemplo ? '<div class="chips"><span class="chip warn">dados de exemplo</span></div>' : ""}
     <h3>Ranking (prova)</h3>
-    <table><tr><th>Trader</th><th>Sala</th><th>Resultado</th></tr>
+    <table><tr><th>Trader</th><th>Mercado</th><th>Resultado</th></tr>
       ${(estado.ranking || []).map(r => `<tr><td>${esc(r.nome)}</td><td>${esc(r.sala)}</td><td class="${r.prova_resultado >= 0 ? "up" : "dn"}">${brl(r.prova_resultado)}</td></tr>`).join("")}
     </table>
-    <h3>Salas</h3><table>${salasHtml}<tr><td>OPCOES · Ações / Opções</td><td class="mut">sem tarefa</td></tr></table>
+    <h3>Mercados</h3><table>${salasHtml}<tr><td>Laboratório</td><td class="${pq ? "up" : "mut"}">${pq ? `testando ${esc(pq.ativo)}` : "sem teste agora"}</td></tr></table>
     <h3>Pendências</h3><ul class="lista">${(estado.pendencias || []).map(p => `<li>${esc(p)}</li>`).join("") || "<li class='mut'>nenhuma</li>"}</ul>
     <div class="links">${linkRelatorio("gerente.html", "Relatório do gerente")}</div>`;
 }
@@ -2481,7 +2748,7 @@ function focar(x, z, distancia, azimute = -35 * GRAU, polar = 45 * GRAU) {
   controles.update();
 }
 
-// ?cam=geral (padrão: o prédio inteiro, a praça e a rua) | sala&sala=EURUSD (ou DESCANSO, OPCOES…) | quadro&sala=WIN
+// ?cam=geral (padrão: o prédio inteiro, a praça e a rua) | sala&sala=DIDI (SOFIA, CAIO, DEMO, LAB, DESCANSO…) | quadro&sala=DIDI
 // (de frente para a lousa) | diretoria | fp[&pos=x,z,yaw°,pitch°] (primeira pessoa; o mouse só trava no primeiro clique);
 // | foco&foco=x,z,distância[,azimute°,polar°]; &trader=<nome> abre a ficha; &atividade=sala:WIN simula o ciclo
 // do gerente e &instantaneo=1 põe todo mundo direto no lugar — úteis para capturas
@@ -2541,7 +2808,8 @@ function alvoSob(evento) {
   const r = renderer.domElement.getBoundingClientRect();
   ponteiro.set((evento.clientX - r.left) / r.width * 2 - 1, -(evento.clientY - r.top) / r.height * 2 + 1);
   raio.setFromCamera(ponteiro, camera);
-  return primeiroAlvo(raio.intersectObjects(clicaveis, true));
+  const o = primeiroAlvo(raio.intersectObjects(clicaveis, true));
+  return o?.userData.alvo === "porta" ? null : o;   // de cima a porta não abre: clicar nela é andar até lá
 }
 // primeiro acerto que pertence a um alvo visível (o diretor some na primeira pessoa; contornos apagados não contam)
 function primeiroAlvo(hits) {
@@ -2761,7 +3029,7 @@ function alvoNaMira() {
 let alvoFp = null;
 const acaoDe = a => a === "porta" ? (portaEntrada.aberta ? "fechar a porta" : "abrir a porta")
   : a === "gerente" ? "painel do gerente" : a === "relatorios" ? "relatórios do dia"
-  : a.quadro ? `quadro de status (${a.quadro})` : `ficha de ${a.nome}`;
+  : a.quadro ? `lousa da ${PLANTA.salas[a.quadro].nome}` : `ficha de ${a.nome}${a.mercado ? ` · ${a.ativo}` : ""}`;
 function mirar(o) {
   if (o === alvoFp) return;
   alvoFp = o;
@@ -2833,21 +3101,45 @@ async function carregar() {
     (!salaPedida || o.userData.alvo.sala === pedido.get("sala")));
   if (b) { selecionar(b); abrirPainel(b.userData.alvo); }
 }
-// atividade do gerente a cada 5 s (decide quem trabalha; também é quando os ociosos trocam de atividade)
+// Laboratório: a última rodada de testes (/api/laboratorio; vazio = "nenhuma rodada ainda"). ?laboratorio=exemplo usa a
+// rodada de exemplo de firma.exemplo.json (capturas).
+let textoLab = "";
+async function carregarLab() {
+  const exemplo = pedido.get("laboratorio") === "exemplo";
+  let lab = {};
+  try {
+    const r = await fetch(exemplo ? "/web/firma.exemplo.json" : "/api/laboratorio", { cache: "no-store" });
+    if (r.ok) lab = exemplo ? (await r.json()).laboratorio : await r.json();
+  } catch {}   // servidor fora ou ainda sem /api/laboratorio: nenhuma rodada
+  laboratorio = objeto(lab) ? lab : {};
+  const texto = JSON.stringify(laboratorio);
+  if (texto === textoLab) return;
+  textoLab = texto;
+  pintarQuadro("LAB", firma.estado);
+  if (equipeConhecida) pintarTelas();
+  if (painelAlvo?.quadro === "LAB") reabrirPainel();
+}
+// atividade do gerente e da pesquisa a cada 5 s (decide quem trabalha; também é quando os ociosos trocam de atividade)
 let textoAtividade = "";
 async function carregarAtividade() {
   try {
     const r = await fetch("/api/atividade", { cache: "no-store" });
     if (!r.ok) throw new Error(r.status);
     const texto = await r.text();
-    if (texto !== textoAtividade) { ativ.real = JSON.parse(texto); textoAtividade = texto; }
+    if (texto !== textoAtividade) {
+      const testava = ativ.real?.pesquisa;
+      ativ.real = JSON.parse(texto); textoAtividade = texto;
+      if (testava && !ativ.real?.pesquisa) carregarLab();   // o teste acabou: a rodada nova já está no quadro
+    }
   } catch {   // servidor fora (ou resposta ruim): ninguém fica "trabalhando" para sempre, todo mundo fica ocioso
     ativ.real = null; textoAtividade = "";
   }
   if (equipeConhecida) distribuir();
 }
 carregarAtividade().finally(carregar);   // a primeira cena já nasce com cada um no lugar certo
+carregarLab();
 setInterval(carregar, 30000);
+setInterval(carregarLab, 30000);
 setInterval(carregarAtividade, 5000);
 
 // ---------------------------------------------------------------- laço de render
