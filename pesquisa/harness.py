@@ -162,7 +162,7 @@ def concluir(titulo, linhas):
     gerente._gravar_json(os.path.join(ESTADO, "laboratorio.json"), {"titulo": titulo, "quando": _agora(), "linhas": linhas})
     try:
         os.remove(os.path.join(ESTADO, "atividade_pesquisa.json"))
-    except FileNotFoundError:
+    except OSError:  # já apagado ou travado: o aviso vence sozinho em 120 s
         pass
 
 
@@ -176,7 +176,10 @@ def avaliar(modulo_trader, params, ativo, de, ate, estresse_ticks=0, tf=5, valid
     m = _contrato(modulo_trader)
     de, ate = _data(de), _data(ate)
     _guarda(m, ativo, de, ate, tf, params, estresse_ticks, validacao)
-    anunciar(m.NOME, ativo, n, total, rotulo)
+    try:  # o aviso é só para a firma: arquivo travado (OneDrive, outro processo) não derruba o backtest
+        anunciar(m.NOME, ativo, n, total, rotulo)
+    except OSError:
+        pass
     ini = de - timedelta(days=AQUECIMENTO_DIAS)
     cs = [k for k in _serie(ativo, tf) if ini <= k.t.date() <= ate]
     ops = []

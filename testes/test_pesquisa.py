@@ -106,6 +106,12 @@ class TestGuardaDaValidacao(unittest.TestCase):
     def tearDown(self):
         self.pasta.cleanup()
 
+    def test_aviso_de_atividade_travado_nao_derruba_o_backtest(self):
+        # OneDrive ou outro processo segurando o arquivo do aviso: o teste segue, a firma só não fica sabendo
+        with mock.patch.object(harness, "anunciar", side_effect=PermissionError("arquivo em uso")):
+            r = harness.avaliar(ALFA, None, "WDO", "2026-07-01", "2026-08-31")
+        self.assertGreater(r["trades"], 0)
+
     def test_desenvolvimento_roda(self):
         r = harness.avaliar(ALFA, None, "WDO", "2026-07-01", "2026-08-31")
         self.assertGreater(r["trades"], 0)
