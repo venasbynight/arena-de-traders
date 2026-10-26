@@ -297,6 +297,81 @@ def dias_sinteticos(n_dias, semente=1):
     return out
 
 
+def hora(dia, h, o, hi, lo, c):
+    """Candle de 60 de PETR4 no pregão `dia` (0 = terça 01/09/2026), aberto às `h` horas."""
+    d = datetime(2026, 9, 1) + timedelta(days=dia + 2 * (dia >= 4))  # pula o fim de semana
+    return Candle(d.replace(hour=h), o, hi, lo, c)
+
+
+def acao_comprada():
+    """PETR4 (posição de vários dias no config de exemplo): compra limitada a 30,00, stop 29,80, 4 lotes."""
+    c = motor.Conta("Teste", "PETR4", CFG)
+    c.colocar([Plano("compra", "limite", 30.0, 29.8, 30.6, "teste")], datetime(2026, 9, 1, 11, 0), "PETR4")
+    c.executar_candle(hora(0, 11, 30.05, 30.1, 29.98, 30.05), False)
+    assert c.posicao and c.posicao["contratos"] == 4
+    return c
+
+
+class TestPosicaoDeVariosDias(unittest.TestCase):
+    def test_padrao_continua_zerando_no_dia(self):
+        c = conta_comprada()
+        self.assertEqual((c.zerar, c.max_pregoes), (True, None))  # WDO não tem as chaves: zera como sempre
+
+    def test_acao_dorme_e_o_gap_alem_do_stop_executa_na_abertura(self):
+        c = acao_comprada()
+        c.executar_candle(hora(0, 16, 30.05, 30.1, 30.0, 30.08), True)
+        self.assertIsNotNone(c.posicao)
+        self.assertEqual(c.operacoes, [])
+        c.executar_candle(hora(1, 10, 29.5, 29.6, 29.4, 29.55), False)  # abriu 30 centavos abaixo do stop
+        op = c.operacoes[-1]
+        self.assertEqual((op["saida"], op["motivo_saida"]), (29.49, "stop"))  # a abertura − 1 tick, nunca melhor
+
+    def test_limites_do_dia_valem_por_dia_e_a_posicao_conta_uma_vez(self):
+        c = acao_comprada()
+        self.assertEqual(c.dia["trades"], 1)
+        c.executar_candle(hora(0, 16, 30.05, 30.1, 30.0, 30.08), True)
+        c.executar_candle(hora(1, 10, 30.0, 30.05, 29.7, 29.75), False)  # stop no dia seguinte
+        self.assertEqual((c.dia["data"], c.dia["trades"], c.dia["stops"]), ("2026-09-02", 0, 1))
+        self.assertEqual(c.dia["resultado"], c.operacoes[-1]["resultado_rs"])  # a perda entra no dia da saída
+        self.assertEqual(len(c.operacoes), 1)
+
+    def test_posicao_aberta_no_dia_seguinte_bloqueia_ordem_nova(self):
+        c = acao_comprada()
+        c.executar_candle(hora(0, 16, 30.05, 30.1, 30.0, 30.08), True)
+        self.assertEqual(c.colocar([Plano("venda", "limite", 30.2, 30.4, 29.6, "teste")],
+                                   hora(1, 11, 0, 0, 0, 0).t, "PETR4"), [])
+        self.assertTrue(c.dia["posicao_aberta"])
+
+    def test_sai_por_tempo_no_fechamento_do_ultimo_pregao(self):
+        c = acao_comprada()
+        for dia in range(9):
+            c.executar_candle(hora(dia, 16, 30.05, 30.1, 30.0, 30.08), True)
+            self.assertIsNotNone(c.posicao, dia)
+        c.executar_candle(hora(9, 16, 30.1, 30.2, 30.05, 30.15), True)  # 10º pregão com a posição
+        op = c.operacoes[-1]
+        self.assertEqual(op["motivo_saida"], "tempo")
+        self.assertAlmostEqual(op["saida"], 30.14)  # o fechamento − 1 tick, como a zeragem
+        self.assertEqual(c.pregoes, 0)
+
+    def test_backtest_fecha_a_posicao_quando_os_dados_acabam(self):
+        from types import SimpleNamespace
+        from tipos import Decisao
+
+        class Compra:
+            def __init__(self, *a):
+                pass
+
+            def decidir(self, hoje, ontem, fechados60):
+                return Decisao(planos=[Plano("compra", "mercado", hoje[-1].c, 29.6, 31.0, "teste")])
+
+        robo = SimpleNamespace(NOME="Compra", ESTILO="", PARAMS={}, GRADE={}, Trader=Compra)
+        cs = [hora(d, h, 30.0, 30.1, 29.95, 30.05) for d in range(3) for h in range(10, 17)]
+        r = motor.rodar_backtest("PETR4", cs, [robo], CFG, minutos=60)["traders"]["Compra"]
+        self.assertEqual([o["motivo_saida"] for o in r["operacoes"]], ["fim dos dados"])
+        self.assertEqual(r["operacoes"][0]["entrada_t"], cs[1].t.isoformat())  # e dormiu dois pregões
+        self.assertAlmostEqual(r["operacoes"][0]["saida"], 30.04)
+
+
 class TestBacktest(unittest.TestCase):
     def test_placar_basico(self):
         ops = [{"entrada_t": "2026-09-01T10:00:00", "resultado_rs": v} for v in (100.0, -50.0, 30.0)]
