@@ -7,7 +7,12 @@ roda todo dia, testa cada trader e diz o que falta para ele sair do backtest.
 
 **Nada aqui envia ordem para corretora. Não é recomendação de investimento.**
 
-## Rodar
+## Instalar (com ícone na área de trabalho)
+
+Passo a passo para ter o seu próprio TradeQuarters, num fork separado: [INSTALAR.md](INSTALAR.md).
+Resumo: fork, `git clone`, dois cliques em `instalar.bat`, abrir pelo ícone **TradeQuarters**.
+
+## Rodar na mão
 
 Windows, Python 3.12+.
 
