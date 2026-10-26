@@ -1,0 +1,9 @@
+quando,trader,ativo,tf,parametros,de,ate,estresse_ticks
+2026-10-26T01:52:55,Caio Contrafluxo,WDO,5,null,2026-09-16,2026-10-23,0
+2026-10-26T01:52:55,Caio Contrafluxo,WDO,5,"{""alvo_rr"": null, ""confirma"": false, ""folga_ticks"": 10, ""horario"": null, ""limite"": 5000, ""limite_pct"": null, ""n"": 2, ""regiao_ticks"": 2, ""tendencia"": ""dia""}",2026-09-16,2026-10-23,1
+2026-10-26T01:52:57,Caio Contrafluxo,WIN,5,null,2026-09-16,2026-10-23,0
+2026-10-26T01:52:58,Caio Contrafluxo,WIN,5,"{""alvo_rr"": null, ""confirma"": false, ""folga_ticks"": 40, ""horario"": null, ""limite"": 7500, ""limite_pct"": null, ""n"": 2, ""regiao_ticks"": 2, ""tendencia"": ""ambos""}",2026-09-16,2026-10-23,0
+2026-10-26T01:52:58,Caio Contrafluxo,WIN,5,"{""alvo_rr"": null, ""confirma"": false, ""folga_ticks"": 40, ""horario"": null, ""limite"": 7500, ""limite_pct"": null, ""n"": 2, ""regiao_ticks"": 2, ""tendencia"": ""ambos""}",2026-09-16,2026-10-23,1
+2026-10-26T01:53:17,Caio Contrafluxo,WDO,5,null,2026-09-16,2026-10-23,1
+2026-10-26T01:53:20,Caio Contrafluxo,WDO,5,"{""alvo_rr"": null, ""confirma"": false, ""folga_ticks"": 10, ""horario"": null, ""limite"": 5000, ""limite_pct"": null, ""n"": 2, ""regiao_ticks"": 2, ""tendencia"": ""dia""}",2026-09-16,2026-10-23,0
+2026-10-26T01:53:21,Caio Contrafluxo,WIN,5,null,2026-09-16,2026-10-23,1
