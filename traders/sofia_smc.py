@@ -1,16 +1,21 @@
-"""Sofia SMC: tendência no 60 minutos, entrada no meio de order block ou FVG do 5 minutos.
+"""Sofia SMC: tendência no 15 minutos, entrada no meio de order block ou FVG do 5 minutos.
 
-No 60 minutos (ações) a tendência vem do diário, montado dos candles de 60 já fechados.
+O 15 vem dos candles de 5 de ontem e hoje (blocos já fechados); `tf_tendencia: 60` volta ao 60 do motor. O alvo é a
+primeira liquidez (topo/fundo) do 15 também (`tf_alvo: 5` volta aos pivôs do 5). No 60 minutos (ações) a tendência vem
+do diário, montado dos candles de 60 já fechados, e o alvo dos próprios candles de 60.
 """
 
+from datetime import timedelta
+
 import estudos
+from dados import agrupar
 from motor import preco
 from tipos import Candle, Decisao, Pivo, Plano
 
 NOME = "Sofia SMC"
-ESTILO = "OB/FVG · tendência 60→5"
+ESTILO = "OB/FVG · tendência 15→5"
 # o que o painel de escolha do operacional mostra, em palavras do Diretor
-EXPLICA = [("Tempo gráfico", "tendência no 60 min, entrada no 5 min (nas ações: tendência no diário, entrada no 60)"),
+EXPLICA = [("Tempo gráfico", "tendência no 15 min, entrada no 5 min (nas ações: tendência no diário, entrada no 60)"),
            ("Entrada", "ordem limitada no meio de um order block ou FVG, só a favor da tendência"),
            ("Stop", "2 ticks além da zona"),
            ("Alvo", "o primeiro topo ou fundo à frente (liquidez)")]
@@ -21,10 +26,11 @@ EXPLICA = [("Tempo gráfico", "tendência no 60 min, entrada no 5 min (nas açõ
 # gatilho: em vez da limitada, espera o 1º toque na zona fechar rejeitando (de volta para fora dela) e entra com ordem
 # stop no rompimento da máxima (compra) ou mínima (venda) desse candle; dias_zona: as zonas valem pelos últimos
 # dias_zona pregões (no 5 e no 15 no máximo 2, ontem e hoje; no 60 os candles de 60 fechados); folga_atr: o stop
-# fica além da zona folga_ticks ticks + folga_atr amplitudes médias
+# fica além da zona folga_ticks ticks + folga_atr amplitudes médias; tf_tendencia: tempo gráfico da tendência (15 ou 60);
+# tf_alvo: de que tempo gráfico vêm os topos e fundos do alvo (15 ou 5)
 PARAMS = {"n": 2, "fvg_min": {"WDO": 1.0, "WIN": 50.0, "EURUSD": 0.0002, "BTCUSDT": 20.0}, "folga_ticks": 2,
           "zona_min_atr": 0.0, "alvo_r": 0.0, "horario": None, "entrada_frac": 0.5, "desconto": 1.0,
-          "gatilho": False, "dias_zona": 1, "folga_atr": 0.0}
+          "gatilho": False, "dias_zona": 1, "folga_atr": 0.0, "tf_tendencia": 15, "tf_alvo": 15}
 GRADE = {"folga_ticks": [1, 2, 3]}
 N_AMPLITUDE = 14  # candles da amplitude média (máxima − mínima)
 
@@ -40,6 +46,12 @@ def diarios(candles60, antes_de):
         if k.t.date() < antes_de:
             dias.setdefault(k.t.date(), []).append(k)
     return [Candle(ks[0].t, ks[0].o, max(k.h for k in ks), min(k.l for k in ks), ks[-1].c) for ks in dias.values()]
+
+
+def fechados(base, tf):
+    """Blocos de `tf` min montados dos candles de `base` (ontem e hoje); o último só conta depois de fechar."""
+    passo = base[-1].t - base[-2].t if len(base) > 1 and base[-1].t > base[-2].t else timedelta(minutes=5)
+    return [b for b in agrupar(base, tf) if b.t + timedelta(minutes=tf) <= base[-1].t + passo]
 
 
 class Trader:
@@ -98,8 +110,13 @@ class Trader:
             return Decisao(pensamento=[f"fora do meu horário ({horario[0]}–{horario[1]}); não opero"])
         # base de 60: o motor passa o último candle também como bloco de 60 já fechado (um buraco no feed de 5 min não engana)
         no_60 = bool(fechados60) and fechados60[-1].t == hoje5[-1].t
-        contexto = diarios(fechados60, hoje5[-1].t.date()) if no_60 else fechados60
-        nome_ctx = "diário" if no_60 else "60"
+        tf = self.p["tf_tendencia"]
+        if no_60:
+            contexto, nome_ctx = diarios(fechados60, hoje5[-1].t.date()), "diário"
+        elif tf == 60:
+            contexto, nome_ctx = fechados60, "60"
+        else:
+            contexto, nome_ctx = fechados(base, tf), str(tf)
         tend = self._tendencia(contexto)
         if tend is None:
             return Decisao(pensamento=[f"sem tendência definida no {nome_ctx}; não opero"])
@@ -123,7 +140,8 @@ class Trader:
             if dias and dias[-1] == hoje5[-1].t.date():
                 velas = [k for k in fonte if k.t.date() >= dias[0]]
         zonas = estudos.fvgs(velas, self._do_ativo("fvg_min") or 2 * tick) + estudos.order_blocks(velas, n)
-        pivos = self._pivos(base)
+        tf_alvo = self.p["tf_alvo"]
+        pivos = self._pivos(base) if no_60 or tf_alvo == 5 else estudos.pivos(fechados(base, tf_alvo), n)
         for z in (z for z in zonas if z.lado == tend):
             if z.topo - z.fundo < zona_min:
                 continue

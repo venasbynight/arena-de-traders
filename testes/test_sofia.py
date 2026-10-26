@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime, timedelta
+from unittest import mock
 
 import traders
 from tipos import Candle, Plano
@@ -31,7 +32,53 @@ ONTEM_WDO = velas(ONTEM, [(5428, 5430, 5425, 5426), (5426, 5427, 5423, 5424), (5
 HOJE_FVG_BAIXA = velas(HOJE, [(5437, 5438, 5434.5, 5435), (5435, 5435, 5430, 5431), (5431, 5431.5, 5428, 5429)])
 
 
-class TestSofia(unittest.TestCase):
+class NoSessenta:
+    """Os testes de zona, entrada e alvo montam a tendência num 60 sintético e o alvo nos pivôs do 5: o desenho antigo."""
+
+    def setUp(self):
+        sessenta = mock.patch.dict(sofia_smc.PARAMS, {"tf_tendencia": 60, "tf_alvo": 5})
+        sessenta.start()
+        self.addCleanup(sessenta.stop)
+
+
+class TestSofiaTendencia15(unittest.TestCase):
+    """Padrão: a tendência vem dos blocos de 15 min já fechados de ontem e hoje, não do 60 do motor."""
+
+    def test_tendencia_do_15_vence_a_do_60(self):
+        # cada candle de tendencia_60("alta") vira um bloco de 15 min feito de três candles de 5 iguais
+        ontem = [Candle(ONTEM + timedelta(minutes=15 * k + 5 * j), b.o, b.h, b.l, b.c)
+                 for k, b in enumerate(tendencia_60("alta")) for j in range(3)]
+        hoje = velas(HOJE, [(5.5, 6, 5, 5.5)])   # o bloco de hoje ainda não fechou: fica de fora
+        d = sofia_smc.Trader("WDO", 0.5).decidir(hoje, ontem, tendencia_60("baixa"))
+        self.assertIn("tendência do 15: alta; só compra", d.pensamento)
+
+    def test_bloco_aberto_nao_conta(self):
+        ontem = [Candle(ONTEM + timedelta(minutes=15 * k + 5 * j), b.o, b.h, b.l, b.c)
+                 for k, b in enumerate(tendencia_60("alta")[:-1]) for j in range(3)]
+        rompe = tendencia_60("alta")[-1]   # o candle que rompe o topo, sozinho num bloco de 15 ainda aberto
+        hoje = [Candle(ONTEM + timedelta(minutes=15 * 7), rompe.o, rompe.h, rompe.l, rompe.c)]
+        d = sofia_smc.Trader("WDO", 0.5).decidir(hoje, ontem, tendencia_60("baixa"))
+        self.assertNotIn("tendência do 15: alta; só compra", d.pensamento)
+
+
+class TestSofiaAlvo15(unittest.TestCase):
+    """Padrão: o alvo é o primeiro topo (compra) ou fundo (venda) dos blocos de 15 min fechados, não um pivô do 5."""
+
+    def test_topos_e_fundos_do_alvo_vem_do_15(self):
+        pivos = sofia_smc.estudos.pivos
+        with mock.patch.object(sofia_smc.estudos, "pivos", wraps=pivos) as espiao:
+            sofia_smc.Trader("WDO", 0.5, {"tf_tendencia": 60}).decidir(HOJE_FVG_BAIXA, ONTEM_WDO, tendencia_60("baixa"))
+        base = espiao.call_args.args[0]
+        self.assertEqual({b.t - a.t for a, b in zip(base, base[1:]) if a.t.date() == b.t.date()}, {timedelta(minutes=15)})
+
+    def test_tf_alvo_5_volta_aos_pivos_do_5(self):
+        with mock.patch.object(sofia_smc.estudos, "pivos", wraps=sofia_smc.estudos.pivos) as espiao:
+            sofia_smc.Trader("WDO", 0.5, {"tf_tendencia": 60, "tf_alvo": 5}).decidir(HOJE_FVG_BAIXA, ONTEM_WDO, tendencia_60("baixa"))
+        base = espiao.call_args.args[0]
+        self.assertEqual({b.t - a.t for a, b in zip(base, base[1:]) if a.t.date() == b.t.date()}, {timedelta(minutes=5)})
+
+
+class TestSofia(NoSessenta, unittest.TestCase):
     def wdo(self):
         return sofia_smc.Trader("WDO", 0.5)
 
@@ -124,7 +171,7 @@ class TestSofia(unittest.TestCase):
         self.assertEqual(sofia_smc.arredondar_tick(128437.0, 5.0), 128435.0)
 
 
-class TestSofiaVariantes(unittest.TestCase):
+class TestSofiaVariantes(NoSessenta, unittest.TestCase):
     """Regras do Plano 6, todas desligadas no padrão (os testes acima são o padrão)."""
 
     def venda(self, params, hoje=HOJE_FVG_BAIXA, ontem=ONTEM_WDO):
