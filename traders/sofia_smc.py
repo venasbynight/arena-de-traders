@@ -18,7 +18,7 @@ ESTILO = "OB/FVG · tendência 15→5"
 EXPLICA = [("Tempo gráfico", "tendência no 15 min, entrada no 5 min (nas ações: tendência no diário, entrada no 60)"),
            ("Entrada", "ordem limitada no meio de um order block ou FVG, só a favor da tendência"),
            ("Stop", "2 ticks além da zona"),
-           ("Alvo", "o primeiro topo ou fundo à frente (liquidez)")]
+           ("Alvo", "o primeiro topo ou fundo do 15 min à frente (liquidez)")]
 # zona_min_atr: altura mínima da zona em amplitudes médias (0 = qualquer); alvo_r: o alvo é a primeira liquidez
 # (topo/fundo) além de alvo_r vezes o risco (0 = a mais próxima); horario: entradas só nessa janela (None = sempre);
 # entrada_frac: onde fica a limitada, da borda de perto (0) à de longe (1) da zona, 0,5 = meio; desconto: compra só

@@ -27,12 +27,13 @@ export const PLANTA = {
     LAB:       { nome: "Laboratório", x: -12, z: 7, w: 8, d: 6, porta: [-12, 4], cor: "#cf6a87" },
   },
 };
-// Os operacionais e os dois bonecos de cada um: "Sofia · Brasil" (B3: WDO, WIN, ações) e "Sofia · Global" (forex,
-// cripto). Mesmo rosto e cabelo; a roupa em dois tons. O trader do estado ("Sofia SMC") acha o seu pelo primeiro nome.
+// Os operacionais e os dois bonecos de cada um: "Sofia · Brasil" (B3: WDO, WIN, ações) e o colega do mesmo método no
+// Global (forex, cripto), com nome próprio: "Sophie · Global". Mesmo rosto e cabelo; a roupa em dois tons. O trader do
+// estado ("Sofia SMC") acha o seu pelo primeiro nome do operacional (o do Brasil).
 const OPERACIONAIS = {
-  SOFIA: { nome: "Sofia", pele: "#f1c7a5", cabelo: "#3b2a20", corte: "longo", roupa: { Brasil: ["#c2456b", "#2d3440"], Global: ["#f08fb0", "#3d4a5c"] } },
-  DIDI:  { nome: "Didi",  pele: "#c98e63", cabelo: "#1d1712", corte: "curto", roupa: { Brasil: ["#3f6fd1", "#4a3b2c"], Global: ["#8fb4f5", "#3a4a40"] } },
-  CAIO:  { nome: "Caio",  pele: "#8d5a3b", cabelo: "#121010", corte: "curto", roupa: { Brasil: ["#d9822b", "#2e2a3a"], Global: ["#f2c46d", "#3a3550"] } },
+  SOFIA: { nome: "Sofia", global: "Sophie", pele: "#f1c7a5", cabelo: "#3b2a20", corte: "longo", roupa: { Brasil: ["#c2456b", "#2d3440"], Global: ["#f08fb0", "#3d4a5c"] } },
+  DIDI:  { nome: "Didi",  global: "Dimitri", pele: "#c98e63", cabelo: "#1d1712", corte: "curto", roupa: { Brasil: ["#3f6fd1", "#4a3b2c"], Global: ["#8fb4f5", "#3a4a40"] } },
+  CAIO:  { nome: "Caio",  global: "Kai", pele: "#8d5a3b", cabelo: "#121010", corte: "curto", roupa: { Brasil: ["#d9822b", "#2e2a3a"], Global: ["#f2c46d", "#3a3550"] } },
 };
 const OPS = Object.keys(OPERACIONAIS), GRUPOS_FIRMA = ["Brasil", "Global"];
 const opDoTrader = nome => OPS.find(k => OPERACIONAIS[k].nome.toLowerCase() === String(nome ?? "").split(" ")[0].toLowerCase());
@@ -1160,12 +1161,14 @@ function retextar(s, ...args) {
   s.material.map.dispose();
   s.material.map = texRotulo(...args);
 }
-function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
+// `icone` ("Brasil" ou "Global"): bandeira do Brasil ou globo antes do nome (o emoji de bandeira não existe no Windows)
+const larguraIcone = (gr, alto) => gr === "Brasil" ? alto * 1.43 : gr === "Global" ? alto : 0;
+function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36", icone = null) {
   const W = 512, H = 150;
   let fracao = 1;
   const tex = canvasTex(W, H, g => {
     g.font = "600 46px Segoe UI, sans-serif";
-    const lt = g.measureText(titulo).width;
+    const li = larguraIcone(icone, 34), lt = g.measureText(titulo).width + (li && li + 12);
     g.font = "36px Segoe UI, sans-serif";
     const larg = Math.min(W - 24, Math.max(lt, g.measureText(sub).width) + 56);
     const x = (W - larg) / 2;
@@ -1176,7 +1179,9 @@ function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
     g.shadowColor = "transparent";
     g.strokeStyle = corBorda; g.lineWidth = 4; g.stroke();
     g.textAlign = "center";
-    g.fillStyle = "#e6edf3"; g.font = "600 46px Segoe UI, sans-serif"; g.fillText(titulo, W / 2, 62);
+    g.fillStyle = "#e6edf3"; g.font = "600 46px Segoe UI, sans-serif";
+    if (li) { iconeGrupo(g, icone, (W - lt) / 2, 30, 34); g.fillText(titulo, W / 2 + (li + 12) / 2, 62, W - 48 - li); }
+    else g.fillText(titulo, W / 2, 62);
     g.fillStyle = corSub; g.font = "36px Segoe UI, sans-serif"; g.fillText(sub, W / 2, 108, W - 48);  // texto longo encolhe, não corta
   });
   tex.anisotropy = 1;
@@ -1189,12 +1194,14 @@ function texRotulo(titulo, sub, corSub = "#8b98a5", corBorda = "#1f2a36") {
 const PX_MINI = 0.36;   // px de tela por px de canvas: o compacto tem tamanho fixo na tela (texto de ~14 px), perto ou longe
 const VAO_MINI = 6;     // px de tela entre duas linhas de rótulos
 const medidor = document.createElement("canvas").getContext("2d");
-function pilulaMini(titulo, pausado) {   // [largura, altura] da plaquinha em px de canvas
+function pilulaMini(titulo, pausado, icone) {   // [largura, altura] da plaquinha em px de canvas
   medidor.font = "600 40px Segoe UI, sans-serif";
-  return [Math.ceil(medidor.measureText(titulo).width) + 40, pausado ? 94 : 64];
+  const li = larguraIcone(icone, 30);
+  return [Math.ceil(medidor.measureText(titulo).width) + 40 + (li && li + 10), pausado ? 94 : 64];
 }
-function texMini(titulo, pausado, corBorda, linhas = 0) {
-  const [W, H] = pilulaMini(titulo, pausado), haste = Math.round(linhas * (H + VAO_MINI / PX_MINI));
+function texMini(titulo, pausado, corBorda, icone, linhas = 0) {
+  const [W, H] = pilulaMini(titulo, pausado, icone), haste = Math.round(linhas * (H + VAO_MINI / PX_MINI));
+  const li = larguraIcone(icone, 30);
   const tex = canvasTex(W, H + haste, g => {
     if (haste) {
       g.fillStyle = "rgba(18,24,33,.8)"; g.fillRect(W / 2 - 4, H - 4, 8, haste + 4);
@@ -1202,7 +1209,8 @@ function texMini(titulo, pausado, corBorda, linhas = 0) {
     }
     g.fillStyle = "rgba(18,24,33,.92)"; g.beginPath(); g.roundRect(2, 2, W - 4, H - 4, 18); g.fill();
     g.strokeStyle = corBorda; g.lineWidth = 4; g.stroke();
-    g.textAlign = "center"; g.fillStyle = "#e6edf3"; g.font = "600 40px Segoe UI, sans-serif"; g.fillText(titulo, W / 2, 46);
+    if (li) iconeGrupo(g, icone, 20, 17, 30);
+    g.textAlign = "center"; g.fillStyle = "#e6edf3"; g.font = "600 40px Segoe UI, sans-serif"; g.fillText(titulo, W / 2 + (li && (li + 10) / 2), 46);
     if (pausado) { g.fillStyle = "#ef5350"; g.font = "600 26px Segoe UI, sans-serif"; g.fillText("pausado", W / 2, 80); }
   });
   tex.anisotropy = 1;
@@ -1316,7 +1324,7 @@ SALAS_OP.forEach((chave, i) => {
   const lado = s.x < 0 ? -1 : 1;                           // parede lateral externa
   armarioBaixo(predio, s.x + lado * (s.w / 2 - 0.33), s.z + (norte ? 1.75 : -1.75), -lado * Math.PI / 2);
   planta(predio, s.x - lado * (s.w / 2 - 0.45), s.z - ext[1] * 2.4, false);
-  const [titulo, sub] = op ? [op.nome, "Brasil · Global"] : chave === "DEMO" ? ["Demo", "promovidos"] : ["Laboratório", "testes · opções"];
+  const [titulo, sub] = op ? [op.nome, `${op.nome} no Brasil · ${op.global} no Global`] : chave === "DEMO" ? ["Demo", "promovidos"] : ["Laboratório", "testes · opções"];
   quadroParede(s.x, 1.65, fundo, ext, 1.3, 0.65, texPlacaSala(titulo, sub, s.cor));
   // mesinha de reunião no canto livre e lousa de status encostada na divisória; no Laboratório, os servidores ao lado da
   // lousa e a estante de livros de mercado junto da porta
@@ -1326,10 +1334,14 @@ SALAS_OP.forEach((chave, i) => {
     estante(predio, s.x - 2.2, s.z - s.d / 2 + 0.3, 0);
   }
   const quadro = quadroStatus(predio, s.x - lado * (s.w / 2 - 0.35), s.z + (norte ? 1.0 : -1.0), lado * Math.PI / 2, chave);
-  quadroParede(s.x + lado * s.w / 2, 1.6, s.z + (norte ? 1.75 : -1.75), [lado, 0], 0.7, 0.5, ARTES[i % 3]);
+  // sala de operacional: em cima do armário, o quadro "Como a Sofia opera" (as regras dela, de /api/traders)
+  const explica = op && quadroParede(s.x + lado * s.w / 2, 1.62, s.z + (norte ? 1.75 : -1.75), [lado, 0], 1.4, 1.05,
+    canvasTex(4, 3, g => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 4, 3); }));
+  if (explica) { explica.userData.alvo = { explica: chave }; clicaveis.push(explica); }
+  else quadroParede(s.x + lado * s.w / 2, 1.6, s.z + (norte ? 1.75 : -1.75), [lado, 0], 0.7, 0.5, ARTES[i % 3]);
   luminaria(s.x - 2, s.z); luminaria(s.x + 2, s.z);
   luzSala(s.x, s.z);
-  salas[chave] = { def: s, estacoes, quadro };
+  salas[chave] = { def: s, estacoes, quadro, explica };
 });
 const placaLab = rotulo("Laboratório", "nenhum teste agora", "#8b98a5", PLANTA.salas.LAB.cor);
 placaLab.position.set(-12, 2.2, 4.5);
@@ -1649,7 +1661,7 @@ const corTexto = c => c === "#f0b429" ? "#b7791f" : c;   // o amarelo do status 
 function montarBonecos(estado) {
   const out = {};
   for (const op of OPS) for (const gr of GRUPOS_FIRMA) out[`${op}:${gr}`] = { boneco: true, op, grupo: gr, sala: op,
-    nome: `${OPERACIONAIS[op].nome} · ${gr}`, mercados: [], aguardando: [], status: null };
+    nome: `${gr === "Global" ? OPERACIONAIS[op].global : OPERACIONAIS[op].nome} · ${gr}`, mercados: [], aguardando: [], status: null };
   for (const [ativo, d] of Object.entries(objeto(estado?.salas) ? estado.salas : {})) {
     if (ativo === "OPCOES" || !objeto(d)) continue;   // OPCOES é a lousa de pendências do Laboratório
     const gr = grupoDo(ativo);
@@ -2140,7 +2152,7 @@ function criarPessoa(chave, pal, opc) {
   cilindro(props.lata, 0.033, 0.033, 0.12, mat("#e53935", { roughness: 0.3, metalness: 0.5 }), 0, 0, 0, 12);
   controle(props.controle, 0, 0, 0, 0, "#2b2f36");
   const p = { chave, raiz, b, rot, mini, balao, props, novo: true, rota: [], destino: null, fase: rnd() * 6.28, giroAlvo: 0,
-    miniTexto: ["", false, "#1f2a36"], texMinis: [], linha: 0 };
+    miniTexto: ["", false, "#1f2a36", null], texMinis: [], linha: 0 };
   mini.material.map = mapaMini(p, 0);
   pessoas.set(chave, p);
   posar(p, "em_pe");
@@ -2167,10 +2179,10 @@ function legenda(p) {   // o rótulo mostra a atividade real; andando para o des
   const d = p.destino || { chave: "", texto: "aguardando tarefa" }, andando = p.rota.length > 0;
   const pausado = p.alvo?.status === "pausado" && d.chave !== "mesa";
   const texto = andando && d.chave !== "mesa" ? "aguardando tarefa" : d.texto;
-  retextar(p.rot, p.titulo, pausado ? `pausado · ${texto}` : texto, d.chave === "mesa" ? "#26a69a" : pausado ? "#ef5350" : "#c9d1d9", p.corBorda);
+  retextar(p.rot, p.titulo, pausado ? `pausado · ${texto}` : texto, d.chave === "mesa" ? "#26a69a" : pausado ? "#ef5350" : "#c9d1d9", p.corBorda, p.grupo);
   const titulo = p.chave === "gerente" ? "Gerente" : p.titulo;
-  if (p.miniTexto.join("|") === [titulo, pausado, p.corBorda].join("|")) return;
-  p.miniTexto = [titulo, pausado, p.corBorda];
+  if (p.miniTexto.join("|") === [titulo, pausado, p.corBorda, p.grupo].join("|")) return;
+  p.miniTexto = [titulo, pausado, p.corBorda, p.grupo];
   p.texMinis.forEach(t => t?.dispose());
   p.texMinis = [];
   p.mini.material.map = mapaMini(p, p.linha);
@@ -2223,7 +2235,7 @@ function arrumarRotulos(dt, fp, distancia) {
   minis.sort((a, b) => (b.mostrado - a.mostrado) || (b.ancora?.[1] ?? -1) - (a.ancora?.[1] ?? -1));
   for (const p of minis) {   // na linha da cabeça ou até 2 linhas acima (sempre centrado no dono, com haste); senão some
     p.mostrado = false;
-    const [w, h] = pilulaMini(p.miniTexto[0], p.miniTexto[1]).map(v => v * PX_MINI);
+    const [w, h] = pilulaMini(p.miniTexto[0], p.miniTexto[1], p.miniTexto[3]).map(v => v * PX_MINI);
     if (p.ancora) for (const k of new Set([p.linha, 0, 1, 2])) {
       const [x, y] = p.ancora, dy = k * (h + VAO_MINI), r = [x - w / 2 - 3, y - h - dy - 3, x + w / 2 + 3, y - dy + 3];
       if (ocupados.some(o => cruza(o, r))) continue;
@@ -2588,7 +2600,7 @@ function linkRelatorio(nome, texto) {
 function abrirPainel(alvo) {
   const corpo = $("#painel-corpo");
   linksPainel = [];
-  corpo.innerHTML = alvo === "tarefas" ? htmlTarefas() : alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado)
+  corpo.innerHTML = alvo === "tarefas" ? htmlTarefas() : alvo.explica ? htmlExplica(alvo.explica) : alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado)
     : alvo.quadro ? htmlQuadro(alvo.quadro) : alvo.boneco ? htmlBoneco(alvo) : htmlTrader(alvo);
   // o V (câmera) e o ESC (fechar) continuam valendo com o foco dentro do relatório embutido (mesma origem)
   corpo.querySelector("iframe")?.addEventListener("load", e => {
@@ -3034,6 +3046,7 @@ function alvoNaMira() {
 
 let alvoFp = null;
 const acaoDe = a => a === "porta" ? (portaEntrada.aberta ? "fechar a porta" : "abrir a porta") : a === "tarefas" ? "tarefas do Diretor"
+  : a.explica ? `como ${OPERACIONAIS[a.explica].nome === "Sofia" ? "a" : "o"} ${OPERACIONAIS[a.explica].nome} opera`
   : a === "gerente" ? "painel do gerente" : a === "relatorios" ? "relatórios do dia"
   : a.quadro ? `lousa da ${PLANTA.salas[a.quadro].nome}` : `ficha de ${a.nome}${a.mercado ? ` · ${a.ativo}` : ""}`;
 function mirar(o) {
@@ -3230,6 +3243,49 @@ $("#painel-corpo").addEventListener("submit", e => {
 });
 carregarTarefas();
 setInterval(carregarTarefas, 30000);
+
+// ---------------------------------------------------------------- quadro "como opera" de cada sala de operacional
+// As regras vêm de /api/traders (EXPLICA de cada traders/*.py): mudou a regra, o quadro muda junto.
+const operacionais = {};   // SOFIA | DIDI | CAIO → {nome, estilo, explica: [[tópico, texto], ...]}
+const artigo = op => OPERACIONAIS[op].nome === "Sofia" ? "a" : "o";
+function texExplica(op) {
+  const t = operacionais[op], o = OPERACIONAIS[op];
+  return lousa(op, `Como ${artigo(op)} ${o.nome} opera`, t.estilo, "mut", `${o.nome} no Brasil · ${o.global} no Global`, (g, w, h) => {
+    let y = 184;
+    for (const [topico, texto] of t.explica) {
+      g.fillStyle = PLANTA.salas[op].cor; g.font = `700 28px ${FONTE}`; g.fillText(topico, 52, y);
+      g.fillStyle = "#1f2328"; g.font = `26px ${FONTE}`;
+      const linhas = quebrar(g, texto, w - 104).slice(0, 3);
+      linhas.forEach((l, k) => g.fillText(l, 52, y + 34 + k * 31));
+      y += 34 + linhas.length * 31 + 18;
+      if (y > h - 60) break;
+    }
+  });
+}
+function htmlExplica(op) {
+  const t = operacionais[op], o = OPERACIONAIS[op], s = PLANTA.salas[op];
+  if (!t) return `<div class="mut">carregando as regras…</div>`;
+  return `<div class="ficha"><span class="av" style="background:${s.cor}">${esc(o.nome[0])}</span>
+      <div><div class="n">Como ${artigo(op)} ${esc(o.nome)} opera</div><div class="s">${esc(t.estilo)}</div></div></div>
+    <p class="mut">${esc(o.nome)} opera os mercados do Brasil (B3); ${esc(o.global)} usa o mesmo método nos mercados globais
+      (forex e cripto).</p>
+    ${t.explica.map(([topico, texto]) => `<h3>${esc(topico)}</h3><div>${esc(texto)}</div>`).join("")}`;
+}
+async function carregarExplicacoes() {
+  try {
+    const r = await fetch("/api/traders");
+    if (!r.ok) return;
+    for (const t of await r.json()) {
+      const op = opDoTrader(t.nome);
+      if (!op || !salas[op]?.explica || !t.explica?.length) continue;
+      operacionais[op] = { nome: t.nome, estilo: t.estilo, explica: t.explica };
+      const tela = salas[op].explica.children[1], map = texExplica(op);   // [0] é a moldura (quadroParede)
+      tela.material.map.dispose(); tela.material.dispose();
+      tela.material = new THREE.MeshStandardMaterial({ map, roughness: 0.45, emissive: "#ffffff", emissiveMap: map, emissiveIntensity: 0.3 });
+    }
+  } catch {}
+}
+carregarExplicacoes();
 setInterval(carregarLab, 30000);
 setInterval(carregarAtividade, 5000);
 
