@@ -18,3 +18,11 @@
 4. Sofia: sem mudança de regra (só passa a sentir o R:R 3 e o fim do teto de contratos).
 5. Refazer os testes com o mesmo método do Plano 6 (`pesquisa/harness.py`, `pesquisa/divisao.json`, desenvolvimento até 2026-04-30, validação depois, estresse 1 tick, ≥ 100 operações, PF ≥ 1,2, platô): os padrões novos dos três em todos os mercados e tempos gráficos do Diretor (WDO/WIN/BTC 5 min; 7 Forex 5 e 15; 12 ações 60 com posição de vários dias; Caio só WDO/WIN e BTC). Tabela antes × depois (padrão do Plano 6 × padrão novo) no desenvolvimento; validação só para os que passarem nas regras do desenvolvimento (no máximo 1 por trader × mercado × tempo, em série). Sensibilidade do stop do Didi e do Caio.
 6. Entregar: commit, `pesquisa/plano7/resumo.md` e relatório.
+
+## Didi do Diretor (2026-10-26, prints)
+Regra nova do padrão do Didi, por cima do Plano 7 (alvo no próximo topo/fundo confirmado, stop 3 ticks além do candle do gatilho, saída só no stop ou no alvo, R:R ≥ 3, contratos até R$ 100 continuam):
+1. Agulhada: MA3 e MA20 podem cruzar a MA8 com até 3 candles entre si (`agulhada_n` = 3).
+2. Bollinger: as bandas podem abrir até 4 candles depois da agulhada (`janela_bandas` = 4).
+3. ADX(8): "só precisa estar subindo, e tem que estar mais abaixo" — subindo no candle do gatilho e vindo da parte baixa da faixa: o mínimo do ADX nos últimos 5 candles ≤ percentil 30 dos últimos 120 valores (leitura numérica do controlador para "mais abaixo"; parâmetro `adx_pct`, padrão 0,3). O DI não é mais exigido (`adx` = "sobe_de_baixo").
+4. TRIX(9): "não precisa estar tão no extremo, uns 30% na área mais alta e mais baixa" — compra com o TRIX ≤ percentil 30 dos últimos 120 e subindo; venda ≥ percentil 70 e caindo (`trix_extremo` = 0,3).
+Os prints confirmam a direção: na venda o TRIX estava na área de cima virando para baixo; o ADX subia vindo de baixo. Relatório: funil do Didi no WDO 5 min (agulhadas → bandas abriram → ADX → TRIX → R:R ≥ 3 → trades) no desenvolvimento e trades por pregão.

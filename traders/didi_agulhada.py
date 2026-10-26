@@ -23,13 +23,17 @@ ESTILO = "agulhada 3·8·20 · Bollinger abrindo · ADX e TRIX"
 # topo/fundo da Sofia (estudos.pivos, n=2), e sem ele não entra; número = alvo em alvo_x vezes o risco (opção)
 # saida: "alvo" (só stop ou alvo, decisão do Diretor), "bandas" (também sai quando as bandas fecham ou a MA3 volta
 # contra) ou "ma3" (também sai quando a MA3 volta)
-PARAMS = {"tf": 5, "alvo_x": None, "trix_extremo": 0.2, "agulhada_n": 0, "janela_bandas": 3, "adx": "sobe",
-          "recuo": 0, "saida": "alvo", "tendencia": False, "folga_stop_ticks": 3}
-GRADE = {"tf": [5],  # o 15 não fez operação em nenhum ativo real e custava 2× o tempo do gerente
-          "trix_extremo": [0.1, 0.2, 0.3]}  # sem alvo_x: o alvo é o topo/fundo (Diretor, Plano 7)
+# adx "sobe_de_baixo" (prints do Diretor): ADX subindo no candle do gatilho e vindo da parte de baixo da faixa — o
+# mínimo dos últimos 5 valores ≤ percentil adx_pct dos últimos N_TRIX; o DI não é exigido
+# Padrão = Diretor (2026-10-26, prints): cruzamentos até 3 candles, bandas até 4 depois, TRIX nos 30% das pontas
+PARAMS = {"tf": 5, "alvo_x": None, "trix_extremo": 0.3, "agulhada_n": 3, "janela_bandas": 4, "adx": "sobe_de_baixo",
+          "adx_pct": 0.3, "recuo": 0, "saida": "alvo", "tendencia": False, "folga_stop_ticks": 3}
+# só o tempo gráfico: alvo, stop e filtros são regras do Diretor, o gerente não os troca
+GRADE = {"tf": [5]}  # o 15 não fez operação em nenhum ativo real e custava 2× o tempo do gerente
 MINIMO = 27  # TRIX(9) no candle anterior (índice 25); MA20, bandas e ADX de 8 já valem antes
 N_TRIX = 120  # valores do TRIX para o percentil da extremidade
 ADX_BAIXO = 20  # notas do Diretor: na compressão o ADX fica perto de 20 ou menos
+N_ADX_BAIXO = 5  # "sobe_de_baixo": candles (o do gatilho e os 4 antes) em que o ADX tem de ter passado pela parte baixa
 
 
 def _r(v, casas=4):
@@ -156,14 +160,21 @@ class Trader:
         k = cs[-1]
         compra = lado == "compra"
         modo_adx = self.p["adx"]
-        if modo_adx in ("sobe", "baixo") and not adx[-1] > adx[-2]:
+        if modo_adx in ("sobe", "baixo", "sobe_de_baixo") and not adx[-1] > adx[-2]:
             d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas o ADX não sobe; não entro")
             return d
         if modo_adx == "baixo" and not (adx[a - 1] is not None and adx[a - 1] <= ADX_BAIXO):
             d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas o ADX não vinha baixo (≤ {ADX_BAIXO}) "
                                 f"antes dela: não houve compressão; não entro")
             return d
-        if modo_adx != "nao" and not (mais[-1] > menos[-1] if compra else menos[-1] > mais[-1]):
+        if modo_adx == "sobe_de_baixo":
+            valores = [v for v in adx[-N_TRIX:] if v is not None]
+            corte_adx = statistics.quantiles(valores, n=100, method="inclusive")[round(self.p["adx_pct"] * 100) - 1]
+            if not min(v for v in adx[-N_ADX_BAIXO:] if v is not None) <= corte_adx:
+                d.pensamento.append(f"bandas abriram na agulhada de {lado}, o ADX sobe, mas não vem de baixo "
+                                    f"(mínimo dos últimos {N_ADX_BAIXO} acima de {corte_adx:.1f}); não entro")
+                return d
+        if modo_adx not in ("nao", "sobe_de_baixo") and not (mais[-1] > menos[-1] if compra else menos[-1] > mais[-1]):
             d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas o DI {'+' if compra else '−'} não manda; "
                                 f"não entro")
             return d
@@ -210,7 +221,8 @@ class Trader:
                 return d
             alvo = min(ps) if compra else max(ps)
         d.planos.append(Plano(lado, "limite" if limitada else "mercado", entrada, stop, alvo, "didi-agulhada"))
-        conf = {"sobe": ", ADX subindo", "baixo": ", ADX saindo de baixo", "di": ", DI a favor", "nao": ""}[modo_adx]
+        conf = {"sobe": ", ADX subindo", "baixo": ", ADX saindo de baixo", "di": ", DI a favor", "nao": "",
+                "sobe_de_baixo": ", ADX subindo de baixo"}[modo_adx]
         conf += ", a favor da tendência" if self.p["tendencia"] else ""
         conf += ", TRIX virando a favor" if corte is None else " e TRIX na extremidade"
         como = (f"limitada em {preco(entrada, tick)} (recuo de {r:g} do candle) no próximo candle" if limitada else

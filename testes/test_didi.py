@@ -49,7 +49,8 @@ def larguras(ws):
 
 
 # as saídas e o alvo de antes do Plano 7, agora opções
-ANTES = {"folga_stop_ticks": 1, "alvo_x": 3.0, "saida": "bandas"}
+ANTES = {"folga_stop_ticks": 1, "alvo_x": 3.0, "saida": "bandas", "agulhada_n": 0, "janela_bandas": 3, "adx": "sobe",
+         "trix_extremo": 0.2}
 REAL = didi_agulhada.Trader._estudos
 
 
@@ -329,7 +330,32 @@ class TestDidiDoDiretor(unittest.TestCase):
     def test_padrao(self):
         self.assertEqual({k: didi_agulhada.PARAMS[k] for k in ("folga_stop_ticks", "alvo_x", "saida")},
                          {"folga_stop_ticks": 3, "alvo_x": None, "saida": "alvo"})
-        self.assertNotIn("alvo_x", didi_agulhada.GRADE)  # o gerente não volta a pôr alvo em múltiplo do risco
+        # prints do Diretor: cruzamentos até 3 candles, bandas até 4 depois, ADX subindo vindo de baixo, TRIX 30%
+        self.assertEqual({k: didi_agulhada.PARAMS[k] for k in ("agulhada_n", "janela_bandas", "adx", "adx_pct",
+                                                               "trix_extremo")},
+                         {"agulhada_n": 3, "janela_bandas": 4, "adx": "sobe_de_baixo", "adx_pct": 0.3,
+                          "trix_extremo": 0.3})
+        # o gerente não mexe nas regras do Diretor (alvo, TRIX)
+        self.assertEqual(didi_agulhada.GRADE, {"tf": [5]})
+
+    def test_adx_subindo_vindo_de_baixo_sem_exigir_o_di(self):
+        n = len(ONTEM_TOPO) + len(AGULHADA_COMPRA)
+        def adx(serie, mais=10.0, menos=30.0):  # DI contra a compra: não é mais exigido
+            return ([None] * (n - len(serie)) + serie, [None] * (n - 1) + [mais], [None] * (n - 1) + [menos])
+        didi = lambda: didi_agulhada.Trader("WDO", 0.5)
+        # mínimo dos últimos 5 (13) ≤ percentil 30 dos últimos 120 (30) e subindo: entra
+        with falsos(trix=lambda f: trix_extremo("compra")(f), adx=adx([30.0] * 20 + [12, 13, 14, 16, 18, 20])):
+            self.assertEqual(len(didi().decidir(AGULHADA_COMPRA, ONTEM_TOPO, []).planos), 1)
+        # subindo, mas lá em cima (mínimo dos últimos 5 = 31 > percentil 30 = 10): não entra
+        with falsos(trix=lambda f: trix_extremo("compra")(f), adx=adx([10.0] * 20 + [30, 31, 32, 33, 34, 35])):
+            d = didi().decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
+            self.assertEqual(d.planos, [])
+            self.assertTrue(any("ADX" in p and "baixo" in p for p in d.pensamento), d.pensamento)
+        # vindo de baixo, mas caindo no candle do gatilho: não entra
+        with falsos(trix=lambda f: trix_extremo("compra")(f), adx=adx([30.0] * 20 + [12, 13, 14, 16, 20, 19])):
+            d = didi().decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
+            self.assertEqual(d.planos, [])
+            self.assertTrue(any("ADX não sobe" in p for p in d.pensamento), d.pensamento)
 
     def test_alvo_no_topo_mais_proximo_acima_e_stop_3_ticks_alem(self):
         d = self.didi().decidir(AGULHADA_COMPRA, ONTEM_TOPO, [])
@@ -498,7 +524,8 @@ class TestDidiDeVerdade(unittest.TestCase):
         saídas de antes e com o alvo no topo/fundo do Plano 7."""
         frouxo = {"trix_extremo": 1.0, "adx": "nao", "agulhada_n": 2}
         # sementes com ordem do Didi no dia cortado (2º dia; 3º no caso do alvo no topo/fundo)
-        for params, semente, ini in ((ANTES, 143, 114), ({"tf": 15, **ANTES}, 220, 114), (frouxo, 220, 228)):
+        for params, semente, ini in ((ANTES, 143, 114), ({"tf": 15, **ANTES}, 220, 114), (frouxo, 220, 228),
+                                     ({}, 16, 114)):  # {} = o padrão do Diretor (ADX e TRIX por percentil)
             cs = dias_sinteticos(3, semente)
             dia2 = cs[ini].t.date().isoformat()
             rodar = lambda dados: motor.rodar_backtest("WDO", dados, [(didi_agulhada, params)],
