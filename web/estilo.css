@@ -4,10 +4,18 @@
    o gráfico e a coluna da direita não esticam a linha pelo conteúdo (contain:size): rolam por dentro */
 body{background:var(--bg);color:var(--txt);font:13px/1.4 "Segoe UI",system-ui,sans-serif;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:56px minmax(360px,1fr) 56px;min-height:100vh}
 header{grid-column:1/3;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
-.logo{font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:8px}.logo img{width:26px;height:26px;display:block}.logo span{color:#1de9b6}
-.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{padding:6px 14px;color:var(--mut);background:none;border:0;font:inherit;cursor:pointer}
-.seg button.sel{background:var(--acc);color:#fff}.seg button:disabled{cursor:not-allowed;opacity:.5}
+.logo{font-weight:700;font-size:18px;display:inline-flex;align-items:center;gap:10px}.logo img{width:34px;height:34px;display:block}.logo .nome{width:auto;height:22px}
+/* Backtest | Ao vivo: duas metades iguais e uma pílula que desliza até a escolhida */
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid var(--line);border-radius:999px;background:#0d131b;box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.seg::before{content:"";position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:999px;background:linear-gradient(135deg,#1de9b6,#00bcd4);box-shadow:0 0 14px rgba(29,233,182,.35),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .32s cubic-bezier(.65,0,.35,1)}
+.seg:has(button:last-child.sel)::before{transform:translateX(100%)}
+.seg button{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;padding:6px 18px;color:var(--mut);background:none;border:0;border-radius:999px;font:600 13px "Segoe UI",system-ui,sans-serif;cursor:pointer;transition:color .25s}
+.seg button:hover{color:var(--txt)}.seg button.sel{color:#04201b}.seg button:disabled{cursor:not-allowed;opacity:.5}
+.seg button:focus-visible{outline:2px solid #1de9b6;outline-offset:2px}
+.seg button[data-modo=vivo]::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--dn)}
+.seg button.sel[data-modo=vivo]::before{background:#04201b;animation:pulso 1.6s ease-in-out infinite}
+@keyframes pulso{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.seg::before,.seg button{transition:none}.seg button::before{animation:none!important}}
 .pill{margin-left:auto;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mut);font-size:12px}
 .ctrl{grid-column:1;grid-row:3;position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:16px;padding:0 20px;background:#0e141c;border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.35)}
 .ctrl .grp{display:flex;align-items:center;gap:8px;padding-right:16px;border-right:1px solid var(--line);height:36px}
