@@ -5,3 +5,7 @@ quando,trader,ativo,tf,parametros,de,ate,estresse_ticks
 2026-10-26T02:37:45,Didi Agulhada,GBPUSD,15,"{""adx"": ""nao"", ""agulhada_n"": 2, ""alvo_x"": 3.0, ""janela_bandas"": 3, ""recuo"": 0, ""saida"": ""bandas"", ""tendencia"": true, ""tf"": 5, ""trix_extremo"": 1.0}",2026-05-01,2026-10-23,1
 2026-10-26T02:37:46,Didi Agulhada,USDJPY,15,"{""adx"": ""nao"", ""agulhada_n"": 2, ""alvo_x"": 3.0, ""janela_bandas"": 3, ""recuo"": 0, ""saida"": ""bandas"", ""tendencia"": true, ""tf"": 5, ""trix_extremo"": 1.0}",2026-05-01,2026-10-23,0
 2026-10-26T02:37:50,Didi Agulhada,USDJPY,15,"{""adx"": ""nao"", ""agulhada_n"": 2, ""alvo_x"": 3.0, ""janela_bandas"": 3, ""recuo"": 0, ""saida"": ""bandas"", ""tendencia"": true, ""tf"": 5, ""trix_extremo"": 1.0}",2026-05-01,2026-10-23,1
+2026-10-26T02:42:05,Sofia SMC,GBPUSD,5,"{""gatilho"": true}",2026-05-01,2026-10-23,0
+2026-10-26T02:42:17,Sofia SMC,GBPUSD,5,"{""gatilho"": true}",2026-05-01,2026-10-23,1
+2026-10-26T02:42:28,Sofia SMC,USDJPY,5,"{""gatilho"": true}",2026-05-01,2026-10-23,0
+2026-10-26T02:42:40,Sofia SMC,USDJPY,5,"{""gatilho"": true}",2026-05-01,2026-10-23,1

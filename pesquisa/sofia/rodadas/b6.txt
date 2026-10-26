@@ -1,0 +1,12 @@
+H7 gatilho z0.0                          USDCHF   5   158      -342 PF 0.71 | est      -446 PF 0.65 negativa [-207, 111, -151, -96]
+H7 gatilho z0.0                          AUDUSD   5   163       -19 PF 0.98 | est      -107 PF 0.89 negativa [78, -3, -52, -42]
+H7 gatilho z0.0                          USDCAD   5   144       -51 PF 0.92 | est      -107 PF 0.85 negativa [-4, -83, 77, -41]
+H7 gatilho z0.0                          NZDUSD   5   150      -139 PF 0.83 | est      -220 PF 0.75 negativa [1, -42, -182, 83]
+H7 gatilho z0.0                          USDJPY  15    73      -247 PF 0.68 | est      -272 PF 0.65 inconclusivo [-178, -130, 69, -9]
+H7 gatilho z0.0                          GBPUSD  15    71      -318 PF 0.69 | est      -356 PF 0.66 inconclusivo [-128, -155, -37, 3]
+H7 gatilho z0.0                          USDCHF  15    66      -278 PF 0.69 | est      -321 PF 0.66 inconclusivo [-139, -132, 168, -175]
+H7 gatilho z0.0                          AUDUSD  15    69      -418 PF 0.44 | est      -455 PF 0.42 inconclusivo [-117, -84, -74, -142]
+H7 gatilho z0.0                          USDCAD  15    55        83 PF 1.23 | est        62 PF 1.17 inconclusivo [72, 70, -17, -42]
+H7 gatilho z0.0                          NZDUSD  15    79      -124 PF 0.82 | est      -167 PF 0.76 inconclusivo [96, -141, -40, -38]
+H7 gatilho z0.0                          BTCUSDT  5   511      -714 PF 0.63 | est      -714 PF 0.63 negativa [-169, -48, -15, -18, -44, -114, -137, -103, -24, -42]
+187 s
