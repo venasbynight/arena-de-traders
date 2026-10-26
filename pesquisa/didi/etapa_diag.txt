@@ -1,0 +1,24 @@
+#0 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "tf": 5, "trix_extremo": 0.2}
+#1 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "tf": 5, "trix_extremo": 1.0}
+#2 {"adx": "di", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "tf": 5, "trix_extremo": 0.2}
+#3 {"adx": "di", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "tf": 5, "trix_extremo": 1.0}
+#4 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "tf": 5, "trix_extremo": 1.0}
+#5 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "tf": 5, "trix_extremo": 1.0}
+WDO  5  #0  5  -177.0  0.1  -297.0  0.0
+WDO  5  #1  88  -533.0  0.86  -2269.0  0.54
+WDO  5  #2  8  -376.0  0.05  -586.0  0.0
+WDO  5  #3  112  -626.0  0.87  -3042.0  0.53
+WDO  5  #4  134  -786.0  0.87  -3902.0  0.51
+WDO  5  #5  769  -12639.0  0.64  -30428.0  0.36
+WIN  5  #0  4  235.0  3.3  211.0  2.92
+WIN  5  #1  79  -1414.5  0.57  -1816.5  0.5
+WIN  5  #2  10  -15.5  0.96  -73.5  0.81
+WIN  5  #3  135  -2226.5  0.6  -2972.5  0.52
+WIN  5  #4  156  -2465.0  0.62  -3369.0  0.53
+WIN  5  #5  831  -10259.0  0.7  -15742.5  0.59
+EURUSD  5  #0  3  0.39  1.02  -1.23  0.94
+EURUSD  5  #1  78  -100.45  0.77  -141.17  0.7
+EURUSD  5  #2  7  -6.47  0.83  -10.25  0.74
+EURUSD  5  #3  118  -166.89  0.71  -229.21  0.63
+EURUSD  5  #4  131  -185.27  0.7  -254.61  0.62
+EURUSD  5  #5  705  -559.84  0.81  -939.36  0.71

@@ -13,12 +13,18 @@ NOME = "Didi Agulhada"
 ESTILO = "agulhada 3·8·20 · Bollinger abrindo · ADX e TRIX"
 # agulhada_n: candles entre os dois cruzamentos (0 = no mesmo candle); janela_bandas: candles depois da agulhada em
 # que as bandas ainda podem abrir; adx: "sobe" (ADX subindo e DI a favor), "di" (só o DI a favor) ou "nao";
+# adx "baixo": ADX subindo agora e ≤ ADX_BAIXO no candle antes da agulhada (compressão), com o DI a favor;
+# tendencia: só a favor da tendência (estudos.tendencia) do 60 (entrada no 5/15) ou do diário (entrada no 60);
 # trix_extremo: percentil (0,2 = os 20% mais baixos dos últimos 120 para a compra); 1 = só o TRIX virando a favor
-PARAMS = {"tf": 5, "alvo_x": 3.0, "trix_extremo": 0.2, "agulhada_n": 0, "janela_bandas": 3, "adx": "sobe"}
+# recuo: 0 = a mercado na abertura seguinte; r > 0 = limitada no recuo r (Fibonacci) do candle que abriu as bandas
+PARAMS = {"tf": 5, "alvo_x": 3.0, "trix_extremo": 0.2, "agulhada_n": 0, "janela_bandas": 3, "adx": "sobe",
+          "recuo": 0, "saida": "bandas", "tendencia": False}
+# saida: "bandas" (sai quando as bandas fecham ou a MA3 volta contra) ou "ma3" (só quando a MA3 volta)
 GRADE = {"tf": [5],  # o 15 não fez operação em nenhum ativo real e custava 2× o tempo do gerente
           "alvo_x": [2.0, 3.0, 4.0], "trix_extremo": [0.1, 0.2, 0.3]}
 MINIMO = 27  # TRIX(9) no candle anterior (índice 25); MA20, bandas e ADX de 8 já valem antes
 N_TRIX = 120  # valores do TRIX para o percentil da extremidade
+ADX_BAIXO = 20  # notas do Diretor: na compressão o ADX fica perto de 20 ou menos
 
 
 def _r(v, casas=4):
@@ -59,7 +65,8 @@ class Trader:
 
     def decidir(self, hoje5, ontem5, fechados60):
         tf, tick = int(self.p["tf"]), self.tick
-        if fechados60 and fechados60[-1].t == hoje5[-1].t:
+        de60 = bool(fechados60) and fechados60[-1].t == hoje5[-1].t
+        if de60:
             # candles base de 60 (ações): ontem + hoje são só 14 candles; os 200 blocos de 60 fechados que o motor
             # entrega já terminam no candle que acabou de fechar e dão o histórico das médias e do TRIX
             cs = list(fechados60)
@@ -100,7 +107,7 @@ class Trader:
 
         c0, c1 = sg(curta[-2]), sg(curta[-1])
         contra = "compra" if c0 > 0 >= c1 else "venda" if c0 < 0 <= c1 else None  # quem essa virada tira
-        if largura[-1] - largura[-2] < -eps:
+        if self.p["saida"] == "bandas" and largura[-1] - largura[-2] < -eps:
             d.sair = True
             d.pensamento.append("as bandas fecharam: se estou posicionado, saio na abertura do próximo candle")
         elif contra:
@@ -142,8 +149,12 @@ class Trader:
         k = cs[-1]
         compra = lado == "compra"
         modo_adx = self.p["adx"]
-        if modo_adx == "sobe" and not adx[-1] > adx[-2]:
+        if modo_adx in ("sobe", "baixo") and not adx[-1] > adx[-2]:
             d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas o ADX não sobe; não entro")
+            return d
+        if modo_adx == "baixo" and not (adx[a - 1] is not None and adx[a - 1] <= ADX_BAIXO):
+            d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas o ADX não vinha baixo (≤ {ADX_BAIXO}) "
+                                f"antes dela: não houve compressão; não entro")
             return d
         if modo_adx != "nao" and not (mais[-1] > menos[-1] if compra else menos[-1] > mais[-1]):
             d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas o DI {'+' if compra else '−'} não manda; "
@@ -162,14 +173,31 @@ class Trader:
                                 f"{onde}virando a favor; não entro")
             return d
 
+        if self.p["tendencia"]:
+            # contexto maior: o 60 para o 5 e o 15; o diário (pregões já fechados) para o 60
+            ctx = [x for x in agrupar(fechados60, 24 * 60) if x.t.date() < k.t.date()] if de60 else fechados60
+            tend = estudos.tendencia(ctx, 2)
+            if tend != ("alta" if compra else "baixa"):
+                d.pensamento.append(f"bandas abriram na agulhada de {lado}, mas a tendência do "
+                                    f"{'diário' if de60 else '60'} é {tend or 'indefinida'}; não entro")
+                return d
+
         sinal = 1 if compra else -1
         ref = arredondar_tick(k.c, tick)
         stop = arredondar_tick((k.l if compra else k.h) - sinal * tick, tick)
-        alvo = arredondar_tick(ref + sinal * self.p["alvo_x"] * abs(ref - stop), tick)
-        d.planos.append(Plano(lado, "mercado", ref, stop, alvo, "didi-agulhada"))
-        conf = {"sobe": ", ADX subindo", "di": ", DI a favor", "nao": ""}[modo_adx]
+        # recuo: limitada no Fibonacci `recuo` do candle que abriu as bandas, só no candle seguinte (as notas do
+        # Diretor: entrada no pullback de 0,382 a 0,618 do impulso, ou direto no rompimento)
+        r = self.p["recuo"]
+        nivel = arredondar_tick(k.h - r * (k.h - k.l) if compra else k.l + r * (k.h - k.l), tick)
+        limitada = r > 0 and (nivel < ref if compra else nivel > ref)
+        entrada = nivel if limitada else ref
+        alvo = arredondar_tick(entrada + sinal * self.p["alvo_x"] * abs(entrada - stop), tick)
+        d.planos.append(Plano(lado, "limite" if limitada else "mercado", entrada, stop, alvo, "didi-agulhada"))
+        conf = {"sobe": ", ADX subindo", "baixo": ", ADX saindo de baixo", "di": ", DI a favor", "nao": ""}[modo_adx]
+        conf += ", a favor da tendência" if self.p["tendencia"] else ""
         conf += ", TRIX virando a favor" if corte is None else " e TRIX na extremidade"
-        d.pensamento.append(f"agulhada de {lado}, bandas abrindo{conf}: {lado} a mercado "
-                            f"na abertura do próximo candle (fechou em {preco(ref, tick)}); stop {preco(stop, tick)}, "
+        como = (f"limitada em {preco(entrada, tick)} (recuo de {r:g} do candle) no próximo candle" if limitada else
+                f"a mercado na abertura do próximo candle (fechou em {preco(ref, tick)})")
+        d.pensamento.append(f"agulhada de {lado}, bandas abrindo{conf}: {lado} {como}; stop {preco(stop, tick)}, "
                             f"alvo {preco(alvo, tick)}")
         return d

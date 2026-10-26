@@ -1,0 +1,67 @@
+#0 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "tf": 5, "trix_extremo": 1.0}
+#1 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.382, "tf": 5, "trix_extremo": 1.0}
+#2 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.5, "tf": 5, "trix_extremo": 1.0}
+#3 {"adx": "sobe", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.618, "tf": 5, "trix_extremo": 1.0}
+#4 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "tf": 5, "trix_extremo": 1.0}
+#5 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.382, "tf": 5, "trix_extremo": 1.0}
+#6 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.5, "tf": 5, "trix_extremo": 1.0}
+#7 {"adx": "sobe", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.618, "tf": 5, "trix_extremo": 1.0}
+#8 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "tf": 5, "trix_extremo": 1.0}
+#9 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.382, "tf": 5, "trix_extremo": 1.0}
+#10 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.5, "tf": 5, "trix_extremo": 1.0}
+#11 {"adx": "nao", "agulhada_n": 0, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.618, "tf": 5, "trix_extremo": 1.0}
+#12 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "tf": 5, "trix_extremo": 1.0}
+#13 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.382, "tf": 5, "trix_extremo": 1.0}
+#14 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.5, "tf": 5, "trix_extremo": 1.0}
+#15 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0.618, "tf": 5, "trix_extremo": 1.0}
+WDO  5  #0  88  -533.0  0.86  -2269.0  0.54
+WDO  5  #1  74  -263.0  0.92  -2043.0  0.56
+WDO  5  #2  65  -453.0  0.86  -2233.0  0.51
+WDO  5  #3  52  -882.0  0.71  -2308.0  0.44
+WDO  5  #4  487  -7005.0  0.68  -18163.0  0.39
+WDO  5  #5  422  -6519.0  0.69  -17411.0  0.4
+WDO  5  #6  357  -7533.0  0.62  -17934.0  0.35
+WDO  5  #7  299  -8375.0  0.55  -18232.0  0.3
+WDO  5  #8  134  -786.0  0.87  -3902.0  0.51
+WDO  5  #9  107  -981.0  0.81  -3941.0  0.47
+WDO  5  #10  97  -967.0  0.81  -3937.0  0.46
+WDO  5  #11  79  -1595.0  0.66  -4288.0  0.35
+WDO  5  #12  769  -12639.0  0.64  -30428.0  0.36
+WDO  5  #13  647  -12676.0  0.62  -29637.0  0.34
+WDO  5  #14  565  -13756.0  0.57  -30072.0  0.3
+WDO  5  #15  475  -14055.0  0.52  -30355.0  0.27
+WDO  5  WF  255  -2948.0  0.75  -9116.0  0.45  [4, 13, 5, 5, 9, 1, 1, 1, 1]
+WIN  5  #0  79  -1414.5  0.57  -1816.5  0.5
+WIN  5  #1  60  -746.0  0.7  -1106.0  0.59
+WIN  5  #2  50  316.0  1.16  -16.0  0.99
+WIN  5  #3  40  -306.5  0.83  -604.5  0.7
+WIN  5  #4  501  -7769.0  0.63  -10897.0  0.53
+WIN  5  #5  424  -5665.0  0.69  -8677.0  0.58
+WIN  5  #6  361  -5075.0  0.71  -7911.0  0.59
+WIN  5  #7  305  -5661.5  0.63  -8235.0  0.52
+WIN  5  #8  156  -2465.0  0.62  -3369.0  0.53
+WIN  5  #9  124  -1871.0  0.64  -2711.0  0.53
+WIN  5  #10  105  -700.0  0.84  -1492.0  0.7
+WIN  5  #11  87  -368.0  0.9  -1100.0  0.74
+WIN  5  #12  831  -10259.0  0.7  -15742.5  0.59
+WIN  5  #13  700  -8841.5  0.7  -14127.5  0.58
+WIN  5  #14  603  -8076.5  0.7  -13066.5  0.58
+WIN  5  #15  512  -8075.0  0.66  -12606.5  0.54
+WIN  5  WF  161  -3165.0  0.59  -4445.0  0.5  [5, 6, 6, 10, 11, 11, 11, 11, 11]
+EURUSD  5  #0  78  -100.45  0.77  -141.17  0.7
+EURUSD  5  #1  49  -34.89  0.83  -61.03  0.73
+EURUSD  5  #2  35  -10.21  0.92  -29.11  0.8
+EURUSD  5  #3  28  -34.25  0.66  -49.37  0.56
+EURUSD  5  #4  509  -577.58  0.75  -851.04  0.66
+EURUSD  5  #5  383  -602.3  0.6  -808.8  0.52
+EURUSD  5  #6  341  -471.55  0.6  -655.69  0.5
+EURUSD  5  #7  297  -364.77  0.58  -525.15  0.48
+EURUSD  5  #8  131  -185.27  0.7  -254.61  0.62
+EURUSD  5  #9  88  -106.23  0.69  -153.43  0.59
+EURUSD  5  #10  69  -23.7  0.9  -60.96  0.77
+EURUSD  5  #11  58  -41.96  0.77  -73.28  0.64
+EURUSD  5  #12  705  -559.84  0.81  -939.36  0.71
+EURUSD  5  #13  544  -735.18  0.63  -1028.62  0.54
+EURUSD  5  #14  489  -538.53  0.65  -802.59  0.55
+EURUSD  5  #15  432  -407.7  0.65  -640.98  0.53
+EURUSD  5  WF  261  -460.63  0.58  -601.15  0.5  [12, 8, 0]

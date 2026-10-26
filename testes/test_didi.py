@@ -94,6 +94,21 @@ class TestDidi(unittest.TestCase):
         self.assertEqual(d.planos, [Plano("venda", "mercado", 5397.5, 5401.0, 5387.0, "didi-agulhada")])
         self.assertTrue(any(x["tipo"] == "agulhada" and x["lado"] == "venda" for x in d.desenhos))
 
+    def test_recuo_entra_limitada_no_fibonacci_do_candle(self):
+        # candle 5400/5403/5399,5/5402,5: recuo de 0,5 = 5403 − 1,75 = 5401,25 → 5401 no tick; stop igual, alvo 3× o
+        # risco novo (2,0)
+        d = self.wdo(recuo=0.5).decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+        self.assertEqual(d.planos, [Plano("compra", "limite", 5401.0, 5399.0, 5407.0, "didi-agulhada")])
+        self.assertTrue(any("limitada em 5401.0" in p for p in d.pensamento))
+        self.lado_trix = "venda"
+        d = self.wdo(recuo=0.5).decidir(espelho(AGULHADA_COMPRA), espelho(ONTEM_PARADO), [])
+        self.assertEqual(d.planos, [Plano("venda", "limite", 5399.0, 5401.0, 5393.0, "didi-agulhada")])
+
+    def test_recuo_que_nao_fica_abaixo_do_fechamento_vai_a_mercado(self):
+        # recuo de 0,1: 5403 − 0,35 → 5402,5, igual ao fechamento: a mercado como antes
+        d = self.wdo(recuo=0.1).decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+        self.assertEqual(d.planos, [Plano("compra", "mercado", 5402.5, 5399.0, 5413.0, "didi-agulhada")])
+
     def test_alvo_segue_alvo_x(self):
         self.assertEqual(self.wdo(alvo_x=2.0).decidir(AGULHADA_COMPRA, ONTEM_PARADO, []).planos[0].alvo, 5409.5)
 
@@ -181,6 +196,27 @@ class TestDidi(unittest.TestCase):
         self.assertEqual(d.planos, [])
         self.assertTrue(any("ADX" in p for p in d.pensamento))
 
+    def test_adx_baixo_exige_compressao_antes_da_agulhada(self):
+        cs = ONTEM_PARADO + AGULHADA_COMPRA
+        def adx(antes):  # ADX `antes` no candle anterior à agulhada, subindo nela; DI+ manda
+            return ([None] * (len(cs) - 2) + [antes, antes + 5], [None] * (len(cs) - 1) + [40.0],
+                    [None] * (len(cs) - 1) + [5.0])
+        with self.com(adx=adx(15.0)):
+            self.assertEqual(len(self.wdo(adx="baixo").decidir(AGULHADA_COMPRA, ONTEM_PARADO, []).planos), 1)
+        with self.com(adx=adx(25.0)):
+            d = self.wdo(adx="baixo").decidir(AGULHADA_COMPRA, ONTEM_PARADO, [])
+            self.assertEqual(d.planos, [])
+            self.assertTrue(any("compressão" in p for p in d.pensamento))
+            self.assertEqual(len(self.wdo().decidir(AGULHADA_COMPRA, ONTEM_PARADO, []).planos), 1)
+
+    def test_tendencia_do_60_filtra_o_lado(self):
+        blocos = velas(ONTEM, [PARADO] * 3)  # o que o motor passaria: os blocos de 60 fechados
+        for tend, entra in (("alta", 1), ("baixa", 0), (None, 0)):
+            with mock.patch.object(didi_agulhada.estudos, "tendencia", return_value=tend) as t:
+                d = self.wdo(tendencia=True).decidir(AGULHADA_COMPRA, ONTEM_PARADO, blocos)
+            self.assertEqual(len(d.planos), entra, tend)
+            self.assertEqual(t.call_args.args, (blocos, 2))
+
     def test_sem_di_a_favor_nao_entra(self):
         cs = ONTEM_PARADO + AGULHADA_COMPRA
         contra = ([None] * (len(cs) - 2) + [20.0, 25.0], [None] * (len(cs) - 1) + [10.0], [None] * (len(cs) - 1) + [30.0])
@@ -217,7 +253,9 @@ class TestDidi(unittest.TestCase):
         hoje = AGULHADA_COMPRA + APOS[:1]
         with self.com(bollinger=larguras([0.0] * A + [5.0, 4.5])):
             d = self.wdo().decidir(hoje, ONTEM_PARADO, [])
+            so_ma3 = self.wdo(saida="ma3").decidir(hoje, ONTEM_PARADO, [])
         self.assertIs(d.sair, True)  # qualquer lado
+        self.assertIs(so_ma3.sair, False)  # saida "ma3": as bandas fechando não tiram
         self.assertTrue(any("bandas" in p and "sai" in p for p in d.pensamento))
 
     def test_zero_com_folga_do_tick(self):
@@ -319,6 +357,21 @@ class TestDidiDeVerdade(unittest.TestCase):
         self.assertEqual(d.desenhos[0]["t"], hoje[-1].t.isoformat())
         curto = didi_agulhada.Trader("PETR4", 0.01).decidir(hoje, ontem, [])  # sem os blocos: só ontem + hoje
         self.assertTrue(any("só 11 candles" in p for p in curto.pensamento))
+
+    def test_tendencia_no_60_e_a_do_diario_dos_pregoes_fechados(self):
+        cs = horas(30, 1)
+        vistos = []
+        with mock.patch.object(didi_agulhada.estudos, "tendencia", side_effect=lambda c, n: vistos.append(c)):
+            r = motor.rodar_backtest("PETR4", cs, [(didi_agulhada, {"trix_extremo": 1.0, "adx": "nao",
+                                                                     "agulhada_n": 2, "tendencia": True})],
+                                     CFG, minutos=60)
+        self.assertTrue(vistos)
+        for ctx in vistos:  # um candle por pregão, todos de dias anteriores, com a máxima do dia inteiro
+            dias = [k.t.date() for k in ctx]
+            self.assertEqual(len(set(dias)), len(dias))
+            dia = [k for k in cs if k.t.date() == dias[-1]]
+            self.assertEqual((ctx[-1].h, ctx[-1].c), (max(k.h for k in dia), dia[-1].c))
+        self.assertTrue(r["traders"]["Didi Agulhada"]["eventos"])
 
     def test_60_nao_ve_o_futuro(self):
         """Ações no 60: cortar os dados no meio de um pregão não muda nada do que o Didi fez antes do corte."""

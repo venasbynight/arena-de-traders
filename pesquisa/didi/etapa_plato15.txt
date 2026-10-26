@@ -1,0 +1,28 @@
+#0 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#1 {"adx": "nao", "agulhada_n": 1, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#2 {"adx": "nao", "agulhada_n": 3, "alvo_x": 3.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#3 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 2, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#4 {"adx": "nao", "agulhada_n": 2, "alvo_x": 3.0, "janela_bandas": 4, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#5 {"adx": "nao", "agulhada_n": 2, "alvo_x": 2.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+#6 {"adx": "nao", "agulhada_n": 2, "alvo_x": 4.0, "janela_bandas": 3, "recuo": 0, "saida": "bandas", "tendencia": true, "tf": 5, "trix_extremo": 1.0}
+NZDUSD  15  #0  132  272.31  1.5  201.03  1.34
+NZDUSD  15  #1  66  164.64  1.53  129.0  1.39
+NZDUSD  15  #2  193  174.31  1.21  70.09  1.08
+NZDUSD  15  #3  132  272.31  1.5  201.03  1.34
+NZDUSD  15  #4  132  272.31  1.5  201.03  1.34
+NZDUSD  15  #5  132  158.64  1.29  87.36  1.15
+NZDUSD  15  #6  132  338.73  1.62  267.45  1.45
+GBPUSD  15  #0  111  193.15  1.25  133.43  1.16
+GBPUSD  15  #1  61  181.7  1.41  148.98  1.32
+GBPUSD  15  #2  185  71.91  1.05  -27.77  0.98
+GBPUSD  15  #3  109  193.34  1.25  134.7  1.17
+GBPUSD  15  #4  111  193.15  1.25  133.43  1.16
+GBPUSD  15  #5  111  66.79  1.08  7.07  1.01
+GBPUSD  15  #6  111  189.64  1.24  129.92  1.16
+USDJPY  15  #0  141  171.91  1.19  123.33  1.13
+USDJPY  15  #1  81  -75.56  0.87  -103.46  0.83
+USDJPY  15  #2  200  9.61  1.01  -59.23  0.96
+USDJPY  15  #3  139  178.93  1.2  131.03  1.14
+USDJPY  15  #4  141  171.91  1.19  123.33  1.13
+USDJPY  15  #5  141  59.91  1.07  11.37  1.01
+USDJPY  15  #6  141  4.71  1.01  -43.85  0.95
