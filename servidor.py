@@ -28,6 +28,9 @@ WEB = os.path.join(RAIZ, "web")
 CONFIG = os.path.join(RAIZ, "trader", "config.json")
 ESTADO_FIRMA = os.path.join(RAIZ, "estado", "firma.json")  # escrito pelo gerente
 PARAMETROS = os.path.join(RAIZ, "estado", "parametros.json")  # parâmetros escolhidos pelo gerente
+ESTADO_ATIVIDADE_PESQUISA = os.path.join(RAIZ, "estado", "atividade_pesquisa.json")  # escrito por pesquisa/harness.py
+ESTADO_LABORATORIO = os.path.join(RAIZ, "estado", "laboratorio.json")  # idem
+AVISO_VELHO_S = 120  # aviso de pesquisa sem batida há mais que isso = ninguém testando
 EXEMPLO_FIRMA = os.path.join(WEB, "firma.exemplo.json")
 RELATORIOS = os.path.join(RAIZ, "relatorios")
 DADOS = os.path.join(RAIZ, "dados")  # cache de candles; a página inicial só lê daqui
@@ -49,11 +52,26 @@ def registrar_atividade(sala, trader):
             ATIVIDADE.update(novo, desde=_agora())
 
 
+def pesquisa_em_andamento():
+    """O aviso do harness sem a `batida`, ou None se não há aviso, está quebrado ou tem mais de AVISO_VELHO_S."""
+    aviso = gerente.ler_json(ESTADO_ATIVIDADE_PESQUISA)
+    try:
+        idade = datetime.fromisoformat(_agora()) - datetime.fromisoformat(aviso["batida"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if idade.total_seconds() > AVISO_VELHO_S:
+        return None
+    return {k: v for k, v in aviso.items() if k != "batida"}
+
+
 def atividade():
     with LOCK_ATIVIDADE:
         if not ATIVIDADE["desde"]:  # ocioso desde o arranque do servidor
             ATIVIDADE["desde"] = _agora()
-        return {"gerente": dict(ATIVIDADE), "atualizado": _agora()}
+        ger = dict(ATIVIDADE)
+    if ger["sala"]:
+        ger["grupo"] = traders.grupo_do_ativo(ger["sala"])
+    return {"gerente": ger, "pesquisa": pesquisa_em_andamento(), "atualizado": _agora()}
 
 
 class Arena(BaseHTTPRequestHandler):
@@ -108,6 +126,8 @@ class Arena(BaseHTTPRequestHandler):
                 return self._enviar(500, {"erro": f"erro inesperado no painel: {e!r}"})
         if url.path == "/api/atividade":
             return self._enviar(200, atividade())
+        if url.path == "/api/laboratorio":
+            return self._enviar(200, gerente.ler_json(ESTADO_LABORATORIO))
         if url.path == "/api/backtest":
             return self._backtest(parse_qs(url.query))
         self._enviar(404, {"erro": "não encontrado"})
@@ -129,6 +149,7 @@ class Arena(BaseHTTPRequestHandler):
             rel = relatorios_do_dia(estado.get("dia"))
             if rel:
                 estado["relatorios"] = rel
+        estado["grupos"] = traders.GRUPOS
         self._enviar(200, estado)
 
     def _cfg(self):

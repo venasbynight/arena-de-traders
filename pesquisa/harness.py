@@ -32,9 +32,11 @@ if RAIZ not in sys.path:
 import dados  # noqa: E402
 import gerente  # noqa: E402
 import motor  # noqa: E402
+import traders  # noqa: E402
 
 with open(os.path.join(PASTA, "divisao.json"), encoding="utf-8") as _f:
     DIVISAO = json.load(_f)["ativos"]
+ESTADO = os.path.join(RAIZ, "estado")  # aviso da pesquisa e quadro do laboratório, lidos pelo servidor
 AQUECIMENTO_DIAS = 30  # dias-calendário antes de `de` para o 60 e o "ontem" já existirem; trades daí não contam
 MAX_FINALISTAS = 3
 MIN_DEV, MIN_VAL = 100, 30  # operações para chamar de resultado (abaixo: inconclusivo)
@@ -133,15 +135,51 @@ def metricas(ops):
     return p
 
 
-def avaliar(modulo_trader, params, ativo, de, ate, estresse_ticks=0, tf=5, validacao=False):
+def _agora():
+    return datetime.now(motor.size.BRT).replace(tzinfo=None).isoformat(timespec="seconds")
+
+
+def anunciar(trader_nome, ativo, n, total, rotulo=""):
+    """Avisa o servidor (estado/atividade_pesquisa.json) que `trader_nome` está testando `ativo`: teste n de total.
+
+    `desde` fica o mesmo enquanto o trader e o ativo não mudam; `batida` é de agora (aviso velho = ninguém testando).
+    """
+    caminho = os.path.join(ESTADO, "atividade_pesquisa.json")
+    antes = gerente.ler_json(caminho)
+    mesmo = antes.get("trader") == trader_nome and antes.get("ativo") == ativo and antes.get("desde")
+    agora = _agora()
+    gerente._gravar_json(caminho, {"trader": trader_nome, "grupo": traders.grupo_do_ativo(ativo), "ativo": ativo,
+                                   "n": n, "total": total, "rotulo": rotulo, "desde": antes["desde"] if mesmo else agora,
+                                   "batida": agora})
+
+
+def concluir(titulo, linhas):
+    """Grava o quadro do laboratório (estado/laboratorio.json) e apaga o aviso de atividade.
+
+    `linhas`: dicts {trader, ativo, tf, variante, trades, resultado, pf, passou, obs}; o grupo entra pelo ativo.
+    """
+    linhas = [{**l, "grupo": l.get("grupo") or traders.grupo_do_ativo(l["ativo"])} for l in linhas]
+    gerente._gravar_json(os.path.join(ESTADO, "laboratorio.json"), {"titulo": titulo, "quando": _agora(), "linhas": linhas})
+    try:
+        os.remove(os.path.join(ESTADO, "atividade_pesquisa.json"))
+    except OSError:  # já apagado ou travado: o aviso vence sozinho em 120 s
+        pass
+
+
+def avaliar(modulo_trader, params, ativo, de, ate, estresse_ticks=0, tf=5, validacao=False, n=1, total=1, rotulo=""):
     """Backtest de um trader num ativo de `de` a `ate` (inclusive) com candles base de `tf` minutos.
 
+    `n`/`total`/`rotulo`: qual teste é este, para o aviso da pesquisa (estado/atividade_pesquisa.json).
     `params` None = os PARAMS do trader. `estresse_ticks` = ticks extras de deslizamento em cada entrada e saída.
     Roda com AQUECIMENTO_DIAS antes de `de`; só contam as operações com entrada a partir de `de`.
     """
     m = _contrato(modulo_trader)
     de, ate = _data(de), _data(ate)
     _guarda(m, ativo, de, ate, tf, params, estresse_ticks, validacao)
+    try:  # o aviso é só para a firma: arquivo travado (OneDrive, outro processo) não derruba o backtest
+        anunciar(m.NOME, ativo, n, total, rotulo)
+    except OSError:
+        pass
     ini = de - timedelta(days=AQUECIMENTO_DIAS)
     cs = [k for k in _serie(ativo, tf) if ini <= k.t.date() <= ate]
     ops = []

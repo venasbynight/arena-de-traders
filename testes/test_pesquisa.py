@@ -9,11 +9,25 @@ from unittest import mock
 
 import dados
 import motor
+import traders
 from pesquisa import harness
 from testes.test_dados import Mt5Falso
 from testes.robos_teste import ALFA
 from testes.test_motor import CFG, COMPRA, T, vela
 from tipos import Candle
+
+
+def setUpModule():
+    """Nenhum teste escreve no estado/ de verdade (o aviso da pesquisa e o quadro do laboratório)."""
+    global _pasta_estado, _sem_estado
+    _pasta_estado = tempfile.TemporaryDirectory()
+    _sem_estado = mock.patch.object(harness, "ESTADO", _pasta_estado.name)
+    _sem_estado.start()
+
+
+def tearDownModule():
+    _sem_estado.stop()
+    _pasta_estado.cleanup()
 
 
 def dias_uteis(de, n_dias, por_dia=12):
@@ -91,6 +105,12 @@ class TestGuardaDaValidacao(unittest.TestCase):
 
     def tearDown(self):
         self.pasta.cleanup()
+
+    def test_aviso_de_atividade_travado_nao_derruba_o_backtest(self):
+        # OneDrive ou outro processo segurando o arquivo do aviso: o teste segue, a firma só não fica sabendo
+        with mock.patch.object(harness, "anunciar", side_effect=PermissionError("arquivo em uso")):
+            r = harness.avaliar(ALFA, None, "WDO", "2026-07-01", "2026-08-31")
+        self.assertGreater(r["trades"], 0)
 
     def test_desenvolvimento_roda(self):
         r = harness.avaliar(ALFA, None, "WDO", "2026-07-01", "2026-08-31")
@@ -185,6 +205,83 @@ class TestRegistro(unittest.TestCase):
         self.assertEqual(harness.veredito(r, r), "inconclusivo")
         self.assertEqual(harness.veredito({**r, "trades": 100}, r), "positiva")
         self.assertEqual(harness.veredito({**r, "trades": 30}, r, validacao=True), "positiva")
+
+
+class TestGrupos(unittest.TestCase):
+    def test_grupos_vem_do_config_de_exemplo(self):
+        with open(os.path.join(harness.RAIZ, ".claude", "skills", "trader-budget", "config.example.json"), encoding="utf-8") as f:
+            ativos = json.load(f)["ativos"]
+        for nome, a in ativos.items():  # B3 (feriados da B3 na sessão) = Brasil; o resto (forex, cripto) = Global
+            esperado = "Brasil" if a["sessao"].get("feriados_b3") else "Global"
+            self.assertEqual(traders.grupo_do_ativo(nome), esperado, nome)
+        self.assertEqual(sorted(a for g in traders.GRUPOS.values() for a in g), sorted(ativos))  # todos, uma vez só
+        self.assertEqual(sorted(traders.GRUPOS), ["Brasil", "Global"])
+        self.assertTrue({"WDO", "WIN", "PETR4"} <= set(traders.GRUPOS["Brasil"]))
+        self.assertTrue({"EURUSD", "BTCUSDT"} <= set(traders.GRUPOS["Global"]))
+
+    def test_ativo_desconhecido_e_global(self):
+        self.assertEqual(traders.grupo_do_ativo("XPTO"), "Global")
+
+
+class TestAtividadeDaPesquisa(unittest.TestCase):
+    def setUp(self):
+        self.pasta = tempfile.TemporaryDirectory()
+        patch = mock.patch.object(harness, "ESTADO", self.pasta.name)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.addCleanup(self.pasta.cleanup)
+        self.arq = os.path.join(self.pasta.name, "atividade_pesquisa.json")
+
+    def ler(self, nome):
+        with open(os.path.join(self.pasta.name, nome), encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_anunciar_grava_o_aviso(self):
+        harness.anunciar("Sofia SMC", "PETR4", 2, 9, "stop 1,5 ATR")
+        a = self.ler("atividade_pesquisa.json")
+        self.assertEqual(sorted(a), ["ativo", "batida", "desde", "grupo", "n", "rotulo", "total", "trader"])
+        self.assertEqual((a["trader"], a["grupo"], a["ativo"], a["n"], a["total"], a["rotulo"]),
+                         ("Sofia SMC", "Brasil", "PETR4", 2, 9, "stop 1,5 ATR"))
+        datetime.fromisoformat(a["batida"])
+        self.assertEqual([f for f in os.listdir(self.pasta.name) if f.endswith(".tmp")], [])  # escrita atômica
+
+    def test_desde_fica_enquanto_e_o_mesmo_trader_e_ativo(self):
+        harness.anunciar("Sofia SMC", "EURUSD", 1, 3)
+        with open(self.arq, encoding="utf-8") as f:
+            a = json.load(f)
+        a["desde"] = "2026-01-01T10:00:00"
+        with open(self.arq, "w", encoding="utf-8") as f:
+            json.dump(a, f)
+        harness.anunciar("Sofia SMC", "EURUSD", 2, 3)
+        self.assertEqual(self.ler("atividade_pesquisa.json")["desde"], "2026-01-01T10:00:00")
+        harness.anunciar("Didi Agulhada", "EURUSD", 1, 3)
+        self.assertNotEqual(self.ler("atividade_pesquisa.json")["desde"], "2026-01-01T10:00:00")
+
+    def test_avaliar_anuncia_sozinho(self):
+        cs = dias_uteis(date(2026, 9, 1), 5)
+        with mock.patch.object(harness, "_serie", return_value=cs), \
+                mock.patch.object(harness, "config", return_value=CFG), \
+                mock.patch.object(harness, "_guarda"):
+            harness.avaliar(ALFA, None, "WDO", "2026-09-01", "2026-09-05")
+            a = self.ler("atividade_pesquisa.json")
+            self.assertEqual((a["trader"], a["ativo"], a["n"], a["total"], a["rotulo"]), (ALFA.NOME, "WDO", 1, 1, ""))
+            harness.avaliar(ALFA, None, "WDO", "2026-09-01", "2026-09-05", n=3, total=7, rotulo="v2")
+            a = self.ler("atividade_pesquisa.json")
+            self.assertEqual((a["n"], a["total"], a["rotulo"]), (3, 7, "v2"))
+
+    def test_concluir_grava_o_quadro_e_apaga_o_aviso(self):
+        harness.anunciar("Sofia SMC", "WDO", 1, 1)
+        linha = {"trader": "Sofia SMC", "ativo": "WDO", "tf": 5, "variante": "v1", "trades": 120,
+                 "resultado": 310.5, "pf": 1.2, "passou": True, "obs": ""}
+        harness.concluir("Rodada de teste", [linha])
+        lab = self.ler("laboratorio.json")
+        self.assertEqual(sorted(lab), ["linhas", "quando", "titulo"])
+        self.assertEqual(lab["titulo"], "Rodada de teste")
+        datetime.fromisoformat(lab["quando"])
+        self.assertEqual(lab["linhas"], [{**linha, "grupo": "Brasil"}])
+        self.assertFalse(os.path.exists(self.arq))
+        harness.concluir("outra", [])  # sem aviso para apagar também não quebra
+        self.assertEqual(self.ler("laboratorio.json")["linhas"], [])
 
 
 if __name__ == "__main__":

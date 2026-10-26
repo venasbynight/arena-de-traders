@@ -381,5 +381,71 @@
  ],
  "pendencias": [
   "Genial sem dados: salas WDO e WIN aguardando liberação."
- ]
+ ],
+ "laboratorio": {
+  "titulo": "Didi · agulhada no WDO 5 min",
+  "quando": "2026-10-26T10:40:00",
+  "linhas": [
+   {
+    "trader": "Didi Agulhada",
+    "grupo": "Brasil",
+    "ativo": "WDO",
+    "tf": 5,
+    "variante": "alvo 3x · TRIX 0,2",
+    "trades": 184,
+    "resultado": 1260,
+    "pf": 1.31,
+    "passou": true,
+    "obs": "passou na prova"
+   },
+   {
+    "trader": "Didi Agulhada",
+    "grupo": "Brasil",
+    "ativo": "WDO",
+    "tf": 5,
+    "variante": "alvo 2x · TRIX 0,2",
+    "trades": 201,
+    "resultado": 420,
+    "pf": 1.08,
+    "passou": false,
+    "obs": "fator abaixo de 1,2"
+   },
+   {
+    "trader": "Didi Agulhada",
+    "grupo": "Brasil",
+    "ativo": "WDO",
+    "tf": 5,
+    "variante": "alvo 3x · TRIX 0,3",
+    "trades": 96,
+    "resultado": -310,
+    "pf": 0.91,
+    "passou": false,
+    "obs": "prova negativa"
+   },
+   {
+    "trader": "Didi Agulhada",
+    "grupo": "Brasil",
+    "ativo": "WIN",
+    "tf": 5,
+    "variante": "alvo 3x · TRIX 0,2",
+    "trades": 152,
+    "resultado": 880,
+    "pf": 1.24,
+    "passou": true,
+    "obs": "passou na prova"
+   },
+   {
+    "trader": "Sofia SMC",
+    "grupo": "Global",
+    "ativo": "EURUSD",
+    "tf": 15,
+    "variante": "folga 2 ticks",
+    "trades": 64,
+    "resultado": -120,
+    "pf": 0.96,
+    "passou": false,
+    "obs": "fora da amostra negativo"
+   }
+  ]
+ }
 }
