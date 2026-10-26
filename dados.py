@@ -94,9 +94,10 @@ def baixar_binance(simbolo, de, ate, abrir_url=None):
                 raise ErroDados(f"a Binance recusou o pedido de {simbolo} (HTTP {e.code}): {msg}")
         except (OSError, http.client.HTTPException, ValueError) as e:  # rede, resposta cortada, JSON ruim
             raise ErroDados(f"Binance indisponível agora ({getattr(e, 'reason', e)}); tente de novo em alguns minutos")
-        for k in klines:
+        for k in klines:  # delta = compra agressora (taker buy, k[9]) − venda agressora (volume − taker buy)
             out.append(Candle(datetime.fromtimestamp(k[0] / 1000, timezone.utc).replace(tzinfo=None) - brasilia,
-                              float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
+                              float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5]),
+                              2 * float(k[9]) - float(k[5])))
         if len(klines) < 1000:
             break
         inicio = klines[-1][0] + 300000  # próxima página começa depois do último candle recebido
@@ -418,7 +419,8 @@ def _historico(ativo, de, ate, cfg, pasta, mt5, hoje, abrir_url):
             if fim >= ini:
                 with open(arq_cob, "a", encoding="utf-8") as f:
                     f.write(f"{ini.isoformat()},{fim.isoformat()}\n")
-    candles = _completar_delta(ativo, espec, candles, de, ate, pasta, arq, mt5, hoje)
+    if fonte == "mt5":  # na Binance o delta vem no próprio kline (cache antigo sem ele: ausente)
+        candles = _completar_delta(ativo, espec, candles, de, ate, pasta, arq, mt5, hoje)
     # o cache de antes do arredondamento também sai no tick (no tick, no_tick não muda nada)
     return no_tick([k for k in candles if de <= k.t.date() <= ate and k.t.weekday() in dias], espec.get("tick"))
 
