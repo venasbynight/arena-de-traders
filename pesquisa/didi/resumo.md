@@ -119,3 +119,61 @@ Validação mês a mês: maio +146, depois −24, −45, −30, −33 e +16 em o
 - Operar a carteira das 12 ações como um único conjunto (soma dos trades) para chegar a uma amostra. Isso exigiria
   mudar a regra 5 do plano.
 - Se for revisitar o ADX: no 5 e no 15 ele não mostrou valor em nenhuma das formas testadas.
+
+## 8. Ações 60 min com posição de vários dias
+
+Pedido do controlador: a sala de Ações/Opções compra call/put no sinal do 60 e segura por dias. O motor zerava tudo às
+16h, então a primeira rodada das ações media outra coisa.
+
+**Motor (opção nova por ativo, genérica, para a Sofia reaproveitar):** no `config` do ativo, `"zerar_no_dia": false`
+deixa a posição dormir e `"max_pregoes": N` sai por tempo no fechamento do N-ésimo pregão com a posição aberta (o da
+entrada conta), a fechamento − 1 tick (motivo "tempo"). Uma posição ainda aberta quando os dados acabam sai no último
+fechamento ("fim dos dados"). Sem as chaves, nada muda: zera no último candle do dia como sempre, e com o padrão
+nunca sobra posição no fim dos dados. Provas: as 243 provas antigas passam sem mudança, e o Didi padrão no WDO dá de
+novo 5 trades, −177,00.
+
+Testes novos (`TestPosicaoDeVariosDias`):
+- o gap além do stop na abertura do dia seguinte sai na abertura − 1 tick, nunca melhor;
+- trades, stops e perda valem por dia: a posição carregada não conta trade de novo no dia seguinte, e o stop e a
+  perda entram no dia da saída;
+- a posição carregada conta uma vez só e bloqueia ordem nova;
+- a saída por tempo acontece no 10º pregão;
+- a posição aberta no fim dos dados sai no último fechamento;
+- o padrão continua zerando.
+
+As 12 ações do `config.example.json` ganharam `"zerar_no_dia": false, "max_pregoes": 10`: a opção é comprada com
+≥ 15 dias para o vencimento (regra do Diretor) e fica no máximo ~2 semanas. Margem e custo seguem as suposições do
+passo A.
+
+**Método:** cada ação sozinha não chega a 100 trades em 2,3 anos (no máximo ~59), então as 12 ações viraram **uma
+carteira** ("ACOES12" no registro): soma dos trades e um único PF. Cada ação também foi registrada separadamente. O
+walk-forward foi feito sobre a carteira. Foram 17 candidatos, combinando: o padrão; TRIX só na direção × ADX subindo
+ou sem ADX × folga 0 ou 2 × saída "bandas" ou "ma3" × com ou sem tendência do diário. São 17 variantes de carteira
+(204 combinações ação × parâmetros).
+
+**Hipótese:** com a posição dormindo, a agulhada do 60 tem tempo de chegar ao alvo, e a saída só pela MA3 aproveita
+mais.
+
+**Resultado (carteira, desenvolvimento 2024-01-02 a 2026-04-30):** nenhuma variante é positiva com ≥ 100 trades.
+
+| Variante | Trades | R$ | PF | R$ c/ estresse (PF) | Ações + c/ estresse |
+|---|---:|---:|---:|---:|---:|
+| #0 padrão | 4 | −26 | 0,59 | −48 (0,37) | 1/12 |
+| #1 TRIX direção, ADX sobe | 61 | +116 | 1,06 | −242 (0,88) | 4/12 |
+| #5 sem ADX | 101 | −907 | 0,76 | −1.589 (0,63) | 4/12 |
+| #7 sem ADX, saída MA3 | 101 | −1.087 | 0,77 | −1.757 (0,67) | 4/12 |
+| #12 ADX sobe, folga 2, MA3, tendência | 158 | −2.162 | 0,71 | −3.161 (0,62) | 4/12 |
+| #16 sem ADX, folga 2, MA3, tendência | 210 | −2.715 | 0,72 | −4.125 (0,62) | 3/12 |
+| #8 sem ADX, folga 2, MA3 | 589 | −9.191 | 0,67 | −13.241 (0,57) | 0/12 |
+| walk-forward (fora da amostra) | 338 | −5.851 | 0,62 | −8.203 (0,53) | — |
+
+As posições dormem de fato: na #8, 267 de 589 passaram a noite, no máximo 5 dias. O que perde é o stop além do candle
+que abriu as bandas: na #8, os stops somam −25.786 e os alvos +16.024. Nenhum trade chegou aos 10 pregões, porque a
+MA3 volta antes.
+
+**Decisão:** nenhum finalista, nenhuma chamada de validação. O Didi continua com o padrão nas ações, agora com a opção
+de posição de vários dias no config. Tabela completa em `etapa_acoes_dorme.txt`; linhas por ação e da carteira no
+`registro.csv`.
+
+Variantes totais do Didi, somando esta seção: 57 conjuntos de parâmetros, 503 combinações parâmetros × ativo × tf, mais
+3 validações (todas da primeira rodada).

@@ -24,7 +24,10 @@ ACOES = ["PETR4", "VALE3", "ITUB4", "BBDC4", "AXIA3", "BBAS3", "SBSP3", "PETR3",
 
 
 def _chave(params, ativo, tf, de, ate, est):
-    s = json.dumps([params, ativo, tf, str(de), str(ate), est], sort_keys=True)
+    regras = harness.config()["ativos"][ativo]
+    dorme = [regras.get("zerar_no_dia", True), regras.get("max_pregoes")]  # posição de vários dias muda o resultado
+    s = json.dumps([params, ativo, tf, str(de), str(ate), est] + ([] if dorme == [True, None] else [dorme]),
+                   sort_keys=True)
     return hashlib.sha1(s.encode()).hexdigest()[:16]
 
 
@@ -181,6 +184,56 @@ def vizinhos(c):
 def plato15():
     """Platô do candidato 5 (sem ADX, folga de 2, a favor do 60) nos pares em que ele passou de PF 1,15 no 15."""
     etapa("plato15", vizinhos(_amplos()[5]), [(a, 15) for a in ("NZDUSD", "GBPUSD", "USDJPY")], wf=False)
+
+
+def carteira(nome, cands, wf=True):
+    """As 12 ações no 60 como uma carteira (cada ação sozinha não chega a 100 trades em 2,3 anos): registra cada ação e
+    a soma ("ACOES12"), com o walk-forward feito sobre a carteira."""
+    res = rodar(cands, [(a, 60) for a in ACOES])
+    nb = len(blocos(ACOES[0]))
+    assert all(len(blocos(a)) == nb for a in ACOES)
+    pool = {(j, e): [[o for a in ACOES for o in res[(j, a, 60, e)][k]] for k in range(nb)]
+            for j in range(len(cands)) for e in (0, 1)}
+    linhas = []
+    for j, c in enumerate(cands):
+        for a in ACOES:
+            registrar(f"{nome} #{j}", c, a, 60, [o for b in res[(j, a, 60, 0)] for o in b],
+                      [o for b in res[(j, a, 60, 1)] for o in b], "posição de vários dias (máx. 10 pregões)")
+        o0, o1 = [o for b in pool[(j, 0)] for o in b], [o for b in pool[(j, 1)] for o in b]
+        r, r1 = _registrar_carteira(f"{nome} #{j}", c, o0, o1, "carteira das 12 ações, posição de vários dias")
+        pos = sum(harness.metricas([o for b in res[(j, a, 60, 1)] for o in b])["resultado"] > 0 for a in ACOES)
+        linhas.append(("ACOES12", 60, f"#{j}", r["trades"], r["resultado"], r["fator_lucro"], r1["resultado"],
+                       r1["fator_lucro"], f"{pos}/12 ações + c/ estresse"))
+    if wf and len(cands) > 1:
+        oos0, esc = walk_forward([pool[(j, 0)] for j in range(len(cands))], len(cands))
+        oos1 = [o for k, j in enumerate(esc, 1) for o in pool[(j, 1)][k]]
+        r, r1 = _registrar_carteira(f"{nome} walk-forward", {"escolhas": esc}, oos0, oos1,
+                                    "carteira: fora da amostra do walk-forward, escolhido pelo PF dos anteriores")
+        linhas.append(("ACOES12", 60, "WF", r["trades"], r["resultado"], r["fator_lucro"], r1["resultado"],
+                       r1["fator_lucro"], esc))
+    with open(os.path.join(PASTA, f"etapa_{nome}.txt"), "w", encoding="utf-8") as f:
+        for i, c in enumerate(cands):
+            f.write(f"#{i} {json.dumps(c, sort_keys=True)}\n")
+        for l in linhas:
+            f.write("  ".join(str(x) for x in l) + "\n")
+
+
+def _registrar_carteira(variante, params, ops0, ops1, nota):
+    de, ate = harness.divisao(ACOES[0], didi_agulhada.NOME)["desenvolvimento"]
+    r = {"params": params, "ativo": "ACOES12", "tf": 60, "de": str(de), "ate": str(ate), **harness.metricas(ops0)}
+    r1 = harness.metricas(ops1)
+    harness.registrar("didi", harness.linha(variante, r, r1, nota))
+    return r, r1
+
+
+@_etapa
+def acoes_dorme():
+    """H: com a posição dormindo (até 10 pregões, como a opção comprada com ≥ 15 dias), a agulhada do 60 tem tempo de
+    chegar ao alvo; a saída só pela MA3 deve aproveitar mais do que a das bandas fechando."""
+    b = completo({"trix_extremo": 1.0})
+    cands = [completo({})] + [{**b, "agulhada_n": n, "adx": a, "tendencia": t, "saida": s}
+                              for t in (False, True) for a in ("sobe", "nao") for s in ("bandas", "ma3") for n in (0, 2)]
+    carteira("acoes_dorme", cands)
 
 
 if __name__ == "__main__":
