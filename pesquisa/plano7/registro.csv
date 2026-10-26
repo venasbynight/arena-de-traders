@@ -1,0 +1,355 @@
+quando,variante,parametros,ativo,tf,de,ate,trades,resultado,fator_lucro,drawdown,trades_estresse,resultado_estresse,fator_lucro_estresse,drawdown_estresse,veredito,nota
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",WDO,5,2024-01-02,2026-04-30,771,-29209.0,0.46,-29209.0,348,-23230.0,0.23,-23230.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",WIN,5,2024-01-02,2026-04-30,1425,-23436.5,0.68,-24221.5,1305,-30832.5,0.58,-31325.5,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,3128,-3540.45,0.23,-3540.45,3128,-3542.09,0.23,-3542.09,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",EURUSD,5,2025-06-23,2026-04-30,718,-676.79,0.77,-762.54,718,-1064.51,0.67,-1118.94,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDJPY,5,2025-06-23,2026-04-30,765,-1063.07,0.42,-1065.29,765,-1326.2,0.36,-1326.2,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",GBPUSD,5,2025-06-23,2026-04-30,789,-1399.98,0.38,-1409.32,789,-1826.04,0.3,-1833.22,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCHF,5,2025-06-23,2026-04-30,829,-1161.53,0.45,-1177.71,829,-1704.88,0.33,-1717.77,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",AUDUSD,5,2025-06-23,2026-04-30,834,-991.83,0.47,-1007.15,834,-1442.19,0.35,-1454.81,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCAD,5,2025-06-23,2026-04-30,821,-873.78,0.37,-885.36,821,-1190.75,0.27,-1196.53,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",NZDUSD,5,2025-06-23,2026-04-30,792,-1199.52,0.34,-1199.52,792,-1627.2,0.26,-1627.2,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",EURUSD,15,2025-06-23,2026-04-30,527,-580.75,0.81,-666.24,527,-865.33,0.74,-944.88,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDJPY,15,2025-06-23,2026-04-30,734,-1229.2,0.52,-1295.66,734,-1481.8,0.47,-1510.99,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",GBPUSD,15,2025-06-23,2026-04-30,708,-1378.65,0.58,-1423.48,708,-1760.97,0.51,-1802.02,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCHF,15,2025-06-23,2026-04-30,719,-1502.1,0.49,-1578.83,719,-1973.22,0.41,-2040.13,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",AUDUSD,15,2025-06-23,2026-04-30,713,-1430.29,0.42,-1447.73,713,-1815.31,0.35,-1830.59,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCAD,15,2025-06-23,2026-04-30,720,-1174.21,0.41,-1180.5,720,-1451.86,0.35,-1456.6,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",NZDUSD,15,2025-06-23,2026-04-30,731,-1126.09,0.52,-1156.61,731,-1520.83,0.43,-1540.76,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",ACOES12,60,2024-01-02,2026-04-30,282,-4667.0,0.6,-4667.0,282,-7117.0,0.48,-7117.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},WDO,5,2024-01-02,2026-04-30,603,-29068.0,0.46,-29068.0,361,-32725.0,0.26,-32725.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},WIN,5,2024-01-02,2026-04-30,576,-9152.5,0.81,-9981.5,549,-16113.0,0.7,-16434.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},BTCUSDT,5,2024-01-01,2026-04-30,2621,-7957.87,0.28,-7957.87,2621,-7960.34,0.28,-7960.34,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},EURUSD,5,2025-06-23,2026-04-30,241,210.19,1.04,-1011.34,241,-434.86,0.93,-1251.63,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},USDJPY,5,2025-06-23,2026-04-30,702,-3428.53,0.46,-3580.51,702,-4252.94,0.39,-4391.44,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},GBPUSD,5,2025-06-23,2026-04-30,675,-3983.96,0.48,-4289.36,675,-5067.44,0.39,-5324.74,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},USDCHF,5,2025-06-23,2026-04-30,670,-3444.25,0.52,-3490.63,670,-4864.86,0.4,-4883.47,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},AUDUSD,5,2025-06-23,2026-04-30,680,-3533.0,0.44,-3588.63,680,-4701.48,0.34,-4744.08,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},USDCAD,5,2025-06-23,2026-04-30,659,-2972.46,0.43,-3018.29,659,-3866.09,0.34,-3900.92,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},NZDUSD,5,2025-06-23,2026-04-30,655,-3255.25,0.46,-3255.25,655,-4465.72,0.35,-4465.72,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},EURUSD,15,2025-06-23,2026-04-30,188,1178.1,1.22,-835.38,188,636.22,1.11,-948.15,positiva,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},USDJPY,15,2025-06-23,2026-04-30,587,-3086.02,0.59,-3394.37,587,-3853.75,0.52,-4124.22,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},GBPUSD,15,2025-06-23,2026-04-30,540,-2131.11,0.76,-2282.37,540,-3255.74,0.66,-3391.93,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},USDCHF,15,2025-06-23,2026-04-30,517,-2983.65,0.62,-3262.58,517,-4158.79,0.52,-4401.8,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},AUDUSD,15,2025-06-23,2026-04-30,510,-3674.15,0.41,-3794.03,510,-4565.92,0.34,-4671.83,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},USDCAD,15,2025-06-23,2026-04-30,517,-2727.59,0.5,-2727.59,517,-3445.79,0.42,-3445.79,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},NZDUSD,15,2025-06-23,2026-04-30,507,-2873.1,0.53,-3031.3,507,-3855.48,0.44,-3944.24,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,sofia: depois,{},ACOES12,60,2024-01-02,2026-04-30,212,-3522.0,0.6,-3522.0,212,-5422.0,0.49,-5422.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",WDO,5,2024-01-02,2026-04-30,5,-177.0,0.1,-177.0,5,-297.0,0.0,-297.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",WIN,5,2024-01-02,2026-04-30,4,235.0,3.3,-102.0,4,211.0,2.92,-110.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",BTCUSDT,5,2024-01-01,2026-04-30,6,-16.94,0.04,-16.94,6,-16.94,0.04,-16.94,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",EURUSD,5,2025-06-23,2026-04-30,3,0.39,1.02,-18.28,3,-1.23,0.94,-19.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",USDJPY,5,2025-06-23,2026-04-30,6,-39.8,0.05,-41.88,6,-41.86,0.04,-43.6,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",GBPUSD,5,2025-06-23,2026-04-30,5,-28.69,0.22,-32.24,5,-31.39,0.18,-34.4,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",USDCHF,5,2025-06-23,2026-04-30,1,-1.16,0.0,-1.16,1,-1.81,0.0,-1.81,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",AUDUSD,5,2025-06-23,2026-04-30,4,-29.54,0.0,-29.54,4,-31.7,0.0,-31.7,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",USDCAD,5,2025-06-23,2026-04-30,1,-0.69,0.0,-0.69,1,-1.08,0.0,-1.08,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",NZDUSD,5,2025-06-23,2026-04-30,2,-6.4,0.0,-6.4,2,-7.48,0.0,-7.48,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",EURUSD,15,2025-06-23,2026-04-30,1,-26.96,0.0,-26.96,1,-27.5,0.0,-27.5,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",USDJPY,15,2025-06-23,2026-04-30,3,-50.18,0.0,-50.18,3,-51.2,0.0,-51.2,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",GBPUSD,15,2025-06-23,2026-04-30,2,35.72,10.55,-3.74,2,34.64,9.09,-4.28,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",USDCHF,15,2025-06-23,2026-04-30,2,-18.04,0.0,-18.04,2,-19.36,0.0,-19.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",AUDUSD,15,2025-06-23,2026-04-30,1,1.93,,0.0,1,1.39,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",USDCAD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",NZDUSD,15,2025-06-23,2026-04-30,2,46.25,,0.0,2,45.17,197.39,-0.23,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: antes,"{""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas""}",ACOES12,60,2024-01-02,2026-04-30,4,-26.0,0.59,-64.0,4,-48.0,0.37,-76.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},WDO,5,2024-01-02,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},WIN,5,2024-01-02,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},BTCUSDT,5,2024-01-01,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},EURUSD,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},USDJPY,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},GBPUSD,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},USDCHF,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},AUDUSD,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},USDCAD,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},NZDUSD,5,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},EURUSD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},USDJPY,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},GBPUSD,15,2025-06-23,2026-04-30,1,268.85,,0.0,1,266.15,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},USDCHF,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},AUDUSD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},USDCAD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},NZDUSD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,didi: depois,{},ACOES12,60,2024-01-02,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,caio: antes,"{""folga_ticks"": 2, ""max_contratos"": 5, ""rr_minimo"": 1.0}",WDO,5,2026-06-29,2026-09-15,83,-3792.0,0.42,-3963.0,75,-5706.0,0.23,-5805.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,caio: antes,"{""folga_ticks"": 2, ""max_contratos"": 5, ""rr_minimo"": 1.0}",WIN,5,2026-08-12,2026-09-15,78,-2010.0,0.55,-2010.0,78,-2654.0,0.47,-2654.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,caio: depois,{},WDO,5,2026-06-29,2026-09-15,35,-2378.0,0.24,-2378.0,34,-3240.0,0.16,-3240.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,caio: depois,{},WIN,5,2026-08-12,2026-09-15,65,-1981.5,0.66,-2016.5,59,-2229.0,0.62,-2229.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,caio: antes,"{""folga_ticks"": 1000, ""max_contratos"": 5, ""rr_minimo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:00:55,caio: depois,"{""folga_ticks"": 2000}",BTCUSDT,5,2024-01-01,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",WDO,5,2024-01-02,2026-04-30,771,-29209.0,0.46,-29209.0,348,-23230.0,0.23,-23230.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",WIN,5,2024-01-02,2026-04-30,1425,-23436.5,0.68,-24221.5,1305,-30832.5,0.58,-31325.5,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,3128,-3540.45,0.23,-3540.45,3128,-3542.09,0.23,-3542.09,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",EURUSD,5,2025-06-23,2026-04-30,718,-676.79,0.77,-762.54,718,-1064.51,0.67,-1118.94,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDJPY,5,2025-06-23,2026-04-30,765,-1063.07,0.42,-1065.29,765,-1326.2,0.36,-1326.2,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",GBPUSD,5,2025-06-23,2026-04-30,789,-1399.98,0.38,-1409.32,789,-1826.04,0.3,-1833.22,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCHF,5,2025-06-23,2026-04-30,829,-1161.53,0.45,-1177.71,829,-1704.88,0.33,-1717.77,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",AUDUSD,5,2025-06-23,2026-04-30,834,-991.83,0.47,-1007.15,834,-1442.19,0.35,-1454.81,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCAD,5,2025-06-23,2026-04-30,821,-873.78,0.37,-885.36,821,-1190.75,0.27,-1196.53,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",NZDUSD,5,2025-06-23,2026-04-30,792,-1199.52,0.34,-1199.52,792,-1627.2,0.26,-1627.2,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",EURUSD,15,2025-06-23,2026-04-30,527,-580.75,0.81,-666.24,527,-865.33,0.74,-944.88,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDJPY,15,2025-06-23,2026-04-30,734,-1229.2,0.52,-1295.66,734,-1481.8,0.47,-1510.99,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",GBPUSD,15,2025-06-23,2026-04-30,708,-1378.65,0.58,-1423.48,708,-1760.97,0.51,-1802.02,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCHF,15,2025-06-23,2026-04-30,719,-1502.1,0.49,-1578.83,719,-1973.22,0.41,-2040.13,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",AUDUSD,15,2025-06-23,2026-04-30,713,-1430.29,0.42,-1447.73,713,-1815.31,0.35,-1830.59,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCAD,15,2025-06-23,2026-04-30,720,-1174.21,0.41,-1180.5,720,-1451.86,0.35,-1456.6,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",NZDUSD,15,2025-06-23,2026-04-30,731,-1126.09,0.52,-1156.61,731,-1520.83,0.43,-1540.76,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",ACOES12,60,2024-01-02,2026-04-30,282,-4667.0,0.6,-4667.0,282,-7117.0,0.48,-7117.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},WDO,5,2024-01-02,2026-04-30,603,-29068.0,0.46,-29068.0,361,-32725.0,0.26,-32725.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},WIN,5,2024-01-02,2026-04-30,576,-9152.5,0.81,-9981.5,549,-16113.0,0.7,-16434.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},BTCUSDT,5,2024-01-01,2026-04-30,2621,-7957.87,0.28,-7957.87,2621,-7960.34,0.28,-7960.34,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},EURUSD,5,2025-06-23,2026-04-30,241,210.19,1.04,-1011.34,241,-434.86,0.93,-1251.63,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},USDJPY,5,2025-06-23,2026-04-30,702,-3428.53,0.46,-3580.51,702,-4252.94,0.39,-4391.44,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},GBPUSD,5,2025-06-23,2026-04-30,675,-3983.96,0.48,-4289.36,675,-5067.44,0.39,-5324.74,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},USDCHF,5,2025-06-23,2026-04-30,670,-3444.25,0.52,-3490.63,670,-4864.86,0.4,-4883.47,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},AUDUSD,5,2025-06-23,2026-04-30,680,-3533.0,0.44,-3588.63,680,-4701.48,0.34,-4744.08,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},USDCAD,5,2025-06-23,2026-04-30,659,-2972.46,0.43,-3018.29,659,-3866.09,0.34,-3900.92,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},NZDUSD,5,2025-06-23,2026-04-30,655,-3255.25,0.46,-3255.25,655,-4465.72,0.35,-4465.72,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},EURUSD,15,2025-06-23,2026-04-30,188,1178.1,1.22,-835.38,188,636.22,1.11,-948.15,positiva,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},USDJPY,15,2025-06-23,2026-04-30,587,-3086.02,0.59,-3394.37,587,-3853.75,0.52,-4124.22,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},GBPUSD,15,2025-06-23,2026-04-30,540,-2131.11,0.76,-2282.37,540,-3255.74,0.66,-3391.93,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},USDCHF,15,2025-06-23,2026-04-30,517,-2983.65,0.62,-3262.58,517,-4158.79,0.52,-4401.8,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},AUDUSD,15,2025-06-23,2026-04-30,510,-3674.15,0.41,-3794.03,510,-4565.92,0.34,-4671.83,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},USDCAD,15,2025-06-23,2026-04-30,517,-2727.59,0.5,-2727.59,517,-3445.79,0.42,-3445.79,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},NZDUSD,15,2025-06-23,2026-04-30,507,-2873.1,0.53,-3031.3,507,-3855.48,0.44,-3944.24,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,sofia: depois,{},ACOES12,60,2024-01-02,2026-04-30,212,-3522.0,0.6,-3522.0,212,-5422.0,0.49,-5422.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",WDO,5,2024-01-02,2026-04-30,5,-177.0,0.1,-177.0,5,-297.0,0.0,-297.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",WIN,5,2024-01-02,2026-04-30,4,235.0,3.3,-102.0,4,211.0,2.92,-110.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",BTCUSDT,5,2024-01-01,2026-04-30,6,-16.94,0.04,-16.94,6,-16.94,0.04,-16.94,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",EURUSD,5,2025-06-23,2026-04-30,3,0.39,1.02,-18.28,3,-1.23,0.94,-19.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDJPY,5,2025-06-23,2026-04-30,6,-39.8,0.05,-41.88,6,-41.86,0.04,-43.6,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",GBPUSD,5,2025-06-23,2026-04-30,5,-28.69,0.22,-32.24,5,-31.39,0.18,-34.4,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCHF,5,2025-06-23,2026-04-30,1,-1.16,0.0,-1.16,1,-1.81,0.0,-1.81,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",AUDUSD,5,2025-06-23,2026-04-30,4,-29.54,0.0,-29.54,4,-31.7,0.0,-31.7,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCAD,5,2025-06-23,2026-04-30,1,-0.69,0.0,-0.69,1,-1.08,0.0,-1.08,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",NZDUSD,5,2025-06-23,2026-04-30,2,-6.4,0.0,-6.4,2,-7.48,0.0,-7.48,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",EURUSD,15,2025-06-23,2026-04-30,1,-26.96,0.0,-26.96,1,-27.5,0.0,-27.5,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDJPY,15,2025-06-23,2026-04-30,3,-50.18,0.0,-50.18,3,-51.2,0.0,-51.2,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",GBPUSD,15,2025-06-23,2026-04-30,2,35.72,10.55,-3.74,2,34.64,9.09,-4.28,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCHF,15,2025-06-23,2026-04-30,2,-18.04,0.0,-18.04,2,-19.36,0.0,-19.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",AUDUSD,15,2025-06-23,2026-04-30,1,1.93,,0.0,1,1.39,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCAD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",NZDUSD,15,2025-06-23,2026-04-30,2,46.25,,0.0,2,45.17,197.39,-0.23,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",ACOES12,60,2024-01-02,2026-04-30,4,-26.0,0.59,-64.0,4,-48.0,0.37,-76.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},WDO,5,2024-01-02,2026-04-30,2,-148.0,0.0,-148.0,2,-178.0,0.0,-178.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},WIN,5,2024-01-02,2026-04-30,2,342.0,4.45,-99.0,2,286.0,3.0,-143.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},BTCUSDT,5,2024-01-01,2026-04-30,11,-20.28,0.53,-22.11,11,-20.31,0.53,-22.12,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},EURUSD,5,2025-06-23,2026-04-30,2,132.7,7.62,-20.05,2,127.3,6.6,-22.75,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},USDJPY,5,2025-06-23,2026-04-30,3,-31.58,0.0,-31.58,3,-36.74,0.0,-36.74,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},GBPUSD,5,2025-06-23,2026-04-30,3,-91.75,0.0,-91.75,3,-99.74,0.0,-99.74,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},USDCHF,5,2025-06-23,2026-04-30,1,-25.44,0.0,-25.44,1,-28.72,0.0,-28.72,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},AUDUSD,5,2025-06-23,2026-04-30,2,-23.58,0.0,-23.58,2,-28.88,0.0,-28.88,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},USDCAD,5,2025-06-23,2026-04-30,1,-8.28,0.0,-8.28,1,-10.21,0.0,-10.21,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},NZDUSD,5,2025-06-23,2026-04-30,2,89.5,10.68,-9.25,2,84.1,8.04,-11.95,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},EURUSD,15,2025-06-23,2026-04-30,1,-9.25,0.0,-9.25,1,-11.95,0.0,-11.95,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},USDJPY,15,2025-06-23,2026-04-30,2,-44.56,0.0,-44.56,2,-48.0,0.0,-48.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},GBPUSD,15,2025-06-23,2026-04-30,3,207.97,4.42,-48.93,3,199.76,4.01,-51.74,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},USDCHF,15,2025-06-23,2026-04-30,1,-18.89,0.0,-18.89,1,-22.16,0.0,-22.16,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},AUDUSD,15,2025-06-23,2026-04-30,2,-34.7,0.0,-34.7,2,-40.1,0.0,-40.1,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},USDCAD,15,2025-06-23,2026-04-30,1,-11.17,0.0,-11.17,1,-13.1,0.0,-13.1,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},NZDUSD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,didi: depois,{},ACOES12,60,2024-01-02,2026-04-30,3,-160.0,0.0,-160.0,3,-190.0,0.0,-190.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,caio: antes,"{""folga_ticks"": 2, ""max_contratos"": 5, ""rr_minimo"": 1.0}",WDO,5,2026-06-29,2026-09-15,83,-3792.0,0.42,-3963.0,75,-5706.0,0.23,-5805.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,caio: antes,"{""folga_ticks"": 2, ""max_contratos"": 5, ""rr_minimo"": 1.0}",WIN,5,2026-08-12,2026-09-15,78,-2010.0,0.55,-2010.0,78,-2654.0,0.47,-2654.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,caio: depois,{},WDO,5,2026-06-29,2026-09-15,35,-2378.0,0.24,-2378.0,34,-3240.0,0.16,-3240.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:47,caio: depois,{},WIN,5,2026-08-12,2026-09-15,65,-1981.5,0.66,-2016.5,59,-2229.0,0.62,-2229.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:10:48,caio: antes,"{""folga_ticks"": 1000, ""max_contratos"": 5, ""rr_minimo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,1794,-1596.95,0.55,-1603.65,1794,-1597.85,0.55,-1604.55,negativa,antes_depois desenvolvimento
+2026-10-26T13:10:48,caio: depois,"{""folga_ticks"": 2000}",BTCUSDT,5,2024-01-01,2026-04-30,1017,-2479.08,0.63,-2598.76,1017,-2480.67,0.63,-2600.16,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",WDO,5,2024-01-02,2026-04-30,771,-29209.0,0.46,-29209.0,348,-23230.0,0.23,-23230.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",WIN,5,2024-01-02,2026-04-30,1425,-23436.5,0.68,-24221.5,1305,-30832.5,0.58,-31325.5,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,3128,-3540.45,0.23,-3540.45,3128,-3542.09,0.23,-3542.09,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",EURUSD,5,2025-06-23,2026-04-30,718,-676.79,0.77,-762.54,718,-1064.51,0.67,-1118.94,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDJPY,5,2025-06-23,2026-04-30,765,-1063.07,0.42,-1065.29,765,-1326.2,0.36,-1326.2,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",GBPUSD,5,2025-06-23,2026-04-30,789,-1399.98,0.38,-1409.32,789,-1826.04,0.3,-1833.22,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCHF,5,2025-06-23,2026-04-30,829,-1161.53,0.45,-1177.71,829,-1704.88,0.33,-1717.77,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",AUDUSD,5,2025-06-23,2026-04-30,834,-991.83,0.47,-1007.15,834,-1442.19,0.35,-1454.81,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCAD,5,2025-06-23,2026-04-30,821,-873.78,0.37,-885.36,821,-1190.75,0.27,-1196.53,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",NZDUSD,5,2025-06-23,2026-04-30,792,-1199.52,0.34,-1199.52,792,-1627.2,0.26,-1627.2,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",EURUSD,15,2025-06-23,2026-04-30,527,-580.75,0.81,-666.24,527,-865.33,0.74,-944.88,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDJPY,15,2025-06-23,2026-04-30,734,-1229.2,0.52,-1295.66,734,-1481.8,0.47,-1510.99,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",GBPUSD,15,2025-06-23,2026-04-30,708,-1378.65,0.58,-1423.48,708,-1760.97,0.51,-1802.02,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCHF,15,2025-06-23,2026-04-30,719,-1502.1,0.49,-1578.83,719,-1973.22,0.41,-2040.13,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",AUDUSD,15,2025-06-23,2026-04-30,713,-1430.29,0.42,-1447.73,713,-1815.31,0.35,-1830.59,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",USDCAD,15,2025-06-23,2026-04-30,720,-1174.21,0.41,-1180.5,720,-1451.86,0.35,-1456.6,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",NZDUSD,15,2025-06-23,2026-04-30,731,-1126.09,0.52,-1156.61,731,-1520.83,0.43,-1540.76,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: antes,"{""max_contratos"": 5, ""rr_minimo"": 1.0}",ACOES12,60,2024-01-02,2026-04-30,282,-4667.0,0.6,-4667.0,282,-7117.0,0.48,-7117.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},WDO,5,2024-01-02,2026-04-30,603,-29068.0,0.46,-29068.0,361,-32725.0,0.26,-32725.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},WIN,5,2024-01-02,2026-04-30,576,-9152.5,0.81,-9981.5,549,-16113.0,0.7,-16434.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},BTCUSDT,5,2024-01-01,2026-04-30,2621,-7957.87,0.28,-7957.87,2621,-7960.34,0.28,-7960.34,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},EURUSD,5,2025-06-23,2026-04-30,241,210.19,1.04,-1011.34,241,-434.86,0.93,-1251.63,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},USDJPY,5,2025-06-23,2026-04-30,702,-3428.53,0.46,-3580.51,702,-4252.94,0.39,-4391.44,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},GBPUSD,5,2025-06-23,2026-04-30,675,-3983.96,0.48,-4289.36,675,-5067.44,0.39,-5324.74,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},USDCHF,5,2025-06-23,2026-04-30,670,-3444.25,0.52,-3490.63,670,-4864.86,0.4,-4883.47,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},AUDUSD,5,2025-06-23,2026-04-30,680,-3533.0,0.44,-3588.63,680,-4701.48,0.34,-4744.08,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},USDCAD,5,2025-06-23,2026-04-30,659,-2972.46,0.43,-3018.29,659,-3866.09,0.34,-3900.92,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},NZDUSD,5,2025-06-23,2026-04-30,655,-3255.25,0.46,-3255.25,655,-4465.72,0.35,-4465.72,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},EURUSD,15,2025-06-23,2026-04-30,188,1178.1,1.22,-835.38,188,636.22,1.11,-948.15,positiva,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},USDJPY,15,2025-06-23,2026-04-30,587,-3086.02,0.59,-3394.37,587,-3853.75,0.52,-4124.22,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},GBPUSD,15,2025-06-23,2026-04-30,540,-2131.11,0.76,-2282.37,540,-3255.74,0.66,-3391.93,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},USDCHF,15,2025-06-23,2026-04-30,517,-2983.65,0.62,-3262.58,517,-4158.79,0.52,-4401.8,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},AUDUSD,15,2025-06-23,2026-04-30,510,-3674.15,0.41,-3794.03,510,-4565.92,0.34,-4671.83,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},USDCAD,15,2025-06-23,2026-04-30,517,-2727.59,0.5,-2727.59,517,-3445.79,0.42,-3445.79,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},NZDUSD,15,2025-06-23,2026-04-30,507,-2873.1,0.53,-3031.3,507,-3855.48,0.44,-3944.24,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,sofia: depois,{},ACOES12,60,2024-01-02,2026-04-30,212,-3522.0,0.6,-3522.0,212,-5422.0,0.49,-5422.0,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",WDO,5,2024-01-02,2026-04-30,5,-177.0,0.1,-177.0,5,-297.0,0.0,-297.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",WIN,5,2024-01-02,2026-04-30,4,235.0,3.3,-102.0,4,211.0,2.92,-110.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",BTCUSDT,5,2024-01-01,2026-04-30,6,-16.94,0.04,-16.94,6,-16.94,0.04,-16.94,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",EURUSD,5,2025-06-23,2026-04-30,3,0.39,1.02,-18.28,3,-1.23,0.94,-19.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDJPY,5,2025-06-23,2026-04-30,6,-39.8,0.05,-41.88,6,-41.86,0.04,-43.6,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",GBPUSD,5,2025-06-23,2026-04-30,5,-28.69,0.22,-32.24,5,-31.39,0.18,-34.4,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCHF,5,2025-06-23,2026-04-30,1,-1.16,0.0,-1.16,1,-1.81,0.0,-1.81,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",AUDUSD,5,2025-06-23,2026-04-30,4,-29.54,0.0,-29.54,4,-31.7,0.0,-31.7,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCAD,5,2025-06-23,2026-04-30,1,-0.69,0.0,-0.69,1,-1.08,0.0,-1.08,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",NZDUSD,5,2025-06-23,2026-04-30,2,-6.4,0.0,-6.4,2,-7.48,0.0,-7.48,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",EURUSD,15,2025-06-23,2026-04-30,1,-26.96,0.0,-26.96,1,-27.5,0.0,-27.5,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDJPY,15,2025-06-23,2026-04-30,3,-50.18,0.0,-50.18,3,-51.2,0.0,-51.2,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",GBPUSD,15,2025-06-23,2026-04-30,2,35.72,10.55,-3.74,2,34.64,9.09,-4.28,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCHF,15,2025-06-23,2026-04-30,2,-18.04,0.0,-18.04,2,-19.36,0.0,-19.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",AUDUSD,15,2025-06-23,2026-04-30,1,1.93,,0.0,1,1.39,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",USDCAD,15,2025-06-23,2026-04-30,0,0,,0.0,0,0,,0.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",NZDUSD,15,2025-06-23,2026-04-30,2,46.25,,0.0,2,45.17,197.39,-0.23,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: antes,"{""adx"": ""sobe"", ""agulhada_n"": 0, ""alvo_x"": 3.0, ""folga_stop_ticks"": 1, ""janela_bandas"": 3, ""max_contratos"": 5, ""rr_minimo"": 1.0, ""saida"": ""bandas"", ""trix_extremo"": 0.2}",ACOES12,60,2024-01-02,2026-04-30,4,-26.0,0.59,-64.0,4,-48.0,0.37,-76.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},WDO,5,2024-01-02,2026-04-30,64,1457.0,1.65,-1411.0,64,277.0,1.09,-1939.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},WIN,5,2024-01-02,2026-04-30,51,-1195.0,0.55,-1920.0,51,-1595.0,0.46,-2252.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},BTCUSDT,5,2024-01-01,2026-04-30,154,-804.38,0.46,-929.96,154,-804.67,0.46,-930.23,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},EURUSD,5,2025-06-23,2026-04-30,56,-929.29,0.41,-929.29,56,-1066.36,0.37,-1066.36,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},USDJPY,5,2025-06-23,2026-04-30,50,-204.11,0.86,-883.6,50,-280.97,0.81,-935.22,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},GBPUSD,5,2025-06-23,2026-04-30,45,758.83,1.64,-571.97,45,644.4,1.51,-627.09,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},USDCHF,5,2025-06-23,2026-04-30,49,-270.39,0.73,-532.2,49,-414.03,0.63,-651.26,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},AUDUSD,5,2025-06-23,2026-04-30,40,-341.47,0.63,-610.05,40,-442.86,0.56,-696.99,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},USDCAD,5,2025-06-23,2026-04-30,49,-19.98,0.97,-233.95,49,-111.52,0.85,-289.72,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},NZDUSD,5,2025-06-23,2026-04-30,51,306.07,1.35,-217.05,51,175.02,1.18,-241.46,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},EURUSD,15,2025-06-23,2026-04-30,19,-302.99,0.6,-344.48,19,-344.79,0.56,-356.15,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},USDJPY,15,2025-06-23,2026-04-30,29,-757.35,0.4,-800.3,29,-799.12,0.38,-838.83,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},GBPUSD,15,2025-06-23,2026-04-30,24,72.05,1.12,-292.99,24,11.45,1.02,-347.76,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},USDCHF,15,2025-06-23,2026-04-30,17,-4.2,0.99,-193.07,17,-55.84,0.91,-207.61,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},AUDUSD,15,2025-06-23,2026-04-30,29,-145.18,0.83,-522.07,29,-216.23,0.76,-550.57,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},USDCAD,15,2025-06-23,2026-04-30,12,145.71,1.57,-162.97,12,124.43,1.46,-170.89,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},NZDUSD,15,2025-06-23,2026-04-30,21,386.79,1.74,-201.62,21,335.06,1.6,-210.59,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,didi: depois,{},ACOES12,60,2024-01-02,2026-04-30,44,786.0,1.38,-1184.0,44,474.0,1.2,-1436.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,caio: antes,"{""folga_ticks"": 2, ""max_contratos"": 5, ""rr_minimo"": 1.0}",WDO,5,2026-06-29,2026-09-15,83,-3792.0,0.42,-3963.0,75,-5706.0,0.23,-5805.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,caio: antes,"{""folga_ticks"": 2, ""max_contratos"": 5, ""rr_minimo"": 1.0}",WIN,5,2026-08-12,2026-09-15,78,-2010.0,0.55,-2010.0,78,-2654.0,0.47,-2654.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,caio: depois,{},WDO,5,2026-06-29,2026-09-15,35,-2378.0,0.24,-2378.0,34,-3240.0,0.16,-3240.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,caio: depois,{},WIN,5,2026-08-12,2026-09-15,65,-1981.5,0.66,-2016.5,59,-2229.0,0.62,-2229.0,inconclusivo,antes_depois desenvolvimento
+2026-10-26T13:19:51,caio: antes,"{""folga_ticks"": 1000, ""max_contratos"": 5, ""rr_minimo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,1794,-1596.95,0.55,-1603.65,1794,-1597.85,0.55,-1604.55,negativa,antes_depois desenvolvimento
+2026-10-26T13:19:51,caio: depois,"{""folga_ticks"": 2000}",BTCUSDT,5,2024-01-01,2026-04-30,1017,-2479.08,0.63,-2598.76,1017,-2480.67,0.63,-2600.16,negativa,antes_depois desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",WDO,5,2024-01-02,2026-04-30,64,2222.0,1.82,-1377.0,64,742.0,1.2,-2021.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",WIN,5,2024-01-02,2026-04-30,52,-1185.5,0.57,-1993.0,52,-1623.5,0.48,-2361.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",BTCUSDT,5,2024-01-01,2026-04-30,154,-804.29,0.46,-929.87,154,-804.57,0.46,-930.13,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",EURUSD,5,2025-06-23,2026-04-30,56,-917.04,0.41,-917.04,56,-1060.29,0.37,-1060.29,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",USDJPY,5,2025-06-23,2026-04-30,50,-171.66,0.88,-862.51,50,-257.02,0.82,-915.68,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",GBPUSD,5,2025-06-23,2026-04-30,45,778.48,1.67,-560.99,45,664.07,1.53,-611.91,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",USDCHF,5,2025-06-23,2026-04-30,49,-233.76,0.76,-502.5,49,-381.37,0.65,-624.47,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",AUDUSD,5,2025-06-23,2026-04-30,40,-530.31,0.44,-587.0,40,-632.66,0.38,-673.87,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",USDCAD,5,2025-06-23,2026-04-30,49,-9.33,0.99,-229.1,49,-100.94,0.86,-284.92,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",NZDUSD,5,2025-06-23,2026-04-30,51,334.67,1.39,-212.08,51,203.96,1.22,-236.5,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",EURUSD,15,2025-06-23,2026-04-30,19,-293.67,0.61,-339.84,19,-335.76,0.57,-347.12,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",USDJPY,15,2025-06-23,2026-04-30,29,-748.93,0.4,-791.88,29,-790.9,0.38,-830.61,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",GBPUSD,15,2025-06-23,2026-04-30,24,91.02,1.15,-274.02,24,30.41,1.05,-328.8,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",USDCHF,15,2025-06-23,2026-04-30,17,21.15,1.04,-186.57,17,-30.65,0.95,-201.13,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",AUDUSD,15,2025-06-23,2026-04-30,29,-131.18,0.84,-511.48,29,-202.35,0.77,-540.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",USDCAD,15,2025-06-23,2026-04-30,12,150.44,1.6,-160.16,12,129.19,1.49,-168.07,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",NZDUSD,15,2025-06-23,2026-04-30,21,391.72,1.75,-200.32,21,339.89,1.62,-209.29,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 2,"{""folga_stop_ticks"": 2}",ACOES12,60,2024-01-02,2026-04-30,44,991.0,1.5,-1052.0,44,673.0,1.3,-1308.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",WDO,5,2024-01-02,2026-04-30,64,1026.0,1.49,-970.0,64,-14.0,0.99,-1429.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",WIN,5,2024-01-02,2026-04-30,51,-739.0,0.7,-1770.5,51,-1111.0,0.59,-2056.5,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",BTCUSDT,5,2024-01-01,2026-04-30,154,-804.45,0.46,-930.02,154,-804.74,0.46,-930.29,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",EURUSD,5,2025-06-23,2026-04-30,56,-955.49,0.4,-955.49,56,-1097.75,0.36,-1097.75,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",USDJPY,5,2025-06-23,2026-04-30,50,-126.21,0.91,-801.27,50,-207.02,0.86,-856.86,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",GBPUSD,5,2025-06-23,2026-04-30,45,734.73,1.61,-582.14,45,622.56,1.48,-644.45,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",USDCHF,5,2025-06-23,2026-04-30,49,-295.87,0.71,-552.58,49,-440.64,0.61,-672.95,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",AUDUSD,5,2025-06-23,2026-04-30,40,-359.09,0.62,-627.67,40,-460.75,0.55,-714.88,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",USDCAD,5,2025-06-23,2026-04-30,49,20.95,1.03,-238.14,49,-71.16,0.9,-294.14,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",NZDUSD,5,2025-06-23,2026-04-30,51,290.61,1.32,-222.02,51,161.35,1.16,-246.44,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",EURUSD,15,2025-06-23,2026-04-30,19,-309.09,0.6,-344.32,19,-350.75,0.56,-362.11,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",USDJPY,15,2025-06-23,2026-04-30,29,-616.84,0.46,-661.58,29,-658.67,0.44,-700.11,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",GBPUSD,15,2025-06-23,2026-04-30,24,33.81,1.05,-313.83,24,-25.09,0.96,-367.11,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",USDCHF,15,2025-06-23,2026-04-30,17,-10.35,0.98,-199.56,17,-61.75,0.9,-214.1,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",AUDUSD,15,2025-06-23,2026-04-30,29,-131.41,0.84,-505.33,29,-202.37,0.77,-533.84,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",USDCAD,15,2025-06-23,2026-04-30,12,140.97,1.54,-165.78,12,119.7,1.43,-173.7,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",NZDUSD,15,2025-06-23,2026-04-30,21,384.96,1.73,-199.03,21,333.44,1.6,-207.89,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 4,"{""folga_stop_ticks"": 4}",ACOES12,60,2024-01-02,2026-04-30,44,325.0,1.15,-1297.0,44,21.0,1.01,-1545.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",WDO,5,2024-01-02,2026-04-30,62,740.0,1.4,-947.0,62,-160.0,0.93,-1328.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",WIN,5,2024-01-02,2026-04-30,51,-851.0,0.65,-1802.5,51,-1199.0,0.55,-2072.5,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",BTCUSDT,5,2024-01-01,2026-04-30,154,-804.55,0.46,-930.12,154,-804.84,0.46,-930.39,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",EURUSD,5,2025-06-23,2026-04-30,56,-992.28,0.39,-992.28,56,-1133.29,0.35,-1133.29,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",USDJPY,5,2025-06-23,2026-04-30,50,-142.92,0.9,-817.69,50,-226.4,0.85,-875.65,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",GBPUSD,5,2025-06-23,2026-04-30,45,710.93,1.58,-590.89,45,598.84,1.46,-657.58,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",USDCHF,5,2025-06-23,2026-04-30,49,-246.88,0.76,-498.47,49,-387.12,0.66,-614.52,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",AUDUSD,5,2025-06-23,2026-04-30,40,-373.81,0.61,-642.39,40,-481.19,0.54,-728.24,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",USDCAD,5,2025-06-23,2026-04-30,49,15.05,1.02,-238.26,49,-77.04,0.9,-298.1,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",NZDUSD,5,2025-06-23,2026-04-30,51,267.92,1.29,-222.72,51,138.18,1.14,-256.3,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",EURUSD,15,2025-06-23,2026-04-30,19,-272.55,0.62,-295.99,19,-317.59,0.58,-328.95,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",USDJPY,15,2025-06-23,2026-04-30,29,-531.48,0.53,-576.22,29,-571.63,0.5,-613.07,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",GBPUSD,15,2025-06-23,2026-04-30,24,14.19,1.02,-333.45,24,-44.53,0.94,-386.55,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",USDCHF,15,2025-06-23,2026-04-30,17,-22.54,0.96,-201.88,17,-73.66,0.88,-216.3,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",AUDUSD,15,2025-06-23,2026-04-30,29,-145.55,0.83,-514.66,29,-216.42,0.76,-543.18,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",USDCAD,15,2025-06-23,2026-04-30,12,137.62,1.52,-167.19,12,114.96,1.41,-176.51,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",NZDUSD,15,2025-06-23,2026-04-30,21,378.2,1.71,-200.33,21,326.68,1.58,-209.19,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: stop 5,"{""folga_stop_ticks"": 5}",ACOES12,60,2024-01-02,2026-04-30,44,595.0,1.29,-1016.0,44,291.0,1.13,-1269.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",WDO,5,2024-01-02,2026-04-30,18,1677.0,3.72,-484.0,18,1297.0,2.61,-667.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",WIN,5,2024-01-02,2026-04-30,14,234.0,1.36,-426.5,14,126.0,1.18,-468.5,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",BTCUSDT,5,2024-01-01,2026-04-30,35,-31.47,0.9,-169.21,35,-31.52,0.9,-169.24,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",EURUSD,5,2025-06-23,2026-04-30,20,-505.11,0.22,-505.11,20,-558.16,0.19,-558.16,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",USDJPY,5,2025-06-23,2026-04-30,18,-63.64,0.86,-181.91,18,-93.3,0.8,-195.26,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",GBPUSD,5,2025-06-23,2026-04-30,7,92.24,1.36,-257.87,7,73.88,1.27,-273.64,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",USDCHF,5,2025-06-23,2026-04-30,14,-32.21,0.86,-142.44,14,-75.23,0.7,-160.67,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",AUDUSD,5,2025-06-23,2026-04-30,11,267.06,2.12,-136.01,11,238.12,1.93,-144.72,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",USDCAD,5,2025-06-23,2026-04-30,16,-145.44,0.54,-206.67,16,-175.83,0.49,-223.71,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",NZDUSD,5,2025-06-23,2026-04-30,8,151.18,2.73,-87.51,8,130.23,2.26,-103.17,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",EURUSD,15,2025-06-23,2026-04-30,5,60.68,1.29,-207.87,5,49.24,1.23,-214.78,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",USDJPY,15,2025-06-23,2026-04-30,12,-409.25,0.26,-409.25,12,-425.49,0.25,-425.49,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",GBPUSD,15,2025-06-23,2026-04-30,7,114.51,1.8,-60.35,7,95.93,1.62,-65.75,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",USDCHF,15,2025-06-23,2026-04-30,4,66.88,1.46,-145.3,4,54.41,1.35,-154.49,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",AUDUSD,15,2025-06-23,2026-04-30,3,-45.09,0.38,-45.09,3,-53.08,0.32,-53.08,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",USDCAD,15,2025-06-23,2026-04-30,2,14.27,1.4,-35.27,2,10.41,1.28,-37.2,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",NZDUSD,15,2025-06-23,2026-04-30,6,163.29,1.78,-184.75,6,148.71,1.67,-194.04,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 0.2,"{""trix_extremo"": 0.2}",ACOES12,60,2024-01-02,2026-04-30,8,-58.0,0.8,-191.0,8,-100.0,0.69,-225.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",WDO,5,2024-01-02,2026-04-30,568,3003.0,1.12,-3661.0,565,-8060.0,0.75,-8528.0,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",WIN,5,2024-01-02,2026-04-30,573,-9009.5,0.71,-11243.5,569,-13442.5,0.61,-14508.5,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",BTCUSDT,5,2024-01-01,2026-04-30,2175,-5414.3,0.66,-5658.58,2175,-5417.8,0.66,-5661.37,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",EURUSD,5,2025-06-23,2026-04-30,575,-2564.53,0.81,-3871.05,575,-3699.44,0.73,-4672.08,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",USDJPY,5,2025-06-23,2026-04-30,576,-241.22,0.98,-1913.42,576,-1156.49,0.92,-2157.91,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",GBPUSD,5,2025-06-23,2026-04-30,550,-1606.37,0.89,-3128.78,550,-2799.98,0.81,-3941.3,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",USDCHF,5,2025-06-23,2026-04-30,579,-596.85,0.95,-2696.36,579,-2021.53,0.84,-3583.0,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",AUDUSD,5,2025-06-23,2026-04-30,590,-4232.52,0.62,-4363.24,590,-5204.2,0.54,-5323.51,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",USDCAD,5,2025-06-23,2026-04-30,601,-2295.86,0.74,-2634.41,601,-3196.1,0.65,-3415.42,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",NZDUSD,5,2025-06-23,2026-04-30,591,-2973.06,0.71,-3100.87,591,-4079.62,0.61,-4170.18,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",EURUSD,15,2025-06-23,2026-04-30,185,-2254.13,0.64,-2539.2,185,-2617.78,0.6,-2867.59,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",USDJPY,15,2025-06-23,2026-04-30,209,-1062.47,0.85,-2039.0,209,-1353.19,0.82,-2157.25,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",GBPUSD,15,2025-06-23,2026-04-30,200,-1438.83,0.79,-1958.31,200,-1836.08,0.74,-2219.0,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",USDCHF,15,2025-06-23,2026-04-30,197,-420.15,0.94,-1454.28,197,-900.04,0.88,-1623.9,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",AUDUSD,15,2025-06-23,2026-04-30,205,-2549.26,0.59,-3035.83,205,-2952.05,0.54,-3419.11,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",USDCAD,15,2025-06-23,2026-04-30,193,421.77,1.09,-1284.8,193,78.05,1.02,-1442.01,positiva,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",NZDUSD,15,2025-06-23,2026-04-30,198,-1646.77,0.7,-1780.5,198,-2054.28,0.64,-2172.23,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: trix 1.0,"{""trix_extremo"": 1.0}",ACOES12,60,2024-01-02,2026-04-30,471,-3288.0,0.85,-5826.0,471,-6393.0,0.74,-8363.0,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",WDO,5,2024-01-02,2026-04-30,64,77.0,1.04,-991.0,64,-1103.0,0.56,-1501.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",WIN,5,2024-01-02,2026-04-30,51,-401.0,0.82,-1118.0,51,-801.0,0.69,-1386.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",BTCUSDT,5,2024-01-01,2026-04-30,154,-592.51,0.47,-629.64,154,-592.46,0.47,-629.55,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",EURUSD,5,2025-06-23,2026-04-30,56,-533.96,0.55,-533.96,56,-676.36,0.47,-676.36,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",USDJPY,5,2025-06-23,2026-04-30,50,-455.37,0.6,-852.96,50,-536.86,0.56,-916.14,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",GBPUSD,5,2025-06-23,2026-04-30,45,128.96,1.14,-511.78,45,16.95,1.02,-593.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",USDCHF,5,2025-06-23,2026-04-30,49,-35.35,0.96,-308.65,49,-184.02,0.81,-427.96,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",AUDUSD,5,2025-06-23,2026-04-30,40,-555.71,0.35,-688.68,40,-657.28,0.3,-774.69,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",USDCAD,5,2025-06-23,2026-04-30,49,22.2,1.05,-209.76,49,-70.96,0.86,-245.9,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",NZDUSD,5,2025-06-23,2026-04-30,51,50.74,1.07,-330.12,51,-81.12,0.9,-357.16,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",EURUSD,15,2025-06-23,2026-04-30,19,-389.51,0.38,-403.36,19,-430.67,0.34,-442.03,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",USDJPY,15,2025-06-23,2026-04-30,29,-727.75,0.35,-761.76,29,-769.45,0.34,-800.16,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",GBPUSD,15,2025-06-23,2026-04-30,24,293.26,1.57,-204.21,24,236.5,1.43,-219.87,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",USDCHF,15,2025-06-23,2026-04-30,17,126.14,1.29,-151.53,17,74.37,1.16,-160.71,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",AUDUSD,15,2025-06-23,2026-04-30,29,-206.13,0.74,-479.98,29,-274.73,0.67,-507.31,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",USDCAD,15,2025-06-23,2026-04-30,12,262.36,2.2,-122.96,12,239.61,2.02,-132.36,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",NZDUSD,15,2025-06-23,2026-04-30,21,467.88,2.42,-125.37,21,415.91,2.17,-134.34,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,didi: saida bb ou adx,"{""saida"": ""bb_ou_adx""}",ACOES12,60,2024-01-02,2026-04-30,44,-621.0,0.61,-830.0,44,-930.0,0.49,-1055.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 3,"{""folga_ticks"": 3}",WDO,5,2026-06-29,2026-09-15,44,-3428.0,0.21,-3428.0,42,-4798.0,0.14,-4798.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 3,"{""folga_ticks"": 3}",WIN,5,2026-08-12,2026-09-15,67,-1907.0,0.69,-2155.5,57,-2245.0,0.62,-2470.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 5,"{""folga_ticks"": 5}",WDO,5,2026-06-29,2026-09-15,26,-2501.0,0.0,-2501.0,26,-3161.0,0.0,-3161.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 5,"{""folga_ticks"": 5}",WIN,5,2026-08-12,2026-09-15,64,-2447.5,0.57,-2447.5,61,-2921.0,0.52,-2921.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 6,"{""folga_ticks"": 6}",WDO,5,2026-06-29,2026-09-15,17,-1668.0,0.0,-1668.0,16,-1916.0,0.0,-1916.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 6,"{""folga_ticks"": 6}",WIN,5,2026-08-12,2026-09-15,65,-2707.5,0.52,-2707.5,62,-3110.0,0.48,-3110.0,inconclusivo,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 3,"{""folga_ticks"": 1500}",BTCUSDT,5,2024-01-01,2026-04-30,1090,-2506.87,0.63,-2607.84,1090,-2510.0,0.62,-2610.8,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 5,"{""folga_ticks"": 2500}",BTCUSDT,5,2024-01-01,2026-04-30,962,-2115.82,0.68,-2242.16,962,-2117.29,0.68,-2243.01,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:18,caio: stop 6,"{""folga_ticks"": 3000}",BTCUSDT,5,2024-01-01,2026-04-30,894,-2125.18,0.67,-2300.6,894,-2126.58,0.67,-2301.91,negativa,sensibilidade desenvolvimento
+2026-10-26T13:44:31,sofia: folga 1,"{""folga_ticks"": 1}",EURUSD,15,2025-06-23,2026-04-30,204,1010.63,1.18,-1197.58,204,440.48,1.07,-1316.32,positiva,plato desenvolvimento
+2026-10-26T13:44:31,sofia: folga 3,"{""folga_ticks"": 3}",EURUSD,15,2025-06-23,2026-04-30,175,1228.36,1.23,-676.62,175,714.16,1.13,-788.19,positiva,plato desenvolvimento
+2026-10-26T13:45:00,sofia: depois,{},EURUSD,15,2026-05-01,2026-10-23,65,-1477.09,0.1,-1546.53,65,-1601.96,0.09,-1662.21,negativa,validacao_sofia_EURUSD_15 validacao

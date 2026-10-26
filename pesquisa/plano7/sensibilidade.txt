@@ -1,0 +1,118 @@
+didi  stop 2                 WDO       5    64 tr    2222.00 PF 1.82 payoff 3.25 acerto 0.36 | est     742.00 PF 1.2 | tr/sessão 0.11 contr 2.31 rr-bloq 0 inconclusivo
+didi  stop 2                 WIN       5    52 tr   -1185.50 PF 0.57 payoff 1.42 acerto 0.29 | est   -1623.50 PF 0.48 | tr/sessão 0.089 contr 4.21 rr-bloq 0 inconclusivo
+didi  stop 2                 BTCUSDT   5   154 tr    -804.29 PF 0.46 payoff 2.16 acerto 0.18 | est    -804.57 PF 0.46 | tr/sessão 0.181 contr 15.93 rr-bloq 0 negativa
+didi  stop 2                 EURUSD    5    56 tr    -917.04 PF 0.41 payoff 1.51 acerto 0.21 | est   -1060.29 PF 0.37 | tr/sessão 0.25 contr 23.23 rr-bloq 0 inconclusivo
+didi  stop 2                 USDJPY    5    50 tr    -171.66 PF 0.88 payoff 2.05 acerto 0.30 | est    -257.02 PF 0.82 | tr/sessão 0.223 contr 24.02 rr-bloq 0 inconclusivo
+didi  stop 2                 GBPUSD    5    45 tr     778.48 PF 1.67 payoff 3.33 acerto 0.33 | est     664.07 PF 1.53 | tr/sessão 0.201 contr 23.84 rr-bloq 0 inconclusivo
+didi  stop 2                 USDCHF    5    49 tr    -233.76 PF 0.76 payoff 2.35 acerto 0.24 | est    -381.37 PF 0.65 | tr/sessão 0.219 contr 23.61 rr-bloq 0 inconclusivo
+didi  stop 2                 AUDUSD    5    40 tr    -530.31 PF 0.44 payoff 1.76 acerto 0.20 | est    -632.66 PF 0.38 | tr/sessão 0.179 contr 23.73 rr-bloq 0 inconclusivo
+didi  stop 2                 USDCAD    5    49 tr      -9.33 PF 0.99 payoff 2.03 acerto 0.33 | est    -100.94 PF 0.86 | tr/sessão 0.219 contr 24.51 rr-bloq 0 inconclusivo
+didi  stop 2                 NZDUSD    5    51 tr     334.67 PF 1.39 payoff 2.78 acerto 0.33 | est     203.96 PF 1.22 | tr/sessão 0.228 contr 24.04 rr-bloq 0 inconclusivo
+didi  stop 2                 EURUSD   15    19 tr    -293.67 PF 0.61 payoff 0.84 acerto 0.42 | est    -335.76 PF 0.57 | tr/sessão 0.085 contr 22.21 rr-bloq 0 inconclusivo
+didi  stop 2                 USDJPY   15    29 tr    -748.93 PF 0.4 payoff 0.89 acerto 0.31 | est    -790.90 PF 0.38 | tr/sessão 0.129 contr 21.03 rr-bloq 0 inconclusivo
+didi  stop 2                 GBPUSD   15    24 tr      91.02 PF 1.15 payoff 1.92 acerto 0.38 | est      30.41 PF 1.05 | tr/sessão 0.107 contr 23.38 rr-bloq 0 inconclusivo
+didi  stop 2                 USDCHF   15    17 tr      21.15 PF 1.04 payoff 2.49 acerto 0.29 | est     -30.65 PF 0.95 | tr/sessão 0.076 contr 23.24 rr-bloq 0 inconclusivo
+didi  stop 2                 AUDUSD   15    29 tr    -131.18 PF 0.84 payoff 2.65 acerto 0.24 | est    -202.35 PF 0.77 | tr/sessão 0.129 contr 22.72 rr-bloq 0 inconclusivo
+didi  stop 2                 USDCAD   15    12 tr     150.44 PF 1.6 payoff 4.8 acerto 0.25 | est     129.19 PF 1.49 | tr/sessão 0.054 contr 24.58 rr-bloq 0 inconclusivo
+didi  stop 2                 NZDUSD   15    21 tr     391.72 PF 1.75 payoff 2.85 acerto 0.38 | est     339.89 PF 1.62 | tr/sessão 0.094 contr 22.86 rr-bloq 0 inconclusivo
+didi  stop 2                 ACOES12  60    44 tr     991.00 PF 1.5 payoff 4.01 acerto 0.27 | est     673.00 PF 1.3 | tr/sessão 0.006 contr 3.61 rr-bloq 0 inconclusivo
+didi  stop 4                 WDO       5    64 tr    1026.00 PF 1.49 payoff 1.92 acerto 0.44 | est     -14.00 PF 0.99 | tr/sessão 0.11 contr 1.62 rr-bloq 0 inconclusivo
+didi  stop 4                 WIN       5    51 tr    -739.00 PF 0.7 payoff 1.39 acerto 0.33 | est   -1111.00 PF 0.59 | tr/sessão 0.088 contr 3.65 rr-bloq 0 inconclusivo
+didi  stop 4                 BTCUSDT   5   154 tr    -804.45 PF 0.46 payoff 2.16 acerto 0.18 | est    -804.74 PF 0.46 | tr/sessão 0.181 contr 15.93 rr-bloq 0 negativa
+didi  stop 4                 EURUSD    5    56 tr    -955.49 PF 0.4 payoff 1.48 acerto 0.21 | est   -1097.75 PF 0.36 | tr/sessão 0.25 contr 23.21 rr-bloq 0 inconclusivo
+didi  stop 4                 USDJPY    5    50 tr    -126.21 PF 0.91 payoff 1.94 acerto 0.32 | est    -207.02 PF 0.86 | tr/sessão 0.223 contr 24.14 rr-bloq 0 inconclusivo
+didi  stop 4                 GBPUSD    5    45 tr     734.73 PF 1.61 payoff 3.21 acerto 0.33 | est     622.56 PF 1.48 | tr/sessão 0.201 contr 23.76 rr-bloq 0 inconclusivo
+didi  stop 4                 USDCHF    5    49 tr    -295.87 PF 0.71 payoff 2.2 acerto 0.24 | est    -440.64 PF 0.61 | tr/sessão 0.219 contr 23.55 rr-bloq 0 inconclusivo
+didi  stop 4                 AUDUSD    5    40 tr    -359.09 PF 0.62 payoff 2.14 acerto 0.23 | est    -460.75 PF 0.55 | tr/sessão 0.179 contr 23.62 rr-bloq 0 inconclusivo
+didi  stop 4                 USDCAD    5    49 tr      20.95 PF 1.03 payoff 1.94 acerto 0.35 | est     -71.16 PF 0.9 | tr/sessão 0.219 contr 24.51 rr-bloq 0 inconclusivo
+didi  stop 4                 NZDUSD    5    51 tr     290.61 PF 1.32 payoff 2.65 acerto 0.33 | est     161.35 PF 1.16 | tr/sessão 0.228 contr 23.96 rr-bloq 0 inconclusivo
+didi  stop 4                 EURUSD   15    19 tr    -309.09 PF 0.6 payoff 0.82 acerto 0.42 | est    -350.75 PF 0.56 | tr/sessão 0.085 contr 22.05 rr-bloq 0 inconclusivo
+didi  stop 4                 USDJPY   15    29 tr    -616.84 PF 0.46 payoff 0.88 acerto 0.34 | est    -658.67 PF 0.44 | tr/sessão 0.129 contr 20.97 rr-bloq 0 inconclusivo
+didi  stop 4                 GBPUSD   15    24 tr      33.81 PF 1.05 payoff 1.75 acerto 0.38 | est     -25.09 PF 0.96 | tr/sessão 0.107 contr 23.25 rr-bloq 0 inconclusivo
+didi  stop 4                 USDCHF   15    17 tr     -10.35 PF 0.98 payoff 2.36 acerto 0.29 | est     -61.75 PF 0.9 | tr/sessão 0.076 contr 23.06 rr-bloq 0 inconclusivo
+didi  stop 4                 AUDUSD   15    29 tr    -131.41 PF 0.84 payoff 2.65 acerto 0.24 | est    -202.37 PF 0.77 | tr/sessão 0.129 contr 22.66 rr-bloq 0 inconclusivo
+didi  stop 4                 USDCAD   15    12 tr     140.97 PF 1.54 payoff 4.63 acerto 0.25 | est     119.70 PF 1.43 | tr/sessão 0.054 contr 24.58 rr-bloq 0 inconclusivo
+didi  stop 4                 NZDUSD   15    21 tr     384.96 PF 1.73 payoff 2.81 acerto 0.38 | est     333.44 PF 1.6 | tr/sessão 0.094 contr 22.71 rr-bloq 0 inconclusivo
+didi  stop 4                 ACOES12  60    44 tr     325.00 PF 1.15 payoff 3.07 acerto 0.27 | est      21.00 PF 1.01 | tr/sessão 0.006 contr 3.45 rr-bloq 0 inconclusivo
+didi  stop 5                 WDO       5    62 tr     740.00 PF 1.4 payoff 1.82 acerto 0.44 | est    -160.00 PF 0.93 | tr/sessão 0.107 contr 1.45 rr-bloq 0 inconclusivo
+didi  stop 5                 WIN       5    51 tr    -851.00 PF 0.65 payoff 1.29 acerto 0.33 | est   -1199.00 PF 0.55 | tr/sessão 0.088 contr 3.41 rr-bloq 0 inconclusivo
+didi  stop 5                 BTCUSDT   5   154 tr    -804.55 PF 0.46 payoff 2.16 acerto 0.18 | est    -804.84 PF 0.46 | tr/sessão 0.181 contr 15.93 rr-bloq 0 negativa
+didi  stop 5                 EURUSD    5    56 tr    -992.28 PF 0.39 payoff 1.44 acerto 0.21 | est   -1133.29 PF 0.35 | tr/sessão 0.25 contr 23.09 rr-bloq 0 inconclusivo
+didi  stop 5                 USDJPY    5    50 tr    -142.92 PF 0.9 payoff 1.91 acerto 0.32 | est    -226.40 PF 0.85 | tr/sessão 0.223 contr 24.08 rr-bloq 0 inconclusivo
+didi  stop 5                 GBPUSD    5    45 tr     710.93 PF 1.58 payoff 3.16 acerto 0.33 | est     598.84 PF 1.46 | tr/sessão 0.201 contr 23.64 rr-bloq 0 inconclusivo
+didi  stop 5                 USDCHF    5    49 tr    -246.88 PF 0.76 payoff 2.11 acerto 0.27 | est    -387.12 PF 0.66 | tr/sessão 0.219 contr 23.61 rr-bloq 0 inconclusivo
+didi  stop 5                 AUDUSD    5    40 tr    -373.81 PF 0.61 payoff 2.1 acerto 0.23 | est    -481.19 PF 0.54 | tr/sessão 0.179 contr 23.57 rr-bloq 0 inconclusivo
+didi  stop 5                 USDCAD    5    49 tr      15.05 PF 1.02 payoff 1.92 acerto 0.35 | est     -77.04 PF 0.9 | tr/sessão 0.219 contr 24.51 rr-bloq 0 inconclusivo
+didi  stop 5                 NZDUSD    5    51 tr     267.92 PF 1.29 payoff 2.58 acerto 0.33 | est     138.18 PF 1.14 | tr/sessão 0.228 contr 23.92 rr-bloq 0 inconclusivo
+didi  stop 5                 EURUSD   15    19 tr    -272.55 PF 0.62 payoff 0.86 acerto 0.42 | est    -317.59 PF 0.58 | tr/sessão 0.085 contr 21.95 rr-bloq 0 inconclusivo
+didi  stop 5                 USDJPY   15    29 tr    -531.48 PF 0.53 payoff 0.86 acerto 0.38 | est    -571.63 PF 0.5 | tr/sessão 0.129 contr 20.97 rr-bloq 0 inconclusivo
+didi  stop 5                 GBPUSD   15    24 tr      14.19 PF 1.02 payoff 1.7 acerto 0.38 | est     -44.53 PF 0.94 | tr/sessão 0.107 contr 23.21 rr-bloq 0 inconclusivo
+didi  stop 5                 USDCHF   15    17 tr     -22.54 PF 0.96 payoff 2.31 acerto 0.29 | est     -73.66 PF 0.88 | tr/sessão 0.076 contr 22.94 rr-bloq 0 inconclusivo
+didi  stop 5                 AUDUSD   15    29 tr    -145.55 PF 0.83 payoff 2.61 acerto 0.24 | est    -216.42 PF 0.76 | tr/sessão 0.129 contr 22.62 rr-bloq 0 inconclusivo
+didi  stop 5                 USDCAD   15    12 tr     137.62 PF 1.52 payoff 4.57 acerto 0.25 | est     114.96 PF 1.41 | tr/sessão 0.054 contr 24.5 rr-bloq 0 inconclusivo
+didi  stop 5                 NZDUSD   15    21 tr     378.20 PF 1.71 payoff 2.78 acerto 0.38 | est     326.68 PF 1.58 | tr/sessão 0.094 contr 22.71 rr-bloq 0 inconclusivo
+didi  stop 5                 ACOES12  60    44 tr     595.00 PF 1.29 payoff 3.07 acerto 0.30 | est     291.00 PF 1.13 | tr/sessão 0.006 contr 3.45 rr-bloq 0 inconclusivo
+didi  trix 0.2               WDO       5    18 tr    1677.00 PF 3.72 payoff 4.65 acerto 0.44 | est    1297.00 PF 2.61 | tr/sessão 0.031 contr 2.11 rr-bloq 0 inconclusivo
+didi  trix 0.2               WIN       5    14 tr     234.00 PF 1.36 payoff 2.45 acerto 0.36 | est     126.00 PF 1.18 | tr/sessão 0.024 contr 3.86 rr-bloq 0 inconclusivo
+didi  trix 0.2               BTCUSDT   5    35 tr     -31.47 PF 0.9 payoff 3.62 acerto 0.20 | est     -31.52 PF 0.9 | tr/sessão 0.041 contr 16.0 rr-bloq 0 inconclusivo
+didi  trix 0.2               EURUSD    5    20 tr    -505.11 PF 0.22 payoff 1.23 acerto 0.15 | est    -558.16 PF 0.19 | tr/sessão 0.089 contr 24.0 rr-bloq 0 inconclusivo
+didi  trix 0.2               USDJPY    5    18 tr     -63.64 PF 0.86 payoff 1.35 acerto 0.39 | est     -93.30 PF 0.8 | tr/sessão 0.08 contr 23.94 rr-bloq 0 inconclusivo
+didi  trix 0.2               GBPUSD    5     7 tr      92.24 PF 1.36 payoff 8.15 acerto 0.14 | est      73.88 PF 1.27 | tr/sessão 0.031 contr 24.29 rr-bloq 0 inconclusivo
+didi  trix 0.2               USDCHF    5    14 tr     -32.21 PF 0.86 payoff 2.14 acerto 0.29 | est     -75.23 PF 0.7 | tr/sessão 0.062 contr 23.43 rr-bloq 0 inconclusivo
+didi  trix 0.2               AUDUSD    5    11 tr     267.06 PF 2.12 payoff 2.55 acerto 0.45 | est     238.12 PF 1.93 | tr/sessão 0.049 contr 24.36 rr-bloq 0 inconclusivo
+didi  trix 0.2               USDCAD    5    16 tr    -145.44 PF 0.54 payoff 1.63 acerto 0.25 | est    -175.83 PF 0.49 | tr/sessão 0.071 contr 24.62 rr-bloq 0 inconclusivo
+didi  trix 0.2               NZDUSD    5     8 tr     151.18 PF 2.73 payoff 8.18 acerto 0.25 | est     130.23 PF 2.26 | tr/sessão 0.036 contr 24.25 rr-bloq 0 inconclusivo
+didi  trix 0.2               EURUSD   15     5 tr      60.68 PF 1.29 payoff 1.94 acerto 0.40 | est      49.24 PF 1.23 | tr/sessão 0.022 contr 21.2 rr-bloq 0 inconclusivo
+didi  trix 0.2               USDJPY   15    12 tr    -409.25 PF 0.26 payoff 0.78 acerto 0.25 | est    -425.49 PF 0.25 | tr/sessão 0.054 contr 19.67 rr-bloq 0 inconclusivo
+didi  trix 0.2               GBPUSD   15     7 tr     114.51 PF 1.8 payoff 2.4 acerto 0.43 | est      95.93 PF 1.62 | tr/sessão 0.031 contr 24.57 rr-bloq 0 inconclusivo
+didi  trix 0.2               USDCHF   15     4 tr      66.88 PF 1.46 payoff 4.38 acerto 0.25 | est      54.41 PF 1.35 | tr/sessão 0.018 contr 23.75 rr-bloq 0 inconclusivo
+didi  trix 0.2               AUDUSD   15     3 tr     -45.09 PF 0.38 payoff 0.76 acerto 0.33 | est     -53.08 PF 0.32 | tr/sessão 0.013 contr 24.67 rr-bloq 0 inconclusivo
+didi  trix 0.2               USDCAD   15     2 tr      14.27 PF 1.4 payoff 1.4 acerto 0.50 | est      10.41 PF 1.28 | tr/sessão 0.009 contr 25.0 rr-bloq 0 inconclusivo
+didi  trix 0.2               NZDUSD   15     6 tr     163.29 PF 1.78 payoff 8.91 acerto 0.17 | est     148.71 PF 1.67 | tr/sessão 0.027 contr 22.5 rr-bloq 0 inconclusivo
+didi  trix 0.2               ACOES12  60     8 tr     -58.00 PF 0.8 payoff 1.34 acerto 0.38 | est    -100.00 PF 0.69 | tr/sessão 0.001 contr 2.62 rr-bloq 0 inconclusivo
+didi  trix 1.0               WDO       5   568 tr    3003.00 PF 1.12 payoff 2.36 acerto 0.32 | est   -8060.00 PF 0.75 | tr/sessão 0.976 contr 1.94 rr-bloq 0 negativa
+didi  trix 1.0               WIN       5   573 tr   -9009.50 PF 0.71 payoff 1.97 acerto 0.27 | est  -13442.50 PF 0.61 | tr/sessão 0.985 contr 3.92 rr-bloq 0 negativa
+didi  trix 1.0               BTCUSDT   5  2175 tr   -5414.30 PF 0.66 payoff 2.56 acerto 0.20 | est   -5417.80 PF 0.66 | tr/sessão 2.556 contr 14.63 rr-bloq 2 negativa
+didi  trix 1.0               EURUSD    5   575 tr   -2564.53 PF 0.81 payoff 2.05 acerto 0.28 | est   -3699.44 PF 0.73 | tr/sessão 2.567 contr 22.37 rr-bloq 0 negativa
+didi  trix 1.0               USDJPY    5   576 tr    -241.22 PF 0.98 payoff 2.55 acerto 0.28 | est   -1156.49 PF 0.92 | tr/sessão 2.571 contr 23.52 rr-bloq 0 negativa
+didi  trix 1.0               GBPUSD    5   550 tr   -1606.37 PF 0.89 payoff 2.41 acerto 0.27 | est   -2799.98 PF 0.81 | tr/sessão 2.455 contr 21.37 rr-bloq 0 negativa
+didi  trix 1.0               USDCHF    5   579 tr    -596.85 PF 0.95 payoff 2.37 acerto 0.29 | est   -2021.53 PF 0.84 | tr/sessão 2.585 contr 22.12 rr-bloq 0 negativa
+didi  trix 1.0               AUDUSD    5   590 tr   -4232.52 PF 0.62 payoff 1.85 acerto 0.25 | est   -5204.20 PF 0.54 | tr/sessão 2.634 contr 19.77 rr-bloq 0 negativa
+didi  trix 1.0               USDCAD    5   601 tr   -2295.86 PF 0.74 payoff 1.95 acerto 0.28 | est   -3196.10 PF 0.65 | tr/sessão 2.683 contr 21.89 rr-bloq 0 negativa
+didi  trix 1.0               NZDUSD    5   591 tr   -2973.06 PF 0.71 payoff 1.86 acerto 0.28 | est   -4079.62 PF 0.61 | tr/sessão 2.638 contr 21.19 rr-bloq 0 negativa
+didi  trix 1.0               EURUSD   15   185 tr   -2254.13 PF 0.64 payoff 1.48 acerto 0.30 | est   -2617.78 PF 0.6 | tr/sessão 0.826 contr 20.45 rr-bloq 0 negativa
+didi  trix 1.0               USDJPY   15   209 tr   -1062.47 PF 0.85 payoff 2.39 acerto 0.26 | est   -1353.19 PF 0.82 | tr/sessão 0.933 contr 21.48 rr-bloq 0 negativa
+didi  trix 1.0               GBPUSD   15   200 tr   -1438.83 PF 0.79 payoff 1.72 acerto 0.32 | est   -1836.08 PF 0.74 | tr/sessão 0.893 contr 19.79 rr-bloq 0 negativa
+didi  trix 1.0               USDCHF   15   197 tr    -420.15 PF 0.94 payoff 2.43 acerto 0.28 | est    -900.04 PF 0.88 | tr/sessão 0.879 contr 21.89 rr-bloq 0 negativa
+didi  trix 1.0               AUDUSD   15   205 tr   -2549.26 PF 0.59 payoff 2.11 acerto 0.22 | est   -2952.05 PF 0.54 | tr/sessão 0.915 contr 20.65 rr-bloq 0 negativa
+didi  trix 1.0               USDCAD   15   193 tr     421.77 PF 1.09 payoff 2.67 acerto 0.29 | est      78.05 PF 1.02 | tr/sessão 0.862 contr 23.62 rr-bloq 0 positiva
+didi  trix 1.0               NZDUSD   15   198 tr   -1646.77 PF 0.7 payoff 1.88 acerto 0.27 | est   -2054.28 PF 0.64 | tr/sessão 0.884 contr 21.8 rr-bloq 0 negativa
+didi  trix 1.0               ACOES12  60   471 tr   -3288.00 PF 0.85 payoff 2.52 acerto 0.25 | est   -6393.00 PF 0.74 | tr/sessão 0.067 contr 3.32 rr-bloq 0 negativa
+didi  saida bb ou adx        WDO       5    64 tr      77.00 PF 1.04 payoff 1.86 acerto 0.36 | est   -1103.00 PF 0.56 | tr/sessão 0.11 contr 1.84 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        WIN       5    51 tr    -401.00 PF 0.82 payoff 1.51 acerto 0.35 | est    -801.00 PF 0.69 | tr/sessão 0.088 contr 3.92 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        BTCUSDT   5   154 tr    -592.51 PF 0.47 payoff 1.44 acerto 0.25 | est    -592.46 PF 0.47 | tr/sessão 0.181 contr 15.94 rr-bloq 0 negativa
+didi  saida bb ou adx        EURUSD    5    56 tr    -533.96 PF 0.55 payoff 1.25 acerto 0.30 | est    -676.36 PF 0.47 | tr/sessão 0.25 contr 23.73 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        USDJPY    5    50 tr    -455.37 PF 0.6 payoff 1.72 acerto 0.26 | est    -536.86 PF 0.56 | tr/sessão 0.223 contr 23.8 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        GBPUSD    5    45 tr     128.96 PF 1.14 payoff 2.06 acerto 0.36 | est      16.95 PF 1.02 | tr/sessão 0.201 contr 23.22 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        USDCHF    5    49 tr     -35.35 PF 0.96 payoff 1.98 acerto 0.33 | est    -184.02 PF 0.81 | tr/sessão 0.219 contr 23.69 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        AUDUSD    5    40 tr    -555.71 PF 0.35 payoff 1.21 acerto 0.23 | est    -657.28 PF 0.3 | tr/sessão 0.179 contr 23.5 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        USDCAD    5    49 tr      22.20 PF 1.05 payoff 1.65 acerto 0.39 | est     -70.96 PF 0.86 | tr/sessão 0.219 contr 24.55 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        NZDUSD    5    51 tr      50.74 PF 1.07 payoff 1.66 acerto 0.39 | est     -81.12 PF 0.9 | tr/sessão 0.228 contr 24.0 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        EURUSD   15    19 tr    -389.51 PF 0.38 payoff 0.65 acerto 0.37 | est    -430.67 PF 0.34 | tr/sessão 0.085 contr 22.0 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        USDJPY   15    29 tr    -727.75 PF 0.35 payoff 1.12 acerto 0.24 | est    -769.45 PF 0.34 | tr/sessão 0.129 contr 20.9 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        GBPUSD   15    24 tr     293.26 PF 1.57 payoff 2.19 acerto 0.42 | est     236.50 PF 1.43 | tr/sessão 0.107 contr 23.62 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        USDCHF   15    17 tr     126.14 PF 1.29 payoff 2.37 acerto 0.35 | est      74.37 PF 1.16 | tr/sessão 0.076 contr 23.24 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        AUDUSD   15    29 tr    -206.13 PF 0.74 payoff 1.94 acerto 0.28 | est    -274.73 PF 0.67 | tr/sessão 0.129 contr 22.72 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        USDCAD   15    12 tr     262.36 PF 2.2 payoff 4.4 acerto 0.33 | est     239.61 PF 2.02 | tr/sessão 0.054 contr 24.58 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        NZDUSD   15    21 tr     467.88 PF 2.42 payoff 2.2 acerto 0.52 | est     415.91 PF 2.17 | tr/sessão 0.094 contr 22.9 rr-bloq 0 inconclusivo
+didi  saida bb ou adx        ACOES12  60    44 tr    -621.00 PF 0.61 payoff 1.57 acerto 0.27 | est    -930.00 PF 0.49 | tr/sessão 0.006 contr 3.55 rr-bloq 0 inconclusivo
+caio  stop 3                 WDO       5    44 tr   -3428.00 PF 0.21 payoff 2.06 acerto 0.09 | est   -4798.00 PF 0.14 | tr/sessão 0.786 contr 3.7 rr-bloq 52 inconclusivo
+caio  stop 3                 WIN       5    67 tr   -1907.00 PF 0.69 payoff 6.97 acerto 0.09 | est   -2245.00 PF 0.62 | tr/sessão 2.792 contr 7.73 rr-bloq 55 inconclusivo
+caio  stop 5                 WDO       5    26 tr   -2501.00 PF 0.0 payoff None acerto 0.00 | est   -3161.00 PF 0.0 | tr/sessão 0.464 contr 2.54 rr-bloq 77 inconclusivo
+caio  stop 5                 WIN       5    64 tr   -2447.50 PF 0.57 payoff 6.67 acerto 0.08 | est   -2921.00 PF 0.52 | tr/sessão 2.667 contr 6.36 rr-bloq 61 inconclusivo
+caio  stop 6                 WDO       5    17 tr   -1668.00 PF 0.0 payoff None acerto 0.00 | est   -1916.00 PF 0.0 | tr/sessão 0.304 contr 2.24 rr-bloq 86 inconclusivo
+caio  stop 6                 WIN       5    65 tr   -2707.50 PF 0.52 payoff 6.24 acerto 0.08 | est   -3110.00 PF 0.48 | tr/sessão 2.708 contr 5.74 rr-bloq 61 inconclusivo
+caio  stop 3                 BTCUSDT   5  1090 tr   -2506.87 PF 0.63 payoff 3.1 acerto 0.17 | est   -2510.00 PF 0.62 | tr/sessão 1.281 contr 15.43 rr-bloq 2211 negativa
+caio  stop 5                 BTCUSDT   5   962 tr   -2115.82 PF 0.68 payoff 3.11 acerto 0.18 | est   -2117.29 PF 0.68 | tr/sessão 1.13 contr 15.5 rr-bloq 2375 negativa
+caio  stop 6                 BTCUSDT   5   894 tr   -2125.18 PF 0.67 payoff 3.1 acerto 0.18 | est   -2126.58 PF 0.67 | tr/sessão 1.051 contr 15.49 rr-bloq 2456 negativa
+1451 s
