@@ -348,6 +348,7 @@ class TestServidor(unittest.TestCase):
             self.assertFalse(servidor.precisa_ciclo(caminho, hoje, refazer_sem_dados=True))
 
     def test_atividade_ociosa_fora_do_ciclo(self):
+        self._com_estado()  # sem aviso de pesquisa: o arquivo real pode ter uma rodada em andamento
         servidor.registrar_atividade(None, None)
         status, corpo = self.get("/api/atividade")
         self.assertEqual(status, 200)

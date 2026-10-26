@@ -3106,11 +3106,11 @@ async function carregar() {
 let textoLab = "";
 async function carregarLab() {
   const exemplo = pedido.get("laboratorio") === "exemplo";
-  let lab = {};
+  let lab = laboratorio;  // falha na consulta: fica a última rodada boa, como carregar() faz com o estado
   try {
     const r = await fetch(exemplo ? "/web/firma.exemplo.json" : "/api/laboratorio", { cache: "no-store" });
     if (r.ok) lab = exemplo ? (await r.json()).laboratorio : await r.json();
-  } catch {}   // servidor fora ou ainda sem /api/laboratorio: nenhuma rodada
+  } catch {}   // servidor fora: segue com o que já tinha
   laboratorio = objeto(lab) ? lab : {};
   const texto = JSON.stringify(laboratorio);
   if (texto === textoLab) return;
