@@ -144,17 +144,17 @@ function modo(m) {
 $("#modo").addEventListener("click", e => { const b = e.target.closest("button"); if (b) modo(b.dataset.modo); });
 
 // ---- os oito gráficos: [operacional, ativo] de cada um, lembrados neste navegador
-const SLOTS_PADRAO = [["Sofia SMC", "WDO"], ["Didi Agulhada", "WDO"], ["Caio Contrafluxo", "WDO"], ["Sofia SMC", "WIN"],
-                      ["Didi Agulhada", "WIN"], ["Caio Contrafluxo", "WIN"], ["Sofia SMC", "EURUSD"], ["Sofia SMC", "BTCUSDT"]];
+const SLOTS_PADRAO = [["Sofia SMC", "WIN"], ["Didi Agulhada", "WIN"], ["Caio Contrafluxo", "WIN"], ["Sofia SMC", "WDO"],
+                      ["Didi Agulhada", "WDO"], ["Caio Contrafluxo", "WDO"], ["Sofia SMC", "EURUSD"], ["Sofia SMC", "BTCUSDT"]];
 let TRADERS = [];  // [{nome, estilo, salas}] da /api/traders
 let slots = (() => {
   try {
-    const s = JSON.parse(localStorage.getItem("arena.slots"));
+    const s = JSON.parse(localStorage.getItem("arena.slots.v2"));
     if (Array.isArray(s) && s.length === 8 && s.every(x => Array.isArray(x) && x[1] in NOMES)) return s;
   } catch {}
   return SLOTS_PADRAO.map(x => [...x]);
 })();
-const guardar = () => { try { localStorage.setItem("arena.slots", JSON.stringify(slots)); } catch {} };
+const guardar = () => { try { localStorage.setItem("arena.slots.v2", JSON.stringify(slots)); } catch {} };
 const operaEm = (nome, a) => TRADERS.find(t => t.nome === nome)?.salas.includes(a);
 // operacional que não trabalha no ativo (o Caio fora da B3) vira o primeiro que trabalha
 const acertar = s => { if (!operaEm(s[0], s[1])) s[0] = TRADERS.find(t => t.salas.includes(s[1]))?.nome ?? s[0]; };
@@ -341,6 +341,8 @@ function avisarDatas() {
   if (nunca.length) linhas.push(`<b>Nenhum pregão de ${juntar(nunca)} no período</b>: escolha dias úteis para ${nunca.length > 1 ? "eles" : "ele"} aparecer${nunca.length > 1 ? "em" : ""}.`);
   const el = $("#aviso-data");
   el.hidden = !linhas.length; el.querySelector(".txt").innerHTML = linhas.join("<br>");
+  clearTimeout(avisarDatas.tempo);   // some sozinho depois de 4 s (o × fecha antes)
+  if (linhas.length) avisarDatas.tempo = setTimeout(() => el.hidden = true, 4000);
 }
 $("#aviso-data button").addEventListener("click", () => $("#aviso-data").hidden = true);
 function htmlCalendario() {
