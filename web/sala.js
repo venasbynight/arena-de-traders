@@ -27,7 +27,7 @@ const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 // arena.ativos: {WDO: {ativo, candles, porTempo, cursor}}; arena.tempos: a linha do tempo (segundos) de todos os
 // ativos juntos; arena.cursor: quantos pontos dela já passaram
 const arena = window.arena = {dados: null, cursor: 0, tocando: false, traders: [], ativos: {}, tempos: [], dias: [],
-                              rodou: false, mostrarResultado() {}};
+                              mostrarResultado() {}};
 
 // ---- Backtest ou Ao vivo (a página abre no ao vivo; o vivo.js ouve o evento "modo")
 function modo(m) {
@@ -35,6 +35,7 @@ function modo(m) {
   document.querySelectorAll("#modo button").forEach(b => b.classList.toggle("sel", b.dataset.modo === m));
   if (m === "vivo") pausar();
   document.dispatchEvent(new Event("modo"));
+  primeiraVez();
 }
 $("#modo").addEventListener("click", e => { const b = e.target.closest("button"); if (b) modo(b.dataset.modo); });
 
@@ -72,43 +73,13 @@ function cartaoSlot(i, corpo = `<div class="grafico"><canvas class="zonas"></can
   return el;
 }
 
-// ---- antes do Rodar: cada gráfico mostra os últimos pregões do seu ativo (cache local, via /api/painel)
-let previas = [], mercado = null;
-const descartarPrevias = () => { previas.forEach(g => g.remove()); previas = []; };
-
-function previa() {
-  if (arena.rodou || !TRADERS.length) return;
-  descartarPrevias();
-  $("#grid").innerHTML = "";
-  slots.forEach(([nome, a], i) => {
-    const el = cartaoSlot(i);
-    el.querySelector(".tend").textContent = TRADERS.find(t => t.nome === nome)?.estilo ?? "";
-    el.querySelector(".status").textContent = "prévia · últimos pregões";
-    const box = el.querySelector(".grafico"), m = mercado?.find(x => x.ativo === a);
-    const msg = !mercado ? "carregando o gráfico…" : !m?.pregoes ? "sem candles no cache · rode o gerente"
-      : typeof LightweightCharts === "undefined" ? "a biblioteca de gráficos não carregou: confira a internet e recarregue" : "";
-    if (msg) { box.innerHTML = `<div class="espera">${msg}</div>`; return; }
-    const g = graficoPuro(box, a); g.ativo = a;
-    previas.push(g);
-  });
-  atualizarPrevias();
-}
-function atualizarPrevias() {
-  for (const g of previas) { const m = mercado?.find(x => x.ativo === g.ativo); if (m?.pregoes) g.dados(m.pregoes); }
-}
-document.addEventListener("painel", e => { const novo = !mercado; mercado = e.detail.mercado; novo ? previa() : atualizarPrevias(); });
-
 $("#grid").addEventListener("change", e => {
   const s = e.target.closest("select[data-i]"); if (!s) return;
   const slot = slots[+s.dataset.i];
   if (s.classList.contains("esc-ativo")) { slot[1] = s.value; acertar(slot); } else slot[0] = s.value;
   guardar();
-  arena.rodou ? rodar(true) : previa();
+  rodar(true);
 });
-// a roda do mouse rola a coluna de gráficos (há mais quatro embaixo); com Ctrl ela dá zoom no gráfico apontado
-$("#grid").addEventListener("wheel", e => {
-  if (!e.ctrlKey && Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.target.closest(".grafico, .painel")) e.stopPropagation();
-}, {capture: true});
 
 const ativoPedido = new URLSearchParams(location.search).get("ativo");  // /?ativo=EURUSD (link da firma)
 fetch("/api/traders").then(r => r.json()).then(ts => {
@@ -116,9 +87,14 @@ fetch("/api/traders").then(r => r.json()).then(ts => {
   if (ativoPedido in ATIVOS)  // a sala pedida nos primeiros gráficos, um por operacional dela
     TRADERS.filter(t => t.salas.includes(ativoPedido)).forEach((t, i) => slots[i] = [t.nome, ativoPedido]);
   slots.forEach(acertar);
-  previa();
+  primeiraVez();
 }).catch(e => aviso("não consegui falar com o servidor da arena: ele está rodando? (" + e.message + ")"));
 if (ativoPedido in ATIVOS) modo("backtest");
+// a primeira entrada no backtest já calcula o período padrão e mostra o fim dele: os gráficos abrem com os estudos
+// de cada operacional (o ⏮ ou o play recomeçam o replay)
+function primeiraVez() {
+  if (!rodadas && TRADERS.length && !document.body.classList.contains("vivo")) rodar(false, true);
+}
 
 function hojeMenos(dias) {
   const d = new Date(Date.now() - dias * 864e5);
@@ -140,8 +116,8 @@ function backtest(a, de, ate) {
 }
 
 let rodadas = 0;
-// `manter`: depois de trocar um gráfico, o replay volta para a mesma hora
-async function rodar(manter) {
+// `manter`: depois de trocar um gráfico, o replay volta para a mesma hora; `noFim`: abre no fim do período
+async function rodar(manter, noFim) {
   if (!TRADERS.length) return;
   const vez = ++rodadas, hora = manter && arena.cursor ? arena.tempos[arena.cursor - 1] : null;
   pausar();
@@ -153,11 +129,10 @@ async function rodar(manter) {
   $("#rodar").disabled = false;
   if (typeof LightweightCharts === "undefined")
     return aviso("a biblioteca de gráficos (TradingView Lightweight Charts) não carregou: confira a internet e recarregue a página");
-  arena.rodou = true;
-  descartarPrevias(); descartar();
+  descartar();
   try { montar(res); } catch (e) { return aviso("não consegui montar os gráficos: " + e.message); }
   if (!arena.tempos.length) $("#relogio").textContent = [...res.values()].find(x => x instanceof Error)?.message ?? "sem candles no período";
-  else if (hora) irPara(arena.tempos.filter(t => t <= hora).length);
+  else if (hora || noFim) irPara(hora ? arena.tempos.filter(t => t <= hora).length : arena.tempos.length);
 }
 $("#rodar").onclick = () => { cacheBT.clear(); rodar(false); };
 

@@ -1,7 +1,7 @@
 // Ao vivo: os quatro ativos em gráfico puro de 5 min direto da fonte (MT5 ou Binance), via /api/aovivo. Só acompanha:
 // sem ordens e sem estudos. Cada ativo pede de novo depois que a resposta anterior chega (bitcoin a cada 5 s, os do
 // MT5 a cada 15 s) e só enquanto a tela ao vivo está aberta e visível. A lateral mostra os ativos e o placar da firma.
-// Usa $, seg, esc, pct, brl, fmtPreco, ATIVOS, STATUS, CORES e graficoPuro da sala.js.
+// Usa $, seg, esc, pct, brl, fmtPreco, ATIVOS, STATUS, CORES e graficoPuro da sala.js. Lê o /api/painel sozinho.
 (() => {
   const ORDEM = ["WIN", "WDO", "EURUSD", "BTCUSDT"];
   const ESPERA = {BTCUSDT: 5000}, ESPERA_MT5 = 15000;
@@ -89,7 +89,18 @@
       }).join("")}</div>`).join("");
   }
 
-  document.addEventListener("painel", e => { painel = e.detail; placar(); lateral(); });
+  // tendência do 60 e placar: do cache e do estado do gerente, que mudam no máximo a cada ciclo
+  async function carregarPainel() {
+    try {
+      const r = await fetch("/api/painel"), d = await r.json();
+      if (!r.ok) throw new Error(d.erro || `o servidor respondeu ${r.status}`);
+      painel = d; placar(); lateral();
+    } catch (e) {
+      if (!painel) $("#vivo-placar").innerHTML = `<div class="warn">não consegui carregar o placar (${esc(e.message)})</div>`;
+    }
+  }
+  carregarPainel();
+  setInterval(carregarPainel, 5 * 60 * 1000);
   lateral();
   todos();
 })();
