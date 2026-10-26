@@ -1397,6 +1397,11 @@ const sofaDiretoria = sofa(predio, dir.x - 1.6, dir.z + dir.d / 2 - 0.55, Math.P
 mesaCentro(predio, dir.x - 1.6, dir.z + 1.4);
 quadroParede(dir.x + dir.w / 2, 1.6, dir.z - 1.7, [1, 0], 0.9, 0.6, ARTES[1]);
 quadroParede(dir.x + dir.w / 2, 1.6, dir.z + 1.7, [1, 0], 0.9, 0.6, ARTES[2]);
+// quadro de tarefas do Diretor: na parede norte, entre a janela e a estante (pintado e aberto em "tarefas do Diretor")
+const quadroTarefas = quadroParede(dir.x - 0.12, 1.55, dir.z - dir.d / 2, [0, -1], 1.26, 0.95,
+  canvasTex(4, 3, g => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 4, 3); }));
+quadroTarefas.userData.alvo = "tarefas";
+clicaveis.push(quadroTarefas);
 luminaria(dir.x - 1.5, dir.z); luminaria(dir.x + 1.5, dir.z);
 luzSala(dir.x, dir.z, 7);
 const rotDiretor = eu.rot = rotulo("Diretor (você)", "Diretoria", "#e6edf3", dir.cor);
@@ -2583,7 +2588,7 @@ function linkRelatorio(nome, texto) {
 function abrirPainel(alvo) {
   const corpo = $("#painel-corpo");
   linksPainel = [];
-  corpo.innerHTML = alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado)
+  corpo.innerHTML = alvo === "tarefas" ? htmlTarefas() : alvo === "gerente" ? htmlGerente(firma.estado) : alvo === "relatorios" ? htmlRelatorios(firma.estado)
     : alvo.quadro ? htmlQuadro(alvo.quadro) : alvo.boneco ? htmlBoneco(alvo) : htmlTrader(alvo);
   // o V (câmera) e o ESC (fechar) continuam valendo com o foco dentro do relatório embutido (mesma origem)
   corpo.querySelector("iframe")?.addEventListener("load", e => {
@@ -2876,6 +2881,7 @@ function irAte() {
 // trader → ficha; gerente/diretor → resumo; monitor da Diretoria → relatórios. O plumbob só vai em boneco.
 function interagir(o) {
   if (o.userData.alvo === "porta") return alternarPorta();
+  if (o.userData.alvo === "tarefas") { selecionar(null); return abrirPainel("tarefas"); }
   const b = bonecoDe(o);
   selecionar(b.userData.contornos ? b : null);
   abrirPainel(b.userData.alvo);
@@ -3027,7 +3033,7 @@ function alvoNaMira() {
 }
 
 let alvoFp = null;
-const acaoDe = a => a === "porta" ? (portaEntrada.aberta ? "fechar a porta" : "abrir a porta")
+const acaoDe = a => a === "porta" ? (portaEntrada.aberta ? "fechar a porta" : "abrir a porta") : a === "tarefas" ? "tarefas do Diretor"
   : a === "gerente" ? "painel do gerente" : a === "relatorios" ? "relatórios do dia"
   : a.quadro ? `lousa da ${PLANTA.salas[a.quadro].nome}` : `ficha de ${a.nome}${a.mercado ? ` · ${a.ativo}` : ""}`;
 function mirar(o) {
@@ -3139,6 +3145,91 @@ async function carregarAtividade() {
 carregarAtividade().finally(carregar);   // a primeira cena já nasce com cada um no lugar certo
 carregarLab();
 setInterval(carregar, 30000);
+
+// ---------------------------------------------------------------- tarefas do Diretor (quadro da Diretoria)
+// A lista mora no servidor (estado/tarefas-diretor.json, /api/tarefas): o painel manda uma ação por vez e recebe a
+// lista inteira de volta; a cada 30 s relê, para aparecer o que outra aba ou uma sessão do Claude acrescentou.
+let tarefas = [];
+function texTarefas() {
+  const feitas = tarefas.filter(t => t.feita).length, falta = tarefas.length - feitas;
+  return lousa("DIRETORIA", "Tarefas do Diretor", tarefas.length ? `${falta} a fazer · ${feitas} feitas` : "nenhuma tarefa",
+    falta ? "warn" : "up", "clique no quadro para marcar ou adicionar", (g, w, h) => {
+      const lista = [...tarefas.filter(t => !t.feita), ...tarefas.filter(t => t.feita)];
+      let y = 186;
+      for (const t of lista) {
+        g.font = `${t.feita ? "" : "600 "}27px ${FONTE}`;
+        const linhas = quebrar(g, t.texto, w - 150).slice(0, 2);
+        if (y + (linhas.length - 1) * 32 > h - 60) {
+          g.fillStyle = "#6a737d"; g.font = `italic 24px ${FONTE}`; g.fillText(`… e mais ${lista.length - lista.indexOf(t)}`, 100, y);
+          break;
+        }
+        g.strokeStyle = t.feita ? "#1b8a5a" : "#1d3f7a"; g.lineWidth = 3; g.strokeRect(52, y - 24, 28, 28);
+        if (t.feita) { g.beginPath(); g.moveTo(57, y - 10); g.lineTo(64, y - 2); g.lineTo(77, y - 20); g.stroke(); }
+        g.fillStyle = t.feita ? "#8b939b" : "#1f2328";
+        linhas.forEach((l, k) => {
+          g.fillText(l, 100, y + k * 32);
+          if (t.feita) { const lw = g.measureText(l).width; g.fillRect(100, y + k * 32 - 9, lw, 2); }
+        });
+        y += linhas.length * 32 + 14;
+      }
+    });
+}
+function pintarTarefas() {
+  const tela = quadroTarefas.children[1], map = texTarefas();   // [0] é a moldura (quadroParede)
+  tela.material.map.dispose(); tela.material.dispose();
+  tela.material = new THREE.MeshStandardMaterial({ map, roughness: 0.45, emissive: "#ffffff", emissiveMap: map, emissiveIntensity: 0.3 });
+  if (painelAlvo === "tarefas") { $("#painel-corpo").innerHTML = htmlTarefas(); }
+}
+function htmlTarefas() {
+  const item = t => `<li class="${t.feita ? "feita" : ""}"><label><input type="checkbox" data-id="${esc(t.id)}" ${t.feita ? "checked" : ""}>
+    <span>${esc(t.texto)}</span></label><button class="apagar" data-id="${esc(t.id)}" title="Apagar">×</button></li>`;
+  const feitas = tarefas.filter(t => t.feita);
+  return `<div class="ficha"><span class="av" style="background:${dir.cor}">✓</span><div><div class="n">Tarefas do Diretor</div>
+      <div class="s">${tarefas.length - feitas.length} a fazer · ${feitas.length} feitas</div></div></div>
+    <form class="nova-tarefa"><input name="texto" maxlength="500" placeholder="Nova tarefa…" autocomplete="off"><button>Adicionar</button></form>
+    <ul class="tarefas">${tarefas.filter(t => !t.feita).map(item).join("") || "<li class='mut'>nada a fazer</li>"}</ul>
+    ${feitas.length ? `<h3>Feitas</h3><ul class="tarefas">${feitas.map(item).join("")}</ul>` : ""}
+    <p class="aviso-tarefa" hidden></p>`;
+}
+async function mudarTarefas(pedido) {
+  try {
+    const r = await fetch("/api/tarefas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pedido) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.erro || r.status);
+    tarefas = d.tarefas;
+    pintarTarefas();
+  } catch (e) {
+    const p = $("#painel-corpo .aviso-tarefa");
+    if (p) { p.hidden = false; p.textContent = `Não consegui salvar (${e.message}).`; }
+  }
+}
+async function carregarTarefas() {
+  try {
+    const r = await fetch("/api/tarefas", { cache: "no-store" });
+    if (!r.ok) return;
+    const { tarefas: novas } = await r.json();
+    if (JSON.stringify(novas) === JSON.stringify(tarefas)) return;
+    tarefas = novas;
+    // com o painel aberto e alguém digitando, só o quadro muda (o texto da nova tarefa não se perde)
+    if (painelAlvo === "tarefas" && document.activeElement?.name === "texto") { const p = painelAlvo; painelAlvo = null; pintarTarefas(); painelAlvo = p; }
+    else pintarTarefas();
+  } catch {}
+}
+$("#painel-corpo").addEventListener("change", e => {
+  if (painelAlvo === "tarefas" && e.target.matches("input[type=checkbox]")) mudarTarefas({ acao: "marcar", id: e.target.dataset.id, feita: e.target.checked });
+});
+$("#painel-corpo").addEventListener("click", e => {
+  const b = e.target.closest("button.apagar");
+  if (painelAlvo === "tarefas" && b) mudarTarefas({ acao: "apagar", id: b.dataset.id });
+});
+$("#painel-corpo").addEventListener("submit", e => {
+  if (painelAlvo !== "tarefas") return;
+  e.preventDefault();
+  const texto = e.target.texto.value.trim();
+  if (texto) mudarTarefas({ acao: "nova", texto }).then(() => $("#painel-corpo input[name=texto]")?.focus());
+});
+carregarTarefas();
+setInterval(carregarTarefas, 30000);
 setInterval(carregarLab, 30000);
 setInterval(carregarAtividade, 5000);
 

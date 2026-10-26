@@ -621,5 +621,54 @@ class TestBacktestGuardado(unittest.TestCase):
             self.assertEqual(rodar.call_count, 2)
 
 
+
+class TestTarefas(unittest.TestCase):
+    """Quadro de tarefas da Diretoria: GET lista, POST aplica uma ação (nova, marcar, apagar) sobre o arquivo."""
+
+    def setUp(self):
+        pasta = tempfile.TemporaryDirectory()
+        self.addCleanup(pasta.cleanup)
+        p = mock.patch.object(servidor, "TAREFAS", os.path.join(pasta.name, "estado", "tarefas-diretor.json"))
+        p.start()
+        self.addCleanup(p.stop)
+        self.srv = servidor.criar_servidor(0, historico_fn=historico_falso, cfg=CFG)
+        self.url = f"http://127.0.0.1:{self.srv.server_address[1]}/api/tarefas"
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def post(self, corpo):
+        r = urllib.request.Request(self.url, data=json.dumps(corpo).encode(), method="POST",
+                                   headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(r) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            with e:
+                return e.code, json.loads(e.read())
+
+    def test_criar_marcar_apagar_e_sobreviver(self):
+        with urllib.request.urlopen(self.url) as r:
+            self.assertEqual(json.loads(r.read()), {"tarefas": []})   # sem arquivo: lista vazia
+        _, d = self.post({"acao": "nova", "texto": "  Conferir a margem da Genial  "})
+        t = d["tarefas"][0]
+        self.assertEqual((t["texto"], t["feita"]), ("Conferir a margem da Genial", False))
+        self.post({"acao": "nova", "texto": "Outra"})
+        _, d = self.post({"acao": "marcar", "id": t["id"], "feita": True})
+        self.assertTrue(d["tarefas"][0]["feita"])
+        with open(servidor.TAREFAS, encoding="utf-8") as f:   # gravado no disco: sobrevive a recarregar
+            self.assertEqual(len(json.load(f)["tarefas"]), 2)
+        _, d = self.post({"acao": "apagar", "id": t["id"]})
+        self.assertEqual([x["texto"] for x in d["tarefas"]], ["Outra"])
+
+    def test_pedidos_invalidos(self):
+        for corpo in ({"acao": "nova", "texto": "   "}, {"acao": "marcar", "id": "nao-existe", "feita": True},
+                      {"acao": "explodir"}, {"texto": "sem ação"}, ["lista"]):
+            status, d = self.post(corpo)
+            self.assertEqual(status, 400, corpo)
+            self.assertIn("erro", d)
+        self.assertFalse(os.path.exists(servidor.TAREFAS))   # nada inválido chega ao disco
+
+
 if __name__ == "__main__":
     unittest.main()

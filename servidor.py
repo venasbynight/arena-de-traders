@@ -11,6 +11,7 @@ import os
 import re
 import threading
 import time
+import uuid
 from dataclasses import replace
 import webbrowser
 from datetime import date, datetime, timedelta, timezone
@@ -30,6 +31,7 @@ ESTADO_FIRMA = os.path.join(RAIZ, "estado", "firma.json")  # escrito pelo gerent
 PARAMETROS = os.path.join(RAIZ, "estado", "parametros.json")  # parâmetros escolhidos pelo gerente
 ESTADO_ATIVIDADE_PESQUISA = os.path.join(RAIZ, "estado", "atividade_pesquisa.json")  # escrito por pesquisa/harness.py
 ESTADO_LABORATORIO = os.path.join(RAIZ, "estado", "laboratorio.json")  # idem
+TAREFAS = os.path.join(RAIZ, "estado", "tarefas-diretor.json")  # quadro de tarefas da Diretoria (firma 3D)
 AVISO_VELHO_S = 120  # aviso de pesquisa sem batida há mais que isso = ninguém testando
 EXEMPLO_FIRMA = os.path.join(WEB, "firma.exemplo.json")
 RELATORIOS = os.path.join(RAIZ, "relatorios")
@@ -130,7 +132,21 @@ class Arena(BaseHTTPRequestHandler):
             return self._enviar(200, gerente.ler_json(ESTADO_LABORATORIO))
         if url.path == "/api/backtest":
             return self._backtest(parse_qs(url.query))
+        if url.path == "/api/tarefas":
+            return self._enviar(200, {"tarefas": ler_tarefas()})
         self._enviar(404, {"erro": "não encontrado"})
+
+    def do_POST(self):
+        if urlparse(self.path).path != "/api/tarefas":
+            return self._enviar(404, {"erro": "não encontrado"})
+        tamanho = int(self.headers.get("Content-Length") or 0)
+        if not 0 < tamanho <= 10_000:
+            return self._enviar(400, {"erro": "pedido vazio ou grande demais"})
+        try:
+            pedido = json.loads(self.rfile.read(tamanho))
+            return self._enviar(200, {"tarefas": mudar_tarefas(pedido)})
+        except (ValueError, TypeError, AttributeError, KeyError) as e:   # KeyError: faltou um campo (acao, id...)
+            return self._enviar(400, {"erro": f"pedido inválido: {e}"})
 
     def _firma(self):
         # sem estado do gerente, a firma mostra o exemplo versionado (marcado como exemplo)
@@ -489,6 +505,44 @@ def gerente_diario():
 
     threading.Thread(target=laco_do_gerente, args=(rodar, lambda: datetime.now(brt)), daemon=True,
                      name="gerente").start()
+
+
+# Quadro de tarefas do Diretor: [{id, texto, feita, criada}] em TAREFAS. A tela manda uma ação por vez (nova, marcar,
+# apagar), aplicada sobre o arquivo do disco: uma sugestão que outra sessão acrescentou nesse meio-tempo não se perde.
+_trava_tarefas = threading.Lock()
+
+
+def ler_tarefas():
+    t = gerente.ler_json(TAREFAS)
+    return t.get("tarefas", []) if isinstance(t, dict) else []
+
+
+def mudar_tarefas(pedido):
+    acao = pedido["acao"]
+    with _trava_tarefas:
+        tarefas = ler_tarefas()
+        if acao == "nova":
+            texto = str(pedido["texto"]).strip()
+            if not 0 < len(texto) <= 500:
+                raise ValueError("a tarefa precisa de 1 a 500 caracteres")
+            tarefas.append({"id": uuid.uuid4().hex[:12], "texto": texto, "feita": False,
+                            "criada": datetime.now().isoformat(timespec="seconds")})
+        elif acao in ("marcar", "apagar"):
+            t = next((t for t in tarefas if t["id"] == pedido["id"]), None)
+            if t is None:
+                raise ValueError(f"tarefa {pedido['id']!r} não existe (talvez já apagada)")
+            if acao == "marcar":
+                t["feita"] = bool(pedido["feita"])
+            else:
+                tarefas.remove(t)
+        else:
+            raise ValueError(f"ação {acao!r} desconhecida; use nova, marcar ou apagar")
+        os.makedirs(os.path.dirname(TAREFAS), exist_ok=True)
+        temporario = f"{TAREFAS}.{os.getpid()}.tmp"  # troca no fim: queda no meio não deixa o arquivo pela metade
+        with open(temporario, "w", encoding="utf-8") as f:
+            json.dump({"tarefas": tarefas}, f, ensure_ascii=False, indent=1)
+        os.replace(temporario, TAREFAS)
+        return tarefas
 
 
 BACKTESTS_GUARDADOS = 40

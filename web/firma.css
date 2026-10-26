@@ -99,3 +99,16 @@ table.req td:last-child{white-space:nowrap}
 table.lab td,table.lab th{font-size:11px;padding:4px 3px}
 .up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.warn{color:var(--warn)}
 @media (max-width:700px){#dica{display:none}.hud .pill{display:none}}
+/* tarefas do Diretor (quadro da Diretoria) */
+.nova-tarefa{display:flex;gap:8px;margin:4px 0 12px}
+.nova-tarefa input{flex:1;min-width:0;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#0f141b;color:var(--txt);font:13px "Segoe UI",system-ui,sans-serif}
+.nova-tarefa input:focus{outline:2px solid #1de9b6;outline-offset:-1px}
+.nova-tarefa button{height:34px;padding:0 14px;border-radius:8px;border:0;background:#1de9b6;color:#04201b;font-weight:700;cursor:pointer}
+ul.tarefas{list-style:none;padding:0}
+ul.tarefas li{display:flex;align-items:flex-start;gap:6px;padding:8px 2px;border-bottom:1px solid #18212c}
+ul.tarefas label{flex:1;display:flex;gap:10px;align-items:flex-start;cursor:pointer;line-height:1.35}
+ul.tarefas input{margin-top:3px;width:16px;height:16px;accent-color:#1de9b6;flex:none;cursor:pointer}
+ul.tarefas li.feita span{color:var(--mut);text-decoration:line-through}
+ul.tarefas .apagar{flex:none;width:24px;height:24px;border-radius:6px;border:0;background:none;color:var(--mut);font-size:16px;cursor:pointer}
+ul.tarefas .apagar:hover{background:#2a1b20;color:var(--dn)}
+.aviso-tarefa{margin-top:10px;color:var(--dn);font-size:12px}
